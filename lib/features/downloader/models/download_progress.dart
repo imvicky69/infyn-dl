@@ -95,10 +95,11 @@ class DownloadProgress {
         errorMessage: 'Download was cancelled by user',
       );
 
-  static DownloadProgress failed(String errorMessage, {String? rawLog}) =>
+  static DownloadProgress failed(String errorMessage, {String? title, String? rawLog}) =>
       DownloadProgress(
         status: DownloadStatus.failed,
         errorMessage: errorMessage,
+        title: title,
         rawLog: rawLog ?? '',
       );
 }

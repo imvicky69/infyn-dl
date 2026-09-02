@@ -6,6 +6,7 @@ import '../models/download_format.dart';
 import '../models/download_progress.dart';
 import '../models/media_quality.dart';
 import '../models/video_metadata.dart';
+import '../services/android_downloader_service.dart';
 import '../services/downloader_service.dart';
 import '../services/windows_downloader_service.dart';
 import '../widgets/download_button.dart';
@@ -46,7 +47,10 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   @override
   void initState() {
     super.initState();
-    _downloaderService = widget.downloaderService ?? WindowsDownloaderService();
+    _downloaderService = widget.downloaderService ??
+        (!kIsWeb && defaultTargetPlatform == TargetPlatform.android
+            ? AndroidDownloaderService()
+            : WindowsDownloaderService());
   }
 
   @override
