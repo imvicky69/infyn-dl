@@ -230,39 +230,10 @@ jobs:
             PRERELEASE_FLAG="--prerelease"
           fi
 
-          {
-            echo "## 🚀 Infyn DL $TAG"
-            echo ""
-            echo "Universal, local-first media & music downloader for **Windows** and **Android**."
-            echo ""
-            echo "---"
-            echo ""
-            echo "### 📦 Download Packages"
-            echo ""
-            echo "| Platform | Package | Description |"
-            echo "| :--- | :--- | :--- |"
-            echo "| 🪟 **Windows** | \`Infyn-DL-${TAG}-windows-setup.exe\` | **Recommended**: Single-file setup installer with Desktop & Start Menu shortcuts. |"
-            echo "| 🪟 **Windows** | \`Infyn-DL-${TAG}-windows-portable.zip\` | **Portable**: Extract anywhere and run \`media_downloader.exe\`. No setup needed. |"
-            echo "| 📱 **Android** | \`Infyn-DL-${TAG}-android.apk\` | **Universal APK**: Works on all Android phones, tablets, and TVs (Android 7.0+). |"
-            echo "| 📱 **Android** | \`Infyn-DL-${TAG}-android-arm64.apk\` | **ARM64 APK**: Optimized, lightweight build for modern 64-bit Android smartphones. |"
-            echo ""
-            echo "---"
-            echo ""
-            echo "### 🛠️ Installation Guide"
-            echo ""
-            echo "#### Windows:"
-            echo "- **Option 1 (Installer)**: Download and run \`Infyn-DL-${TAG}-windows-setup.exe\`."
-            echo "- **Option 2 (Portable)**: Download and extract \`Infyn-DL-${TAG}-windows-portable.zip\`, then run \`media_downloader.exe\`."
-            echo ""
-            echo "#### Android:"
-            echo "1. Download \`Infyn-DL-${TAG}-android.apk\` (or ARM64 APK)."
-            echo "2. Tap the downloaded file to install on your phone."
-            echo "3. Open **Infyn DL** and grant storage permissions when prompted."
-            echo ""
-            echo "---"
-            echo ""
-            cat dist/checksums.txt
-          } > release_body.md
+          # Prepare release notes from template
+          cp tool/release_notes_template.md release_body.md
+          sed -i "s/__TAG__/$TAG/g" release_body.md
+          cat dist/checksums.txt >> release_body.md
 
           cat release_body.md
 
