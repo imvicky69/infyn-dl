@@ -110,7 +110,7 @@ object MediaStorageHelper {
 
             resolver.openOutputStream(itemUri)?.use { outStream ->
                 FileInputStream(sourceFile).use { inStream ->
-                    inStream.copyTo(outStream)
+                    inStream.copyTo(outStream, bufferSize = 64 * 1024)
                 }
             }
 
@@ -178,7 +178,7 @@ object MediaStorageHelper {
             val targetFile = File(targetDir, fileName)
             FileInputStream(sourceFile).use { input ->
                 FileOutputStream(targetFile).use { output ->
-                    input.copyTo(output)
+                    input.copyTo(output, bufferSize = 64 * 1024)
                 }
             }
 

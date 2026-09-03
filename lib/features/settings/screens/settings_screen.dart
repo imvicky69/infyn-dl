@@ -29,6 +29,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _concurrentDownloads = 3;
   Map<String, String?> _backendInfo = {};
   bool _isLoadingBackend = true;
+  bool _isUpdatingEngine = false;
 
   @override
   void initState() {
@@ -54,6 +55,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _backendInfo = backend;
         _isLoadingBackend = false;
       });
+    }
+  }
+
+  Future<void> _handleUpdateEngine() async {
+    if (_isUpdatingEngine) return;
+    setState(() => _isUpdatingEngine = true);
+    try {
+      final s = _downloaderService;
+      final androidService =
+          s is AndroidDownloaderService ? s : AndroidDownloaderService();
+      final result = await androidService.updateEngine();
+      if (mounted) {
+        _showSnackbar(result ?? 'Engine updated successfully');
+        await _loadSettings();
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnackbar('Update failed: $e', isError: true);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUpdatingEngine = false);
+      }
     }
   }
 
@@ -586,6 +610,67 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Icons.verified_rounded,
                         AppColors.primary,
                       ),
+                      if (!kIsWeb &&
+                          defaultTargetPlatform == TargetPlatform.android) ...[
+                        const Divider(height: 16, color: AppColors.surfaceBorder),
+                        Row(
+                          children: [
+                            const Icon(Icons.system_update_alt_rounded,
+                                size: 18, color: AppColors.primary),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Update yt-dlp Core',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Downloads the latest yt-dlp release on device',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            FilledButton.tonal(
+                              onPressed: _isUpdatingEngine
+                                  ? null
+                                  : _handleUpdateEngine,
+                              style: FilledButton.styleFrom(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: _isUpdatingEngine
+                                  ? const SizedBox(
+                                      width: 14,
+                                      height: 14,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: AppColors.primary,
+                                      ),
+                                    )
+                                  : const Text(
+                                      'Check Update',
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
           ),

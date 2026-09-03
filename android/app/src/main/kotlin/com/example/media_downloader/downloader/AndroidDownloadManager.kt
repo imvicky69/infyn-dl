@@ -12,9 +12,12 @@ import io.flutter.plugin.common.EventChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.util.concurrent.atomic.AtomicReference
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 
@@ -32,6 +35,12 @@ object AndroidDownloadManager {
     private var eventSink: EventChannel.EventSink? = null
     private val activeJobs = ConcurrentHashMap<String, Job>()
     private val activeProcessIds = ConcurrentHashMap<String, String>()
+
+    /**
+     * Atomic snapshot of yt-dlp progress, written by the callback thread and
+     * consumed by the dispatch coroutine. Keeps the callback ultra-lightweight.
+     */
+    private data class ProgressSnapshot(val progress: Float, val etaSec: Long, val line: String)
 
     fun setEventSink(sink: EventChannel.EventSink?) {
         this.eventSink = sink
@@ -64,6 +73,19 @@ object AndroidDownloadManager {
                 Log.e(TAG, "Failed to initialize YoutubeDL / FFmpeg", t)
             } finally {
                 isInitializing = false
+            }
+        }
+    }
+
+    fun updateYoutubeDLEngine(context: Context, callback: (Result<String>) -> Unit) {
+        scope.launch {
+            try {
+                val status = YoutubeDL.getInstance().updateYoutubeDL(context.applicationContext, YoutubeDL.UpdateChannel._STABLE)
+                val ver = try { YoutubeDL.getInstance().version(context.applicationContext) } catch (_: Throwable) { "latest" }
+                mainHandler.post { callback(Result.success("Updated yt-dlp to $ver ($status)")) }
+            } catch (t: Throwable) {
+                Log.e(TAG, "updateYoutubeDLEngine error", t)
+                mainHandler.post { callback(Result.failure(Exception(t.localizedMessage ?: "Failed to update engine"))) }
             }
         }
     }
@@ -106,7 +128,9 @@ object AndroidDownloadManager {
                     addOption("--no-playlist")
                     addOption("--no-update")
                     addOption("--no-check-certificates")
-                    addOption("--extractor-args", "youtube:player_client=android,ios,web")
+                    addOption("--socket-timeout", "15")
+                    addOption("--retries", "3")
+                    addOption("--extractor-args", "youtube:player_client=android,web;player_skip=configs,webpage")
                 }
                 val response = YoutubeDL.getInstance().execute(request)
                 val json = response.out
@@ -145,7 +169,9 @@ object AndroidDownloadManager {
                     addOption("--dump-single-json")
                     addOption("--no-update")
                     addOption("--no-check-certificates")
-                    addOption("--extractor-args", "youtube:player_client=android,ios,web")
+                    addOption("--socket-timeout", "15")
+                    addOption("--retries", "3")
+                    addOption("--extractor-args", "youtube:player_client=android,web;player_skip=configs,webpage")
                     addOption("--yes-playlist")
                 }
                 val response = YoutubeDL.getInstance().execute(request)
@@ -159,7 +185,7 @@ object AndroidDownloadManager {
     }
 
     /**
-     * Starts a download on Android with live progress reporting and Scoped Storage publication.
+     * Starts a high-speed download on Android with live progress reporting and Scoped Storage publication.
      */
     fun startDownload(
         context: Context,
@@ -206,8 +232,24 @@ object AndroidDownloadManager {
                 addOption("--newline")
                 addOption("--no-update")
                 addOption("--no-check-certificates")
-                addOption("--extractor-args", "youtube:player_client=android,ios,web")
-                addOption("-N", "4")
+                addOption("--no-mtime")
+                // ios player_client: YouTube does NOT throttle iOS streams (unlike the android client
+                // which is capped at ~200-500KB/s). ios also returns DASH fragmented streams,
+                // making -N parallel fragment downloading actually effective on Android.
+                addOption("--extractor-args", "youtube:player_client=ios,web")
+
+                // 8 parallel fragment streams — works correctly with DASH streams from ios client
+                addOption("-N", "8")
+                addOption("--http-chunk-size", "10M")
+                // Auto-detect & retry if YouTube throttles mid-download (re-fetches with fresh URLs)
+                addOption("--throttled-rate", "100K")
+
+                // Network reliability & anti-hang timeouts for mobile connections
+                addOption("--socket-timeout", "30")
+                addOption("--retries", "10")
+                addOption("--fragment-retries", "10")
+                addOption("--retry-sleep", "1")
+                addOption("--file-access-retries", "5")
 
                 if (isAudio) {
                     addOption("-x")
@@ -229,40 +271,36 @@ object AndroidDownloadManager {
             }
 
             activeProcessIds[downloadId] = downloadId
-            var detectedTitle: String? = null
+
+            // Thread-safe atomic state — yt-dlp callback runs on its own native thread,
+            // NOT on the coroutine thread. Using var here would be a data race.
+            val detectedTitle = AtomicReference<String?>(null)
+            val latestSnapshot = AtomicReference<ProgressSnapshot?>(null)
             val speedRegex = Regex("""at\s+([0-9.]+[A-Za-z/]+)""")
             val sizeRegex = Regex("""of\s+~?([0-9.]+[A-Za-z]+)""")
 
-            try {
-                val response = YoutubeDL.getInstance().execute(request, downloadId) { progressFloat, etaInSeconds, line ->
-                    val safeProgress = progressFloat.coerceAtLeast(0f)
+            // Timer-based dispatch coroutine: polls atomic state every 350ms.
+            // This fully decouples IPC (Notification + EventChannel) from the
+            // hot yt-dlp callback thread — eliminating GC pressure & main-thread flooding.
+            val dispatchJob = scope.launch {
+                while (isActive) {
+                    delay(350)
+                    val snap = latestSnapshot.getAndSet(null) ?: continue
+                    val safeProgress = snap.progress.coerceAtLeast(0f)
                     val progressRatio = (safeProgress / 100.0).coerceIn(0.0, 1.0)
                     val percentage = String.format("%.1f%%", safeProgress)
-                    val etaFormatted = if (etaInSeconds > 0) {
-                        String.format("%02d:%02d", etaInSeconds / 60, etaInSeconds % 60)
+                    val etaFormatted = if (snap.etaSec > 0) {
+                        String.format("%02d:%02d", snap.etaSec / 60, snap.etaSec % 60)
                     } else null
+                    val speed = speedRegex.find(snap.line)?.groupValues?.getOrNull(1)
+                    val size = sizeRegex.find(snap.line)?.groupValues?.getOrNull(1)
+                    val titleToDisplay = detectedTitle.get() ?: "Downloading Media"
 
-                    val speed = speedRegex.find(line)?.groupValues?.getOrNull(1)
-                    val size = sizeRegex.find(line)?.groupValues?.getOrNull(1)
-
-                    if (detectedTitle == null && line.contains("Destination:")) {
-                        val pathPart = line.substringAfter("Destination:").trim()
-                        val rawName = File(pathPart).nameWithoutExtension
-                        detectedTitle = rawName.replace(Regex("""\.f[0-9]+$"""), "")
-                    }
-
-                    val titleToDisplay = detectedTitle ?: "Downloading Media"
-
-                    // Update notification
                     DownloadForegroundService.updateProgress(
-                        context,
-                        downloadId,
-                        titleToDisplay,
-                        progressFloat.toInt(),
+                        context, downloadId, titleToDisplay,
+                        safeProgress.toInt(),
                         "$percentage • ${speed ?: ""} • ETA: ${etaFormatted ?: "--"}"
                     )
-
-                    // Dispatch to Flutter
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
@@ -273,9 +311,22 @@ object AndroidDownloadManager {
                             "eta" to etaFormatted,
                             "totalSize" to size,
                             "title" to titleToDisplay,
-                            "rawLog" to line
                         )
                     )
+                }
+            }
+
+            try {
+                // Ultra-lightweight callback: only update atomic state.
+                // NO IPC, NO regex, NO String.format — just two atomic writes.
+                YoutubeDL.getInstance().execute(request, downloadId) { progressFloat, etaInSeconds, line ->
+                    latestSnapshot.set(ProgressSnapshot(progressFloat, etaInSeconds, line))
+                    if (detectedTitle.get() == null && line.contains("Destination:")) {
+                        try {
+                            val rawName = File(line.substringAfter("Destination:").trim()).nameWithoutExtension
+                            detectedTitle.set(rawName.replace(Regex("""\.f[0-9]+$"""), ""))
+                        } catch (_: Exception) {}
+                    }
                 }
 
                 // Processing / Merge state
@@ -285,7 +336,7 @@ object AndroidDownloadManager {
                         "status" to "processing",
                         "progress" to 0.99,
                         "percentage" to "99%",
-                        "title" to (detectedTitle ?: "Media Download")
+                        "title" to (detectedTitle.get() ?: "Media Download")
                     )
                 )
 
@@ -317,7 +368,7 @@ object AndroidDownloadManager {
                         preferMusicDirectory = isMusicDir
                     )
 
-                    val finalTitle = detectedTitle ?: finalStagingFile.nameWithoutExtension
+                    val finalTitle = detectedTitle.get() ?: finalStagingFile.nameWithoutExtension
                     DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
                     dispatchProgress(
                         mapOf(
@@ -332,7 +383,7 @@ object AndroidDownloadManager {
                     )
                 } else {
                     // Completed with stdout log
-                    val finalTitle = detectedTitle ?: "Media Download"
+                    val finalTitle = detectedTitle.get() ?: "Media Download"
                     DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
                     dispatchProgress(
                         mapOf(
@@ -352,23 +403,24 @@ object AndroidDownloadManager {
                         mapOf(
                             "id" to downloadId,
                             "status" to "cancelled",
-                            "title" to (detectedTitle ?: "Media Download")
+                            "title" to (detectedTitle.get() ?: "Media Download")
                         )
                     )
                 } else {
                     Log.e(TAG, "Download execution failed", e)
                     val errorMsg = e.message ?: "Download failed on device"
-                    DownloadForegroundService.showError(context, detectedTitle ?: "Media Download", errorMsg)
+                    DownloadForegroundService.showError(context, detectedTitle.get() ?: "Media Download", errorMsg)
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
                             "status" to "failed",
                             "error" to errorMsg,
-                            "title" to detectedTitle
+                            "title" to detectedTitle.get()
                         )
                     )
                 }
             } finally {
+                dispatchJob.cancel() // Stop the dispatch coroutine before cleanup
                 activeProcessIds.remove(downloadId)
                 activeJobs.remove(downloadId)
                 if (activeJobs.isEmpty()) {

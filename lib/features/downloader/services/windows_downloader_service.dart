@@ -174,7 +174,21 @@ class WindowsDownloaderService implements DownloaderService {
           '--windows-filenames',
           '--progress',
           '-N',
-          '4',
+          '8',
+          '--http-chunk-size',
+          '10M',
+          '--buffer-size',
+          '64K',
+          '--socket-timeout',
+          '30',
+          '--retries',
+          '10',
+          '--fragment-retries',
+          '10',
+          '--retry-sleep',
+          '1',
+          '--file-access-retries',
+          '5',
         ];
 
         final jsRuntime = await ProcessPathResolver.resolveJsRuntimeArg();

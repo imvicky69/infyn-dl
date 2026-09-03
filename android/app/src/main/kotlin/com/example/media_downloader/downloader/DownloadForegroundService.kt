@@ -108,6 +108,8 @@ class DownloadForegroundService : Service() {
     private var currentDownloadId: String? = null
     private var currentTitle: String = "Media Download"
     private var wakeLock: PowerManager.WakeLock? = null
+    private var lastNotificationProgress = -1
+    private var lastNotificationStatus = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -121,6 +123,8 @@ class DownloadForegroundService : Service() {
                 acquireWakeLock()
                 currentDownloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID)
                 currentTitle = intent.getStringExtra(EXTRA_TITLE) ?: "Media Download"
+                lastNotificationProgress = -1
+                lastNotificationStatus = ""
                 val notification = buildOngoingNotification(currentTitle, 0, "Connecting to YouTube...", true)
                 startForegroundCompat(notification)
             }
@@ -128,9 +132,13 @@ class DownloadForegroundService : Service() {
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: currentTitle
                 val progress = intent.getIntExtra(EXTRA_PROGRESS, 0)
                 val statusText = intent.getStringExtra(EXTRA_STATUS_TEXT) ?: "Downloading..."
-                val notification = buildOngoingNotification(title, progress, statusText, false)
-                val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-                manager.notify(NOTIFICATION_ID, notification)
+                if (progress != lastNotificationProgress || statusText != lastNotificationStatus) {
+                    lastNotificationProgress = progress
+                    lastNotificationStatus = statusText
+                    val notification = buildOngoingNotification(title, progress, statusText, false)
+                    val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                    manager.notify(NOTIFICATION_ID, notification)
+                }
             }
             ACTION_COMPLETE -> {
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: "Download Complete"

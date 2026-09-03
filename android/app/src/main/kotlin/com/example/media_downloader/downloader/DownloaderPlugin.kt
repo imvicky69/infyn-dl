@@ -227,6 +227,16 @@ class DownloaderPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                 }
                 result.success(true)
             }
+            "updateEngine" -> {
+                AndroidDownloadManager.updateYoutubeDLEngine(ctx) { res ->
+                    res.fold(
+                        onSuccess = { msg -> result.success(msg) },
+                        onFailure = { error ->
+                            result.error("UPDATE_ERROR", error.localizedMessage ?: "Failed to update engine", null)
+                        }
+                    )
+                }
+            }
             "openFile" -> {
                 val path = call.argument<String>("path")
                 if (path.isNullOrBlank()) {

@@ -119,18 +119,32 @@ To prevent Android's battery optimizer from terminating active downloads when th
 
 ---
 
-## 7. How to Update yt-dlp and FFmpeg in the Future
+## 7. High-Speed Downloading & Network Resilience
 
-### Option A: Update Gradle Dependencies
+To match Windows performance and prevent freezing or rate-limiting on Android:
+
+1. **Chunk-Range Streaming (`--http-chunk-size 10M`)**:
+   Forces `yt-dlp` to request media in 10MB chunk ranges, bypassing YouTube's continuous stream rate limiter (which would otherwise throttle downloads to 40–80 KB/s).
+2. **Multi-Threaded Fragment Downloads (`-N 8`)**:
+   Downloads 8 stream fragments in parallel across separate TCP sockets to saturate available Wi-Fi and 5G/4G bandwidth.
+3. **Socket Timeouts & Anti-Hang Timeouts**:
+   `--socket-timeout 30`, `--retries 10`, `--fragment-retries 10`, and `--file-access-retries 5` prevent unhandled socket drops or network jitter from freezing the download job indefinitely.
+4. **IPC & Event Throttling**:
+   Notification updates are throttled to 750ms and Flutter EventChannel updates to 120ms, preventing Android Binder saturation and main-thread UI jank.
+5. **DASH Player Client Selection**:
+   Extractor args use `youtube:player_client=android,web;player_skip=configs,webpage` to retrieve direct HTTPS DASH streams.
+
+---
+
+## 8. How to Update yt-dlp and FFmpeg in the Future
+
+### Option A: In-App Core Update
+Users can tap **Check Update** in the app Settings screen, which runs `AndroidDownloadManager.updateYoutubeDLEngine()` in the background to fetch the latest `yt-dlp` release.
+
+### Option B: Update Gradle Dependencies
 Update the dependency version in `android/app/build.gradle.kts`:
 ```kotlin
 implementation("io.github.junkfood02.youtubedl-android:library:<NEW_VERSION>")
 implementation("io.github.junkfood02.youtubedl-android:ffmpeg:<NEW_VERSION>")
 ```
 
-### Option B: Runtime yt-dlp Auto-Update
-The `youtubedl-android` library supports in-app runtime updates of the underlying `yt-dlp` executable:
-```kotlin
-YoutubeDL.getInstance().updateYoutubeDL(context, YoutubeDL.UpdateChannel.STABLE)
-```
-This downloads the newest `yt-dlp` release without requiring an app update.

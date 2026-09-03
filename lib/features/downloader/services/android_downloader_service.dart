@@ -59,6 +59,17 @@ class AndroidDownloaderService implements DownloaderService {
     }
   }
 
+  Future<String?> updateEngine() async {
+    try {
+      final result =
+          await _methodChannel.invokeMethod<String>('updateEngine');
+      return result;
+    } catch (e) {
+      debugPrint('AndroidDownloaderService.updateEngine error: $e');
+      return null;
+    }
+  }
+
   @override
   Future<bool> isAvailable() async {
     try {

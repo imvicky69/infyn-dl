@@ -530,39 +530,16 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 1. Sleek Distinct Header (Logo, App Name, Status Pill)
-                  _buildHeader(),
-                  const SizedBox(height: 16),
+                  // 1. Sleek Modern App Header
+                  _buildHeader(displayDir),
+                  const SizedBox(height: 24),
 
-                  // 2. Integrated Destination Storage Chip
-                  _buildDestinationBar(displayDir),
-                  const SizedBox(height: 20),
-
-                  // 3. Hero Prompt & Link Input Area (NO Duplicate App Name!)
-                  const Text(
-                    'Download Media',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                      letterSpacing: -0.6,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Paste any YouTube video, Shorts, Music or playlist URL below',
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-
-                  // Link Input Box
+                  // 2. Main Search / Link Input Box
                   UrlInputField(
                     controller: _urlController,
                     onChanged: _handleUrlChanged,
@@ -570,20 +547,16 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                         _fetchDetails(_urlController.text.trim()),
                     errorText: _errorMessage,
                   ),
-                  const SizedBox(height: 12),
 
-                  // Supported Formats / Features Quick Strip
-                  _buildQuickPillsStrip(),
-
-                  // 4. Loading Shimmer / Card
+                  // 3. Loading State Card
                   if (_isFetchingMetadata) ...[
                     const SizedBox(height: 18),
                     _buildLoadingCard(),
                   ],
 
-                  // 5. Dynamic Content (Fetched Media Card & Available Sizes)
+                  // 4. Fetched Media Preview & Download Controls
                   if (hasDetails) ...[
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 20),
                     if (_metadata != null)
                       VideoPreviewCard(metadata: _metadata!),
                     if (_playlistMetadata != null)
@@ -593,7 +566,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                         onSelectionChanged: (set) =>
                             setState(() => _selectedPlaylistIndices = set),
                       ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     FormatSelector(
                       selectedFormat: _selectedFormat,
                       onFormatChanged: _handleFormatChanged,
@@ -617,7 +590,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                         setState(() => _selectedAudioQuality = quality);
                       },
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 22),
                     DownloadButton(
                       key: const Key('download_action_button'),
                       selectedFormat: _selectedFormat,
@@ -635,12 +608,12 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                     ),
                   ],
 
-                  // 6. Active Single Download Progress
+                  // 5. Active Single Download Progress
                   if (_downloadProgress.isActive ||
                       _downloadProgress.isCompleted ||
                       _downloadProgress.isFailed ||
                       _downloadProgress.isCancelled) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     DownloadProgressCard(
                       key: const Key('download_progress_card'),
                       progress: _downloadProgress,
@@ -650,9 +623,9 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                     ),
                   ],
 
-                  // 7. Active Batch Playlist Progress
+                  // 6. Active Batch Playlist Progress
                   if (_isBatchDownloading) ...[
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 18),
                     BatchProgressCard(
                       playlistTitle:
                           _playlistMetadata?.title ?? 'Batch Playlist',
@@ -666,15 +639,15 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                     ),
                   ],
 
-                  // 8. Rich Dashboard Section (Shown when no media is fetched, avoids empty screen!)
+                  // 7. Clean Idle State (When no link is loaded)
                   if (!hasDetails &&
                       !_isFetchingMetadata &&
                       !_downloadProgress.isActive &&
                       !_isBatchDownloading) ...[
-                    const SizedBox(height: 24),
-                    _buildFeaturesShowcase(),
+                    const SizedBox(height: 28),
+                    _buildQuickActionCards(),
                     if (_recentDownloads.isNotEmpty) ...[
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 28),
                       _buildRecentDownloadsPreview(),
                     ],
                   ],
@@ -689,174 +662,97 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader(String displayDir) {
     return Row(
       children: [
-        // App Icon
+        // App Logo Icon
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Image.asset(
             'assets/logo.png',
-            width: 38,
-            height: 38,
+            width: 32,
+            height: 32,
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) => const Icon(
               Icons.all_inclusive_rounded,
-              size: 38,
+              size: 32,
               color: AppColors.textPrimary,
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
 
-        // App Name and Tagline
-        const Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Infyn DL',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.5,
-                ),
+        // Brand Title
+        const Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Infyn DL',
+              style: TextStyle(
+                fontSize: 19,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textPrimary,
+                letterSpacing: -0.5,
               ),
-              Text(
-                'Universal Media & Music Downloader',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textMuted,
+            ),
+            Row(
+              children: [
+                Icon(Icons.circle, size: 6, color: AppColors.success),
+                SizedBox(width: 5),
+                Text(
+                  'Engine Ready',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
+        const Spacer(),
 
-        // Engine Status Badge
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: AppColors.surfaceBorder),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: const BoxDecoration(
-                  color: AppColors.success,
-                  shape: BoxShape.circle,
+        // Destination Folder Pill
+        InkWell(
+          onTap: _pickDownloadDirectory,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.surfaceBorder),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.folder_outlined,
+                    size: 14, color: AppColors.textSecondary),
+                const SizedBox(width: 6),
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 120),
+                  child: Text(
+                    displayDir,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 6),
-              const Text(
-                'Engine Ready',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildDestinationBar(String displayDir) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceBorder),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.folder_outlined,
-              size: 16, color: AppColors.textSecondary),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Save to: $displayDir',
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          const SizedBox(width: 8),
-          InkWell(
-            onTap: _pickDownloadDirectory,
-            borderRadius: BorderRadius.circular(6),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              child: Text(
-                'Change',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primary,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickPillsStrip() {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        _buildPill(Icons.movie_outlined, '4K / 1080p MP4'),
-        _buildPill(Icons.headphones_outlined, '320kbps MP3'),
-        _buildPill(Icons.playlist_play_rounded, 'Batch Playlist'),
-        _buildPill(Icons.music_note_outlined, 'YouTube Music'),
-      ],
-    );
-  }
-
-  Widget _buildPill(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceElevated,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.surfaceBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 13, color: AppColors.textMuted),
-          const SizedBox(width: 5),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
   Widget _buildLoadingCard() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
@@ -865,8 +761,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
       child: const Row(
         children: [
           SizedBox(
-            width: 18,
-            height: 18,
+            width: 20,
+            height: 20,
             child: CircularProgressIndicator(
               strokeWidth: 2.2,
               color: AppColors.primary,
@@ -887,7 +783,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                 ),
                 SizedBox(height: 2),
                 Text(
-                  'Extracting available resolutions & exact sizes via yt-dlp',
+                  'Extracting streams and available qualities',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,
@@ -901,102 +797,99 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     );
   }
 
-  Widget _buildFeaturesShowcase() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildQuickActionCards() {
+    return Row(
       children: [
-        const Text(
-          'FEATURES & CAPABILITIES',
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w800,
-            color: AppColors.textMuted,
-            letterSpacing: 0.8,
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.surfaceBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.headphones_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '320k Audio',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'Pristine MP3 music & audio extraction',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        const SizedBox(height: 10),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              _buildFeatureChip(
-                icon: Icons.bolt_rounded,
-                title: 'Local Engine',
-                subtitle: 'On-device native',
-              ),
-              const SizedBox(width: 8),
-              _buildFeatureChip(
-                icon: Icons.graphic_eq_rounded,
-                title: '320k Audio',
-                subtitle: 'YouTube Music',
-              ),
-              const SizedBox(width: 8),
-              _buildFeatureChip(
-                icon: Icons.playlist_add_check_circle_rounded,
-                title: 'Parallel Batch',
-                subtitle: 'Selective download',
-              ),
-              const SizedBox(width: 8),
-              _buildFeatureChip(
-                icon: Icons.folder_special_rounded,
-                title: 'Direct Storage',
-                subtitle: 'Zero duplicates',
-              ),
-            ],
+        const SizedBox(width: 12),
+        Expanded(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.surfaceBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.movie_filter_rounded,
+                    size: 20,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '4K & 1080p',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                const Text(
+                  'High-res video with original audio',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildFeatureChip({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.surfaceBorder),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(5),
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, size: 15, color: AppColors.primary),
-          ),
-          const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 
@@ -1019,37 +912,49 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
             if (widget.onOpenLibrary != null)
               InkWell(
                 onTap: widget.onOpenLibrary,
-                child: const Text(
-                  'View All →',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
+                borderRadius: BorderRadius.circular(6),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Text(
+                    'View All →',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
                   ),
                 ),
               ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         ..._recentDownloads.map(
           (item) => Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(10),
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
               color: AppColors.surface,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(color: AppColors.surfaceBorder),
             ),
             child: Row(
               children: [
-                Icon(
-                  item.format == DownloadFormat.mp3
-                      ? Icons.music_note_rounded
-                      : Icons.videocam_rounded,
-                  size: 20,
-                  color: AppColors.primary,
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryContainer,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    item.format == DownloadFormat.mp3
+                        ? Icons.music_note_rounded
+                        : Icons.videocam_rounded,
+                    size: 18,
+                    color: AppColors.primary,
+                  ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1057,23 +962,30 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                       Text(
                         item.title,
                         style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         '${item.format.name.toUpperCase()} • ${item.quality} ${item.formattedFileSize.isNotEmpty ? "• ${item.formattedFileSize}" : ""}',
                         style: const TextStyle(
-                            fontSize: 11, color: AppColors.textMuted),
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.play_circle_outline_rounded,
-                      size: 20, color: AppColors.primary),
+                  icon: const Icon(
+                    Icons.play_circle_fill_rounded,
+                    size: 26,
+                    color: AppColors.primary,
+                  ),
                   onPressed: () => FileOpener.open(item.filePath),
                   tooltip: 'Play',
                 ),
