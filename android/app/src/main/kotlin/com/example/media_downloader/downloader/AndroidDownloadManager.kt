@@ -23,7 +23,10 @@ object AndroidDownloadManager {
     private val scope = CoroutineScope(Dispatchers.IO + Job())
     private val mainHandler = Handler(Looper.getMainLooper())
 
+    @Volatile
     private var isInitialized = false
+    @Volatile
+    private var isInitializing = false
     private var initError: String? = null
 
     private var eventSink: EventChannel.EventSink? = null
@@ -35,20 +38,37 @@ object AndroidDownloadManager {
     }
 
     /**
-     * Initializes the YoutubeDL and FFmpeg native runtimes on Android.
+     * Initializes the YoutubeDL and FFmpeg native runtimes on Android asynchronously.
      */
     fun init(context: Context) {
-        if (isInitialized) return
-        try {
-            YoutubeDL.getInstance().init(context.applicationContext)
-            FFmpeg.getInstance().init(context.applicationContext)
-            isInitialized = true
-            initError = null
-            Log.d(TAG, "YoutubeDL and FFmpeg successfully initialized on Android")
-        } catch (e: Exception) {
-            initError = e.message ?: "Unknown initialization error"
-            Log.e(TAG, "Failed to initialize YoutubeDL / FFmpeg", e)
+        if (isInitialized || isInitializing) return
+        isInitializing = true
+        scope.launch(Dispatchers.IO) {
+            try {
+                YoutubeDL.getInstance().init(context.applicationContext)
+                FFmpeg.getInstance().init(context.applicationContext)
+                isInitialized = true
+                initError = null
+                Log.d(TAG, "YoutubeDL and FFmpeg successfully initialized on Android")
+            } catch (t: Throwable) {
+                isInitialized = false
+                initError = "${t.javaClass.simpleName}: ${t.localizedMessage ?: t.message}"
+                Log.e(TAG, "Failed to initialize YoutubeDL / FFmpeg", t)
+            } finally {
+                isInitializing = false
+            }
         }
+    }
+
+    private suspend fun ensureInitialized(context: Context): Boolean {
+        if (isInitialized) return true
+        init(context)
+        var attempts = 0
+        while (isInitializing && attempts < 100) {
+            kotlinx.coroutines.delay(100)
+            attempts++
+        }
+        return isInitialized
     }
 
     fun isAvailable(): Boolean = isInitialized
@@ -58,7 +78,7 @@ object AndroidDownloadManager {
             "platform" to "android",
             "isAvailable" to isInitialized,
             "initError" to initError,
-            "ytDlpVersion" to try { YoutubeDL.getInstance().version(null) } catch (_: Exception) { "bundled" }
+            "ytDlpVersion" to try { YoutubeDL.getInstance().version(null) } catch (_: Throwable) { "bundled" }
         )
     }
 
@@ -67,11 +87,8 @@ object AndroidDownloadManager {
      */
     fun fetchMetadata(context: Context, url: String, callback: (Result<String>) -> Unit) {
         scope.launch {
-            if (!isInitialized) {
-                init(context)
-            }
-            if (!isInitialized) {
-                mainHandler.post { callback(Result.failure(Exception(initError ?: "YoutubeDL not initialized"))) }
+            if (!ensureInitialized(context)) {
+                mainHandler.post { callback(Result.failure(Exception(initError ?: "YoutubeDL not initialized on Android"))) }
                 return@launch
             }
 
@@ -83,9 +100,9 @@ object AndroidDownloadManager {
                 val response = YoutubeDL.getInstance().execute(request)
                 val json = response.out
                 mainHandler.post { callback(Result.success(json)) }
-            } catch (e: Exception) {
-                Log.e(TAG, "fetchMetadata error", e)
-                mainHandler.post { callback(Result.failure(e)) }
+            } catch (t: Throwable) {
+                Log.e(TAG, "fetchMetadata error", t)
+                mainHandler.post { callback(Result.failure(Exception(t.localizedMessage ?: "Failed to fetch metadata"))) }
             }
         }
     }
@@ -99,10 +116,7 @@ object AndroidDownloadManager {
         callback: (Result<String>) -> Unit
     ) {
         scope.launch {
-            if (!isInitialized) {
-                init(context)
-            }
-            if (!isInitialized) {
+            if (!ensureInitialized(context)) {
                 mainHandler.post {
                     callback(Result.failure(Exception(initError ?: "Downloader not initialized on Android")))
                 }
@@ -124,9 +138,9 @@ object AndroidDownloadManager {
                 val response = YoutubeDL.getInstance().execute(request)
                 val json = response.out
                 mainHandler.post { callback(Result.success(json)) }
-            } catch (e: Exception) {
-                Log.e(TAG, "fetchPlaylistMetadata error", e)
-                mainHandler.post { callback(Result.failure(e)) }
+            } catch (t: Throwable) {
+                Log.e(TAG, "fetchPlaylistMetadata error", t)
+                mainHandler.post { callback(Result.failure(Exception(t.localizedMessage ?: "Failed to fetch playlist metadata"))) }
             }
         }
     }
@@ -144,10 +158,7 @@ object AndroidDownloadManager {
         destinationDirectory: String? = null
     ) {
         val job = scope.launch {
-            if (!isInitialized) {
-                init(context)
-            }
-            if (!isInitialized) {
+            if (!ensureInitialized(context)) {
                 dispatchProgress(
                     mapOf(
                         "id" to downloadId,
