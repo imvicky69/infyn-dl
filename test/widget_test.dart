@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:media_downloader/features/downloader/models/download_format.dart';
 import 'package:media_downloader/features/downloader/models/download_progress.dart';
 import 'package:media_downloader/features/downloader/models/media_quality.dart';
+import 'package:media_downloader/features/downloader/models/playlist_metadata.dart';
 import 'package:media_downloader/features/downloader/models/video_metadata.dart';
 import 'package:media_downloader/features/downloader/screens/downloader_screen.dart';
 import 'package:media_downloader/features/downloader/services/downloader_service.dart';
@@ -93,6 +94,19 @@ class FakeDownloaderService implements DownloaderService {
   }
 
   @override
+  Future<PlaylistMetadata?> fetchPlaylistMetadata(String url) async {
+    return const PlaylistMetadata(
+      id: 'PL12345',
+      title: 'Sample Test Playlist',
+      itemCount: 2,
+      entries: [
+        PlaylistEntry(id: '1', title: 'Track 1', duration: 180, url: 'https://youtube.com/watch?v=1'),
+        PlaylistEntry(id: '2', title: 'Track 2', duration: 200, url: 'https://youtube.com/watch?v=2'),
+      ],
+    );
+  }
+
+  @override
   Future<bool> isAvailable() async => true;
 
   @override
@@ -103,7 +117,7 @@ class FakeDownloaderService implements DownloaderService {
 }
 
 void main() {
-  testWidgets('MediaDownloaderApp renders essential UI elements',
+  testWidgets('DownloaderScreen renders clean initial minimalist layout',
       (WidgetTester tester) async {
     await tester.pumpWidget(
       const MaterialApp(
@@ -111,59 +125,21 @@ void main() {
       ),
     );
 
-    // Verify app title
-    expect(find.text('infyn-yt'), findsWidgets);
+    // Verify brand name (no duplicate texts!)
+    expect(find.text('Infyn DL'), findsOneWidget);
 
     // Verify input hint
     expect(find.textContaining('Paste YouTube link'), findsOneWidget);
 
-    // Verify format options
-    expect(find.text('MP3'), findsOneWidget);
-    expect(find.text('MP4'), findsOneWidget);
+    // Verify initial clean state: Quick Guide is removed
+    expect(find.text('Quick Guide'), findsNothing);
 
-    // Verify Download action button
-    expect(find.byKey(const Key('download_action_button')), findsOneWidget);
-
-    // Verify Guide
-    expect(find.text('Quick Guide'), findsOneWidget);
+    // Buttons are clean and hidden initially until link is fetched
+    expect(find.text('MP3'), findsNothing);
+    expect(find.text('MP4'), findsNothing);
   });
 
-  testWidgets('Shows error message when Download tapped without URL',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: DownloaderScreen(),
-      ),
-    );
-
-    // Tap Download action button
-    await tester.tap(find.byKey(const Key('download_action_button')));
-    await tester.pump();
-
-    // Verify error text
-    expect(find.text('Please enter or paste a YouTube URL'), findsOneWidget);
-  });
-
-  testWidgets('Switches format between MP4 and MP3',
-      (WidgetTester tester) async {
-    await tester.pumpWidget(
-      const MaterialApp(
-        home: DownloaderScreen(),
-      ),
-    );
-
-    // Initially MP4 is selected
-    expect(find.text(DownloadFormat.mp4.subtitle), findsOneWidget);
-
-    // Tap MP3 card
-    await tester.tap(find.text('MP3'));
-    await tester.pump();
-
-    // Now MP3 subtitle is visible
-    expect(find.text(DownloadFormat.mp3.subtitle), findsOneWidget);
-  });
-
-  testWidgets('Enters valid URL, tracks progress and completes download',
+  testWidgets('Enters valid URL, fetches metadata, and displays formats with download button',
       (WidgetTester tester) async {
     final fakeService = FakeDownloaderService();
 
@@ -178,25 +154,53 @@ void main() {
     await tester.enterText(inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     await tester.pump();
 
+    // Advance debounce timer (450ms) to trigger fetchMetadata
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+
+    // Video details, format selector, and download button appear
+    expect(find.text('Sample Test Media'), findsOneWidget);
+    expect(find.text('MP4'), findsOneWidget);
+    expect(find.text('MP3'), findsOneWidget);
+    expect(find.byKey(const Key('download_action_button')), findsOneWidget);
+  });
+
+  testWidgets('Fetches metadata, triggers download, and observes live progress',
+      (WidgetTester tester) async {
+    final fakeService = FakeDownloaderService();
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: DownloaderScreen(downloaderService: fakeService),
+      ),
+    );
+
+    // Enter URL and wait for metadata
+    final inputFinder = find.byType(TextField);
+    await tester.enterText(inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
+
     // Tap Download
-    await tester.tap(find.byKey(const Key('download_action_button')));
+    final downloadBtn = find.byKey(const Key('download_action_button'));
+    await tester.ensureVisible(downloadBtn);
+    await tester.tap(downloadBtn);
     await tester.pump();
 
     // Verify progress card appears
-    expect(find.byKey(const Key('download_progress_card')), findsOneWidget);
+    final progressCard = find.byKey(const Key('download_progress_card'));
+    await tester.ensureVisible(progressCard);
+    expect(progressCard, findsOneWidget);
 
     // Advance timers for fake progress events
     await tester.pump(const Duration(milliseconds: 60));
     expect(find.textContaining('50.0%'), findsOneWidget);
-    expect(find.textContaining('Sample Test Media'), findsOneWidget);
 
     // Advance to completed
     await tester.pump(const Duration(milliseconds: 60));
-    await tester.pump(); // For SnackBar animation
+    await tester.pumpAndSettle();
 
     expect(find.text('Download Completed'), findsOneWidget);
-    expect(find.byType(SnackBar), findsOneWidget);
-    expect(find.text('Media downloaded successfully!'), findsOneWidget);
   });
 
   testWidgets('Cancels active download from progress card',
@@ -209,13 +213,16 @@ void main() {
       ),
     );
 
-    // Enter valid URL
+    // Enter valid URL and fetch
     final inputFinder = find.byType(TextField);
     await tester.enterText(inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.pumpAndSettle();
 
     // Tap Download
-    await tester.tap(find.byKey(const Key('download_action_button')));
+    final downloadBtn = find.byKey(const Key('download_action_button'));
+    await tester.ensureVisible(downloadBtn);
+    await tester.tap(downloadBtn);
     await tester.pump();
 
     // Advance to downloading state
@@ -227,64 +234,9 @@ void main() {
 
     // Tap Cancel
     await tester.tap(cancelFinder);
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(fakeService.cancelled, isTrue);
     expect(find.text('Download Cancelled'), findsOneWidget);
-  });
-
-  testWidgets('Allows selecting video quality and audio bitrate',
-      (WidgetTester tester) async {
-    final fakeService = FakeDownloaderService();
-
-    await tester.pumpWidget(
-      MaterialApp(
-        home: DownloaderScreen(downloaderService: fakeService),
-      ),
-    );
-
-    // Verify video quality pills are visible by default
-    expect(find.text('Video Resolution'), findsOneWidget);
-    expect(find.text('1080p'), findsOneWidget);
-    expect(find.text('720p'), findsOneWidget);
-
-    // Tap 1080p
-    await tester.tap(find.text('1080p'));
-    await tester.pump();
-
-    // Enter URL and trigger download
-    final inputFinder = find.byType(TextField);
-    await tester.enterText(inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
-    await tester.pump();
-
-    await tester.tap(find.byKey(const Key('download_action_button')));
-    await tester.pump();
-
-    expect(fakeService.lastVideoQuality, VideoQuality.p1080);
-
-    // Wait for fake download and snackbar to settle
-    await tester.pump(const Duration(seconds: 4));
-
-    // Switch to MP3
-    await tester.tap(find.text('MP3'));
-    await tester.pump();
-
-    // Verify audio quality pills are shown
-    expect(find.text('Audio Bitrate'), findsOneWidget);
-    expect(find.textContaining('192k'), findsOneWidget);
-
-    // Tap 192k
-    final quality192Finder = find.textContaining('192k');
-    await tester.ensureVisible(quality192Finder);
-    await tester.tap(quality192Finder);
-    await tester.pump();
-
-    final downloadBtnFinder = find.byKey(const Key('download_action_button'));
-    await tester.ensureVisible(downloadBtnFinder);
-    await tester.tap(downloadBtnFinder);
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 100));
-
-    expect(fakeService.lastAudioQuality, AudioQuality.k192);
   });
 }

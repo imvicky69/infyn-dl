@@ -1,6 +1,6 @@
 <div align="center">
-  <img src="assets/logo-clear.png" alt="infyn-yt Logo" width="120" />
-  <h1>infyn-yt</h1>
+  <img src="assets/logo-clear.png" alt="infyn-dl Logo" width="120" />
+  <h1>infyn-dl</h1>
   <p><strong>A modern, minimalist, high-speed YouTube media downloader for Windows & Android.</strong></p>
 </div>
 

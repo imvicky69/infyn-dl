@@ -1,6 +1,6 @@
-# Android Native Downloader for `infyn-yt`
+# Android Native Downloader for `infyn-dl`
 
-This document details the architecture, packaging, platform channels, storage model, and maintenance procedures for the Android-native downloader implementation in `infyn-yt`.
+This document details the architecture, packaging, platform channels, storage model, and maintenance procedures for the Android-native downloader implementation in `infyn-dl`.
 
 ---
 
@@ -71,7 +71,7 @@ Streams live download progress dictionaries to Dart:
   "eta": "00:15",
   "totalSize": "68.2MiB",
   "title": "Example Video",
-  "path": "/storage/emulated/0/Download/infyn-yt/Example Video.mp4"
+  "path": "/storage/emulated/0/Download/infyn-dl/Example Video.mp4"
 }
 ```
 Possible statuses: `preparing`, `downloading`, `processing`, `completed`, `failed`, `cancelled`.
@@ -86,7 +86,7 @@ Implemented in `MediaStorageHelper.kt`:
    - The file is initially downloaded to the private app cache (`context.cacheDir/downloads_staging`).
    - Once completed and merged, `MediaStorageHelper` inserts an entry into `MediaStore.Downloads` (for MP4) or `MediaStore.Audio.Media` (for MP3) with `IS_PENDING = 1`.
    - The stream is copied to the public `Uri`, and `IS_PENDING` is flipped to `0`.
-   - Files appear in the public `/storage/emulated/0/Download/infyn-yt/` directory, immediately visible in VLC, Files by Google, Gallery, and Android music players.
+   - Files appear in the public `/storage/emulated/0/Download/infyn-dl/` directory, immediately visible in VLC, Files by Google, Gallery, and Android music players.
 2. **Android 9 and Older (API <= 28)**:
    - Written to `Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)`.
    - `MediaScannerConnection.scanFile()` is called to index the file in the Android media library.

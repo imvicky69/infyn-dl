@@ -7,6 +7,7 @@ import '../../../core/utils/process_path_resolver.dart';
 import '../models/download_format.dart';
 import '../models/download_progress.dart';
 import '../models/media_quality.dart';
+import '../models/playlist_metadata.dart';
 import '../models/video_metadata.dart';
 import 'downloader_service.dart';
 
@@ -50,6 +51,46 @@ class WindowsDownloaderService implements DownloaderService {
       }
     } catch (_) {
       // Ignore or return null on parsing/process failure
+    }
+    return null;
+  }
+
+  @override
+  Future<PlaylistMetadata?> fetchPlaylistMetadata(String url) async {
+    final ytDlpPath = await ProcessPathResolver.resolveYtDlpPath();
+    if (ytDlpPath == null) return null;
+
+    var cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://$cleanUrl';
+    }
+    if (cleanUrl.contains('music.youtube.com/playlist')) {
+      cleanUrl = cleanUrl.replaceAll('music.youtube.com/playlist', 'www.youtube.com/playlist');
+    }
+
+    final args = <String>[
+      '--flat-playlist',
+      '--dump-single-json',
+      '--yes-playlist',
+      '--extractor-args',
+      'youtube:player_client=android,web',
+    ];
+
+    final jsRuntime = await ProcessPathResolver.resolveJsRuntimeArg();
+    if (jsRuntime != null) {
+      args.addAll(['--js-runtimes', jsRuntime]);
+    }
+
+    args.add(cleanUrl);
+
+    try {
+      final result = await Process.run(ytDlpPath, args);
+      if (result.exitCode == 0 && result.stdout is String) {
+        final jsonMap = jsonDecode(result.stdout as String) as Map<String, dynamic>;
+        return PlaylistMetadata.fromJson(jsonMap);
+      }
+    } catch (e) {
+      debugPrint('WindowsDownloaderService.fetchPlaylistMetadata error: $e');
     }
     return null;
   }
@@ -129,6 +170,8 @@ class WindowsDownloaderService implements DownloaderService {
           '--no-playlist',
           '--windows-filenames',
           '--progress',
+          '-N',
+          '4',
         ];
 
         final jsRuntime = await ProcessPathResolver.resolveJsRuntimeArg();

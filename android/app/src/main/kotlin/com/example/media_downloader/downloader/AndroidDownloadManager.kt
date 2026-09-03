@@ -91,6 +91,47 @@ object AndroidDownloadManager {
     }
 
     /**
+     * Fast-fetches playlist items without downloading.
+     */
+    fun fetchPlaylistMetadata(
+        context: Context,
+        url: String,
+        callback: (Result<String>) -> Unit
+    ) {
+        scope.launch {
+            if (!isInitialized) {
+                init(context)
+            }
+            if (!isInitialized) {
+                mainHandler.post {
+                    callback(Result.failure(Exception(initError ?: "Downloader not initialized on Android")))
+                }
+                return@launch
+            }
+
+            try {
+                val normalizedUrl = if (url.contains("music.youtube.com/playlist")) {
+                    url.replace("music.youtube.com/playlist", "www.youtube.com/playlist")
+                } else {
+                    url
+                }
+                val request = YoutubeDLRequest(normalizedUrl).apply {
+                    addOption("--flat-playlist")
+                    addOption("--dump-single-json")
+                    addOption("--extractor-args", "youtube:player_client=android,web")
+                    addOption("--yes-playlist")
+                }
+                val response = YoutubeDL.getInstance().execute(request)
+                val json = response.out
+                mainHandler.post { callback(Result.success(json)) }
+            } catch (e: Exception) {
+                Log.e(TAG, "fetchPlaylistMetadata error", e)
+                mainHandler.post { callback(Result.failure(e)) }
+            }
+        }
+    }
+
+    /**
      * Starts a download on Android with live progress reporting and Scoped Storage publication.
      */
     fun startDownload(
@@ -99,7 +140,8 @@ object AndroidDownloadManager {
         url: String,
         format: String, // "mp4" or "mp3"
         videoQuality: String?, // e.g. "best", "1080p", "720p", "480p", "360p"
-        audioQuality: String? // e.g. "0", "2", "5"
+        audioQuality: String?, // e.g. "0", "2", "5"
+        destinationDirectory: String? = null
     ) {
         val job = scope.launch {
             if (!isInitialized) {
@@ -138,6 +180,7 @@ object AndroidDownloadManager {
                 addOption("-o", outputTemplate)
                 addOption("--no-playlist")
                 addOption("--newline")
+                addOption("-N", "4")
 
                 if (isAudio) {
                     addOption("-x")
@@ -220,24 +263,31 @@ object AndroidDownloadManager {
                 )
 
                 // Locate generated file in staging directory
-                val targetExt = if (isAudio) "mp3" else "mp4"
-                val mimeType = if (isAudio) "audio/mpeg" else "video/mp4"
-
                 val stagingFiles = stagingDir.listFiles { file ->
-                    file.isFile && (file.extension.equals(targetExt, ignoreCase = true) ||
-                            file.extension.equals("m4a", ignoreCase = true) ||
-                            file.extension.equals("mkv", ignoreCase = true) ||
-                            file.extension.equals("webm", ignoreCase = true))
+                    file.isFile && !file.name.endsWith(".part") && !file.name.endsWith(".ytdl") && !file.name.endsWith(".temp")
                 }
 
                 val finalStagingFile = stagingFiles?.maxByOrNull { it.lastModified() }
 
                 if (finalStagingFile != null && finalStagingFile.exists()) {
-                    val publicPath = MediaStorageHelper.publishToPublicStorage(
+                    val mimeType = MediaStorageHelper.getMimeType(finalStagingFile, isAudio)
+                    val isMusicDir = destinationDirectory?.contains("Music", ignoreCase = true) == true
+                    val customSubfolder = destinationDirectory?.let { dest ->
+                        when {
+                            dest.contains("Download/") -> dest.substringAfter("Download/").trim()
+                            dest.contains("Music/") -> dest.substringAfter("Music/").trim()
+                            dest.endsWith("Download", ignoreCase = true) || dest.endsWith("Music", ignoreCase = true) -> ""
+                            else -> File(dest).name
+                        }
+                    }?.takeIf { it.isNotBlank() } ?: "infyn-dl"
+
+                    val publicPath = MediaStorageHelper.publishMedia(
                         context = context,
                         sourceFile = finalStagingFile,
                         mimeType = mimeType,
-                        isAudio = isAudio
+                        isAudio = isAudio,
+                        customSubfolder = customSubfolder,
+                        preferMusicDirectory = isMusicDir
                     )
 
                     dispatchProgress(

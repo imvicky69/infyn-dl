@@ -18,6 +18,7 @@ class DownloadButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isEnabled = onPressed != null && !isLoading;
     final formatLabel = selectedFormat != null ? ' ${selectedFormat!.label}' : '';
     final qualitySuffix = qualityLabel != null && qualityLabel!.isNotEmpty ? ' ($qualityLabel)' : '';
 
@@ -25,21 +26,25 @@ class DownloadButton extends StatelessWidget {
       width: double.infinity,
       height: 56,
       decoration: BoxDecoration(
-        gradient: AppColors.primaryGradient,
+        color: isEnabled ? null : AppColors.surfaceElevated,
+        gradient: isEnabled ? AppColors.primaryGradient : null,
         borderRadius: BorderRadius.circular(18),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-            spreadRadius: -2,
-          ),
-        ],
+        border: isEnabled ? null : Border.all(color: AppColors.surfaceBorder),
+        boxShadow: isEnabled
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.35),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                  spreadRadius: -2,
+                ),
+              ]
+            : null,
       ),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: isLoading ? null : onPressed,
+          onTap: isEnabled ? onPressed : null,
           borderRadius: BorderRadius.circular(18),
           splashColor: Colors.white.withValues(alpha: 0.2),
           highlightColor: Colors.white.withValues(alpha: 0.1),
@@ -58,7 +63,7 @@ class DownloadButton extends StatelessWidget {
                       ),
                       SizedBox(width: 12),
                       Text(
-                        'Preparing Media...',
+                        'Processing...',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 16,
@@ -74,21 +79,25 @@ class DownloadButton extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.all(5),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: isEnabled
+                              ? Colors.white.withValues(alpha: 0.2)
+                              : AppColors.surfaceBorder,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.arrow_downward_rounded,
-                          color: Colors.white,
+                          color: isEnabled ? Colors.white : AppColors.textMuted,
                           size: 18,
                         ),
                       ),
                       const SizedBox(width: 10),
                       Text(
-                        'Download$formatLabel$qualitySuffix',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
+                        isEnabled
+                            ? 'Download$formatLabel$qualitySuffix'
+                            : 'Select at least 1 track',
+                        style: TextStyle(
+                          color: isEnabled ? Colors.white : AppColors.textMuted,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.3,
                         ),

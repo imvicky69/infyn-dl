@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../models/download_format.dart';
 import '../models/download_progress.dart';
 import '../models/media_quality.dart';
+import '../models/playlist_metadata.dart';
 import '../models/video_metadata.dart';
 import 'downloader_service.dart';
 
@@ -57,6 +58,27 @@ class AndroidDownloaderService implements DownloaderService {
       return VideoMetadata.fromJson(jsonMap);
     } catch (e) {
       debugPrint('AndroidDownloaderService.fetchMetadata error: $e');
+      return null;
+    }
+  }
+
+  @override
+  Future<PlaylistMetadata?> fetchPlaylistMetadata(String url) async {
+    var cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://$cleanUrl';
+    }
+
+    try {
+      final jsonString = await _methodChannel.invokeMethod<String>(
+        'fetchPlaylistMetadata',
+        {'url': cleanUrl},
+      );
+      if (jsonString == null || jsonString.isEmpty) return null;
+      final jsonMap = jsonDecode(jsonString) as Map<String, dynamic>;
+      return PlaylistMetadata.fromJson(jsonMap);
+    } catch (e) {
+      debugPrint('AndroidDownloaderService.fetchPlaylistMetadata error: $e');
       return null;
     }
   }
@@ -182,6 +204,7 @@ class AndroidDownloaderService implements DownloaderService {
       'format': format.name,
       'videoQuality': videoQuality.shortLabel,
       'audioQuality': audioQuality.qualityValue,
+      'destinationDirectory': destinationDirectory,
     }).catchError((err) {
       if (!controller.isClosed) {
         controller.add(DownloadProgress.failed(err.toString()));

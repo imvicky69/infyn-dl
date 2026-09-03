@@ -1,4 +1,4 @@
-# Setup script for infyn-yt Windows dependencies
+# Setup script for infyn-dl Windows dependencies
 $ErrorActionPreference = "Stop"
 
 $binDir = Join-Path $PSScriptRoot "..\windows\bin\x64"
@@ -6,7 +6,7 @@ if (!(Test-Path $binDir)) {
     New-Item -ItemType Directory -Force -Path $binDir | Out-Null
 }
 
-Write-Host "Setting up infyn-yt Windows dependencies in $binDir..." -ForegroundColor Cyan
+Write-Host "Setting up infyn-dl Windows dependencies in $binDir..." -ForegroundColor Cyan
 
 # 1. Download yt-dlp.exe
 $ytDlpPath = Join-Path $binDir "yt-dlp.exe"
@@ -51,4 +51,4 @@ if (!(Test-Path $ffmpegPath)) {
     Write-Host "ffmpeg.exe already present." -ForegroundColor Green
 }
 
-Write-Host "All infyn-yt binaries are ready!" -ForegroundColor Cyan
+Write-Host "All infyn-dl binaries are ready!" -ForegroundColor Cyan

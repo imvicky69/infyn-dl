@@ -1,6 +1,7 @@
 import '../models/download_format.dart';
 import '../models/download_progress.dart';
 import '../models/media_quality.dart';
+import '../models/playlist_metadata.dart';
 import '../models/video_metadata.dart';
 
 /// Platform-agnostic interface for media download operations.
@@ -10,6 +11,9 @@ import '../models/video_metadata.dart';
 abstract class DownloaderService {
   /// Fetches available metadata, resolutions, and file sizes for a given media URL.
   Future<VideoMetadata?> fetchMetadata(String url);
+
+  /// Fetches playlist information and list of items if the URL is a playlist.
+  Future<PlaylistMetadata?> fetchPlaylistMetadata(String url);
 
   /// Stream that emits live progress updates during the download lifecycle.
   Stream<DownloadProgress> download({

@@ -105,10 +105,10 @@ class DownloadForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "infyn-yt Downloads",
+                "infyn-dl Downloads",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Shows live download progress and notifications for infyn-yt"
+                description = "Shows live download progress and notifications for infyn-dl"
                 setShowBadge(false)
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

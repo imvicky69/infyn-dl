@@ -31,6 +31,8 @@ class AppColors {
   // Status Accents
   static const Color success = Color(0xFF10B981); // Crisp emerald green for success
   static const Color successBg = Color(0xFFECFDF5);
+  static const Color error = Color(0xFFEF4444); // Crisp red for errors
+  static const Color errorBg = Color(0xFFFEF2F2);
 }
 
 class AppTheme {

@@ -1,18 +1,27 @@
 import 'dart:async';
+import 'dart:io';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/file_opener.dart';
+import '../../settings/services/settings_service.dart';
 import '../models/download_format.dart';
+import '../models/download_item.dart';
 import '../models/download_progress.dart';
 import '../models/media_quality.dart';
+import '../models/playlist_metadata.dart';
 import '../models/video_metadata.dart';
 import '../services/android_downloader_service.dart';
+import '../services/download_history_service.dart';
 import '../services/downloader_service.dart';
 import '../services/windows_downloader_service.dart';
+import '../widgets/batch_progress_card.dart';
 import '../widgets/download_button.dart';
 import '../widgets/download_progress_card.dart';
-import '../widgets/empty_state_card.dart';
 import '../widgets/format_selector.dart';
+import '../widgets/playlist_preview_card.dart';
 import '../widgets/quality_selector.dart';
 import '../widgets/url_input_field.dart';
 import '../widgets/video_preview_card.dart';
@@ -21,10 +30,13 @@ class DownloaderScreen extends StatefulWidget {
   const DownloaderScreen({
     super.key,
     this.downloaderService,
+    this.onOpenSettings,
+    this.onOpenLibrary,
   });
 
-  /// Optional injected service for testing and platform substitution
   final DownloaderService? downloaderService;
+  final VoidCallback? onOpenSettings;
+  final VoidCallback? onOpenLibrary;
 
   @override
   State<DownloaderScreen> createState() => _DownloaderScreenState();
@@ -39,10 +51,25 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   VideoQuality _selectedVideoQuality = VideoQuality.best;
   AudioQuality _selectedAudioQuality = AudioQuality.k320;
   DownloadProgress _downloadProgress = DownloadProgress.idle();
+
   String? _errorMessage;
   VideoMetadata? _metadata;
+  PlaylistMetadata? _playlistMetadata;
   bool _isFetchingMetadata = false;
   Timer? _debounceTimer;
+
+  // Batch playlist state
+  bool _isBatchDownloading = false;
+  Set<int> _selectedPlaylistIndices = {};
+  int _batchCurrentIndex = 0;
+  int _batchTotalItems = 0;
+  int _batchSkippedCount = 0;
+  String _batchCurrentTitle = '';
+  DownloadProgress _batchItemProgress = DownloadProgress.idle();
+  bool _isBatchCancelled = false;
+
+  String _currentDownloadDir = 'Loading folder...';
+  List<DownloadItem> _recentDownloads = [];
 
   @override
   void initState() {
@@ -51,6 +78,19 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         (!kIsWeb && defaultTargetPlatform == TargetPlatform.android
             ? AndroidDownloaderService()
             : WindowsDownloaderService());
+    _loadInitialData();
+  }
+
+  Future<void> _loadInitialData() async {
+    await SettingsService.instance.init();
+    final dir = await SettingsService.instance.resolveDownloadDirectory();
+    final history = await DownloadHistoryService.instance.getHistory();
+    if (mounted) {
+      setState(() {
+        _currentDownloadDir = dir;
+        _recentDownloads = history.take(2).toList();
+      });
+    }
   }
 
   @override
@@ -61,7 +101,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     super.dispose();
   }
 
-  bool _isValidYoutubeUrl(String input) {
+  bool _isValidUrl(String input) {
     var trimmed = input.trim();
     if (trimmed.isEmpty) return false;
     if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
@@ -77,6 +117,15 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         host.contains('music.youtube.com');
   }
 
+  bool _isPlaylistUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('list=') || lower.contains('/playlist');
+  }
+
+  bool _isYouTubeMusicUrl(String url) {
+    return url.toLowerCase().contains('music.youtube.com');
+  }
+
   void _handleUrlChanged(String value) {
     if (_errorMessage != null) {
       setState(() {
@@ -90,25 +139,52 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     if (trimmed.isEmpty) {
       setState(() {
         _metadata = null;
+        _playlistMetadata = null;
       });
       return;
     }
 
-    if (_isValidYoutubeUrl(trimmed)) {
-      _debounceTimer = Timer(const Duration(milliseconds: 500), () {
-        _fetchMetadata(trimmed);
+    if (_isValidUrl(trimmed)) {
+      if (_isYouTubeMusicUrl(trimmed) && _selectedFormat != DownloadFormat.mp3) {
+        setState(() {
+          _selectedFormat = DownloadFormat.mp3;
+        });
+      }
+
+      _debounceTimer = Timer(const Duration(milliseconds: 450), () {
+        _fetchDetails(trimmed);
       });
     }
   }
 
-  Future<void> _fetchMetadata(String rawUrl) async {
+  Future<void> _fetchDetails(String rawUrl) async {
     if (_isFetchingMetadata) return;
 
     setState(() {
       _isFetchingMetadata = true;
+      _metadata = null;
+      _playlistMetadata = null;
     });
 
     try {
+      var queryUrl = rawUrl.trim();
+      if (queryUrl.contains('music.youtube.com/playlist')) {
+        queryUrl = queryUrl.replaceAll('music.youtube.com/playlist', 'www.youtube.com/playlist');
+      }
+
+      if (_isPlaylistUrl(queryUrl)) {
+        final playlist = await _downloaderService.fetchPlaylistMetadata(queryUrl);
+        if (!mounted) return;
+        if (playlist != null && playlist.entries.isNotEmpty) {
+          setState(() {
+            _playlistMetadata = playlist;
+            _selectedPlaylistIndices = Set.from(List.generate(playlist.entries.length, (i) => i));
+            _isFetchingMetadata = false;
+          });
+          return;
+        }
+      }
+
       final meta = await _downloaderService.fetchMetadata(rawUrl);
       if (!mounted) return;
       setState(() {
@@ -123,18 +199,37 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     }
   }
 
+  Future<void> _pickDownloadDirectory() async {
+    try {
+      final selected = await FilePicker.getDirectoryPath(
+        dialogTitle: 'Select Download Folder',
+      );
+      if (selected != null && selected.isNotEmpty) {
+        await SettingsService.instance.setCustomDownloadPath(selected);
+        final resolved = await SettingsService.instance.resolveDownloadDirectory();
+        if (mounted) {
+          setState(() {
+            _currentDownloadDir = resolved;
+          });
+          _showSnackbar('Download folder set to: $resolved');
+        }
+      }
+    } catch (e) {
+      _showSnackbar('Could not open folder picker: $e', isError: true);
+    }
+  }
+
   void _handleFormatChanged(DownloadFormat format) {
-    if (_downloadProgress.isActive) return;
+    if (_downloadProgress.isActive || _isBatchDownloading) return;
     setState(() {
       _selectedFormat = format;
     });
   }
 
   Future<void> _handleDownload() async {
-    if (_downloadProgress.isActive) return;
+    if (_downloadProgress.isActive || _isBatchDownloading) return;
 
     var url = _urlController.text.trim();
-
     if (url.isEmpty) {
       setState(() {
         _errorMessage = 'Please enter or paste a YouTube URL';
@@ -142,9 +237,9 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
       return;
     }
 
-    if (!_isValidYoutubeUrl(url)) {
+    if (!_isValidUrl(url)) {
       setState(() {
-        _errorMessage = 'Please enter a valid YouTube video or Shorts link';
+        _errorMessage = 'Please enter a valid YouTube or YouTube Music link';
       });
       return;
     }
@@ -152,6 +247,16 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'https://$url';
     }
+
+    if (_playlistMetadata != null && _playlistMetadata!.entries.isNotEmpty) {
+      await _startBatchPlaylistDownload(url);
+    } else {
+      await _startSingleDownload(url);
+    }
+  }
+
+  Future<void> _startSingleDownload(String url) async {
+    final destDir = await SettingsService.instance.resolveDownloadDirectory();
 
     setState(() {
       _errorMessage = null;
@@ -166,322 +271,784 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
       format: _selectedFormat,
       videoQuality: _selectedVideoQuality,
       audioQuality: _selectedAudioQuality,
+      destinationDirectory: destDir,
     )
         .listen(
-      (progress) {
+      (progress) async {
         if (!mounted) return;
         setState(() {
           _downloadProgress = progress;
         });
 
         if (progress.isCompleted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              behavior: SnackBarBehavior.floating,
-              backgroundColor: AppColors.textPrimary,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              content: const Row(
-                children: [
-                  Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
-                  SizedBox(width: 10),
-                  Text(
-                    'Media downloaded successfully!',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                  ),
-                ],
-              ),
-              duration: const Duration(seconds: 3),
-            ),
+          final downloadItem = DownloadItem(
+            id: DateTime.now().millisecondsSinceEpoch.toString(),
+            title: progress.title ?? _metadata?.title ?? 'YouTube Media',
+            url: url,
+            filePath: progress.outputFilePath ?? '',
+            format: _selectedFormat,
+            quality: _selectedFormat == DownloadFormat.mp4
+                ? _selectedVideoQuality.shortLabel
+                : _selectedAudioQuality.shortLabel,
+            thumbnailUrl: _metadata?.thumbnailUrl,
+            timestamp: DateTime.now(),
           );
+          await DownloadHistoryService.instance.addDownload(downloadItem);
+          _loadInitialData();
+
+          _showSnackbar('Download completed and saved!');
         }
       },
       onError: (error) {
         if (!mounted) return;
         setState(() {
-          _downloadProgress = DownloadProgress.failed('Unexpected error: $error');
+          _downloadProgress = DownloadProgress.failed('Download error: $error');
         });
       },
     );
   }
 
+  Future<void> _startBatchPlaylistDownload(String playlistUrl) async {
+    final playlist = _playlistMetadata!;
+    final baseDir = await SettingsService.instance.resolveDownloadDirectory();
+    final autoSkip = SettingsService.instance.autoSkipDuplicates;
+    final useSubfolder = SettingsService.instance.playlistSubfolder;
+    final concurrency = SettingsService.instance.concurrentDownloads;
+
+    final targetFolder = useSubfolder
+        ? p.join(baseDir, _sanitizeFolderName(playlist.title))
+        : baseDir;
+
+    final targetDir = Directory(targetFolder);
+    if (!await targetDir.exists()) {
+      await targetDir.create(recursive: true);
+    }
+
+    final targetIndices = _selectedPlaylistIndices
+        .where((i) => i < playlist.entries.length)
+        .toList()
+      ..sort();
+
+    if (targetIndices.isEmpty) {
+      _showSnackbar('No playlist tracks selected', isError: true);
+      return;
+    }
+
+    setState(() {
+      _isBatchDownloading = true;
+      _isBatchCancelled = false;
+      _batchTotalItems = targetIndices.length;
+      _batchCurrentIndex = 0;
+      _batchSkippedCount = 0;
+      _batchCurrentTitle = '';
+      _batchItemProgress = DownloadProgress.idle();
+    });
+
+    final total = targetIndices.length;
+    var nextItemIndex = 0;
+    var completedCount = 0;
+    final activeSubscriptions = <StreamSubscription>[];
+
+    Future<void> downloadWorker(int workerId) async {
+      while (!_isBatchCancelled) {
+        int listIndex;
+        if (nextItemIndex >= total) break;
+        listIndex = nextItemIndex++;
+
+        final originalIndex = targetIndices[listIndex];
+        final entry = playlist.entries[originalIndex];
+
+        if (autoSkip) {
+          final isDuplicate = await DownloadHistoryService.instance.isAlreadyDownloaded(
+            title: entry.title,
+            format: _selectedFormat,
+            targetDirectory: targetFolder,
+          );
+
+          if (isDuplicate) {
+            if (mounted) {
+              setState(() {
+                _batchSkippedCount++;
+                _batchCurrentIndex = completedCount + _batchSkippedCount;
+              });
+            }
+            continue;
+          }
+        }
+
+        if (_isBatchCancelled) break;
+
+        if (mounted) {
+          setState(() {
+            _batchCurrentTitle = entry.title;
+            _batchItemProgress = DownloadProgress.preparing();
+          });
+        }
+
+        final completer = Completer<void>();
+        StreamSubscription<DownloadProgress>? itemSub;
+
+        itemSub = _downloaderService
+            .download(
+          url: entry.url,
+          format: _selectedFormat,
+          videoQuality: _selectedVideoQuality,
+          audioQuality: _selectedAudioQuality,
+          destinationDirectory: targetFolder,
+        )
+            .listen(
+          (progress) async {
+            if (!mounted) return;
+            setState(() {
+              _batchItemProgress = progress;
+              _batchCurrentTitle = entry.title;
+            });
+
+            if (progress.isCompleted) {
+              final downloadItem = DownloadItem(
+                id: '${DateTime.now().millisecondsSinceEpoch}_$originalIndex',
+                title: entry.title,
+                url: entry.url,
+                filePath: progress.outputFilePath ?? '',
+                format: _selectedFormat,
+                quality: _selectedFormat == DownloadFormat.mp4
+                    ? _selectedVideoQuality.shortLabel
+                    : _selectedAudioQuality.shortLabel,
+                playlistName: playlist.title,
+                timestamp: DateTime.now(),
+              );
+              await DownloadHistoryService.instance.addDownload(downloadItem);
+
+              if (mounted) {
+                completedCount++;
+                setState(() {
+                  _batchCurrentIndex = completedCount + _batchSkippedCount;
+                });
+              }
+
+              itemSub?.cancel();
+              if (!completer.isCompleted) completer.complete();
+            } else if (progress.isFailed || progress.isCancelled) {
+              itemSub?.cancel();
+              if (!completer.isCompleted) completer.complete();
+            }
+          },
+          onError: (_) {
+            itemSub?.cancel();
+            if (!completer.isCompleted) completer.complete();
+          },
+        );
+
+        activeSubscriptions.add(itemSub);
+        await completer.future;
+        await itemSub.cancel();
+        activeSubscriptions.remove(itemSub);
+      }
+    }
+
+    final workerCount = concurrency.clamp(1, total);
+    final workers = List.generate(workerCount, (id) => downloadWorker(id));
+    await Future.wait(workers);
+
+    for (final sub in activeSubscriptions) {
+      await sub.cancel();
+    }
+
+    if (mounted) {
+      setState(() {
+        _isBatchDownloading = false;
+      });
+      _loadInitialData();
+      _showSnackbar(
+        _isBatchCancelled
+            ? 'Playlist download cancelled'
+            : 'Playlist download complete! ($completedCount downloaded, $_batchSkippedCount skipped)',
+      );
+    }
+  }
+
   Future<void> _handleCancel() async {
+    if (_isBatchDownloading) {
+      _isBatchCancelled = true;
+    }
     await _downloaderService.cancel();
     if (!mounted) return;
     setState(() {
       _downloadProgress = DownloadProgress.cancelled();
+      _isBatchDownloading = false;
     });
   }
 
-  void _handleDismissProgress() {
-    setState(() {
-      _downloadProgress = DownloadProgress.idle();
-    });
+  void _showSnackbar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? AppColors.error : AppColors.textPrimary,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  String _sanitizeFolderName(String name) {
+    return name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '').trim();
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDownloading = _downloadProgress.isActive;
-    final mediaQuery = MediaQuery.of(context);
-    final isDesktop = mediaQuery.size.width >= 768;
+    final hasDetails = _metadata != null || _playlistMetadata != null;
+
+    final parts = _currentDownloadDir.split(Platform.pathSeparator);
+    final displayDir = parts.length > 2
+        ? parts.sublist(parts.length - 2).join(Platform.pathSeparator)
+        : _currentDownloadDir;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Center(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.symmetric(
-              horizontal: isDesktop ? 24 : 16,
-              vertical: isDesktop ? 32 : 16,
-            ),
-            child: ConstrainedBox(
-              constraints: BoxConstraints(
-                maxWidth: isDesktop ? 620 : double.infinity,
-              ),
-              child: Container(
-                decoration: isDesktop
-                    ? BoxDecoration(
-                        color: AppColors.surface,
-                        borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppColors.surfaceBorder),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.03),
-                            blurRadius: 24,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      )
-                    : null,
-                padding: isDesktop
-                    ? const EdgeInsets.all(32)
-                    : EdgeInsets.zero,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Clean App Header with assets/logo-clear.png
-                    Row(
-                      children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            'assets/logo-clear.png',
-                            height: 36,
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              width: 36,
-                              height: 36,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  'i',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w900,
-                                    fontSize: 18,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'infyn-yt',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                  letterSpacing: -0.5,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              Text(
-                                'Modern YouTube Downloader',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: isDesktop ? AppColors.surfaceElevated : AppColors.surface,
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: AppColors.surfaceBorder),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.circle,
-                                color: kIsWeb ? Colors.orange : AppColors.success,
-                                size: 7,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                kIsWeb ? 'Web Preview' : 'Ready',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 28),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 640),
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 1. Sleek Distinct Header (Logo, App Name, Status Pill)
+                  _buildHeader(),
+                  const SizedBox(height: 16),
 
-                    // Minimal Hero Section
-                    const Text(
-                      'infyn-yt',
-                      style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                        letterSpacing: -0.7,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Download videos in up to 4K MP4 or extract 320kbps MP3 audio.',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 22),
+                  // 2. Integrated Destination Storage Chip
+                  _buildDestinationBar(displayDir),
+                  const SizedBox(height: 20),
 
-                    // URL Input
-                    UrlInputField(
-                      controller: _urlController,
-                      onChanged: _handleUrlChanged,
-                      onSubmitted: (_) => _handleDownload(),
-                      errorText: _errorMessage,
+                  // 3. Hero Prompt & Link Input Area (NO Duplicate App Name!)
+                  const Text(
+                    'Download Media',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                      letterSpacing: -0.6,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Paste any YouTube video, Shorts, Music or playlist URL below',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 14),
 
-                    // Metadata loading indicator
-                    if (_isFetchingMetadata) ...[
-                      const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                        decoration: BoxDecoration(
-                          color: AppColors.surface,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: AppColors.surfaceBorder),
-                        ),
-                        child: const Row(
-                          children: [
-                            SizedBox(
-                              width: 15,
-                              height: 15,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                'Fetching video details & real format file sizes...',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                  // Link Input Box
+                  UrlInputField(
+                    controller: _urlController,
+                    onChanged: _handleUrlChanged,
+                    onSubmitted: (_) => _fetchDetails(_urlController.text.trim()),
+                    errorText: _errorMessage,
+                  ),
+                  const SizedBox(height: 12),
 
-                    // Video preview card
-                    if (_metadata != null) ...[
-                      const SizedBox(height: 12),
+                  // Supported Formats / Features Quick Strip
+                  _buildQuickPillsStrip(),
+
+                  // 4. Loading Shimmer / Card
+                  if (_isFetchingMetadata) ...[
+                    const SizedBox(height: 18),
+                    _buildLoadingCard(),
+                  ],
+
+                  // 5. Dynamic Content (Fetched Media Card & Available Sizes)
+                  if (hasDetails) ...[
+                    const SizedBox(height: 18),
+
+                    if (_metadata != null)
                       VideoPreviewCard(metadata: _metadata!),
-                    ],
+
+                    if (_playlistMetadata != null)
+                      PlaylistPreviewCard(
+                        playlist: _playlistMetadata!,
+                        selectedIndices: _selectedPlaylistIndices,
+                        onSelectionChanged: (set) => setState(() => _selectedPlaylistIndices = set),
+                      ),
 
                     const SizedBox(height: 16),
 
-                    // Format Selector (MP4 / MP3 cards)
                     FormatSelector(
                       selectedFormat: _selectedFormat,
                       onFormatChanged: _handleFormatChanged,
                     ),
                     const SizedBox(height: 16),
 
-                    // Quality Selector
                     QualitySelector(
                       format: _selectedFormat,
                       selectedVideoQuality: _selectedVideoQuality,
                       selectedAudioQuality: _selectedAudioQuality,
                       metadata: _metadata,
                       onVideoQualityChanged: (quality) {
-                        if (_downloadProgress.isActive) return;
-                        setState(() {
-                          _selectedVideoQuality = quality;
-                        });
+                        if (_downloadProgress.isActive || _isBatchDownloading) return;
+                        setState(() => _selectedVideoQuality = quality);
                       },
                       onAudioQualityChanged: (quality) {
-                        if (_downloadProgress.isActive) return;
-                        setState(() {
-                          _selectedAudioQuality = quality;
-                        });
+                        if (_downloadProgress.isActive || _isBatchDownloading) return;
+                        setState(() => _selectedAudioQuality = quality);
                       },
                     ),
                     const SizedBox(height: 20),
 
-                    // Download Action Button
                     DownloadButton(
                       key: const Key('download_action_button'),
-                      onPressed: isDownloading ? null : _handleDownload,
                       selectedFormat: _selectedFormat,
-                      qualityLabel: _selectedFormat == DownloadFormat.mp4
-                          ? _selectedVideoQuality.shortLabel
-                          : _selectedAudioQuality.shortLabel,
-                      isLoading: isDownloading,
+                      qualityLabel: _playlistMetadata != null
+                          ? '${_selectedPlaylistIndices.length} items'
+                          : (_selectedFormat == DownloadFormat.mp4
+                              ? _selectedVideoQuality.shortLabel
+                              : _selectedAudioQuality.shortLabel),
+                      isLoading: _downloadProgress.isActive || _isBatchDownloading,
+                      onPressed: (_playlistMetadata != null && _selectedPlaylistIndices.isEmpty)
+                          ? null
+                          : _handleDownload,
                     ),
-
-                    // Live Download Progress & Cancellation Card
-                    if (_downloadProgress.status != DownloadStatus.idle) ...[
-                      const SizedBox(height: 16),
-                      DownloadProgressCard(
-                        key: const Key('download_progress_card'),
-                        progress: _downloadProgress,
-                        onCancel: _handleCancel,
-                        onDismiss: _handleDismissProgress,
-                      ),
-                    ],
-
-                    const SizedBox(height: 24),
-
-                    // Minimalist Guide
-                    const EmptyStateCard(),
-                    const SizedBox(height: 16),
                   ],
-                ),
+
+                  // 6. Active Single Download Progress
+                  if (_downloadProgress.isActive ||
+                      _downloadProgress.isCompleted ||
+                      _downloadProgress.isFailed ||
+                      _downloadProgress.isCancelled) ...[
+                    const SizedBox(height: 16),
+                    DownloadProgressCard(
+                      key: const Key('download_progress_card'),
+                      progress: _downloadProgress,
+                      onCancel: _handleCancel,
+                      onDismiss: () => setState(() => _downloadProgress = DownloadProgress.idle()),
+                    ),
+                  ],
+
+                  // 7. Active Batch Playlist Progress
+                  if (_isBatchDownloading) ...[
+                    const SizedBox(height: 16),
+                    BatchProgressCard(
+                      playlistTitle: _playlistMetadata?.title ?? 'Batch Playlist',
+                      currentIndex: _batchCurrentIndex,
+                      totalItems: _batchTotalItems,
+                      skippedCount: _batchSkippedCount,
+                      currentItemTitle: _batchCurrentTitle,
+                      itemProgress: _batchItemProgress,
+                      concurrency: SettingsService.instance.concurrentDownloads,
+                      onCancel: _handleCancel,
+                    ),
+                  ],
+
+                  // 8. Rich Dashboard Section (Shown when no media is fetched, avoids empty screen!)
+                  if (!hasDetails && !_isFetchingMetadata && !_downloadProgress.isActive && !_isBatchDownloading) ...[
+                    const SizedBox(height: 24),
+                    _buildFeaturesShowcase(),
+                    if (_recentDownloads.isNotEmpty) ...[
+                      const SizedBox(height: 22),
+                      _buildRecentDownloadsPreview(),
+                    ],
+                  ],
+
+                  const SizedBox(height: 32),
+                ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Row(
+      children: [
+        // App Icon
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            'assets/logo.png',
+            width: 38,
+            height: 38,
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => const Icon(
+              Icons.all_inclusive_rounded,
+              size: 38,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+
+        // App Name and Tagline
+        const Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Infyn DL',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textPrimary,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              Text(
+                'Universal Media & Music Downloader',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Engine Status Badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.surfaceBorder),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 7,
+                height: 7,
+                decoration: const BoxDecoration(
+                  color: AppColors.success,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 6),
+              const Text(
+                'Engine Ready',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDestinationBar(String displayDir) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.folder_outlined, size: 16, color: AppColors.textSecondary),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Save to: $displayDir',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w500,
+                color: AppColors.textSecondary,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          InkWell(
+            onTap: _pickDownloadDirectory,
+            borderRadius: BorderRadius.circular(6),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              child: Text(
+                'Change',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickPillsStrip() {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: [
+        _buildPill(Icons.movie_outlined, '4K / 1080p MP4'),
+        _buildPill(Icons.headphones_outlined, '320kbps MP3'),
+        _buildPill(Icons.playlist_play_rounded, 'Batch Playlist'),
+        _buildPill(Icons.music_note_outlined, 'YouTube Music'),
+      ],
+    );
+  }
+
+  Widget _buildPill(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: AppColors.textMuted),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: const Row(
+        children: [
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2.2,
+              color: AppColors.primary,
+            ),
+          ),
+          SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Fetching media details...',
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Extracting available resolutions & exact sizes via yt-dlp',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFeaturesShowcase() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'FEATURES & CAPABILITIES',
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textMuted,
+            letterSpacing: 0.8,
+          ),
+        ),
+        const SizedBox(height: 10),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              _buildFeatureChip(
+                icon: Icons.bolt_rounded,
+                title: 'Local Engine',
+                subtitle: 'On-device native',
+              ),
+              const SizedBox(width: 8),
+              _buildFeatureChip(
+                icon: Icons.graphic_eq_rounded,
+                title: '320k Audio',
+                subtitle: 'YouTube Music',
+              ),
+              const SizedBox(width: 8),
+              _buildFeatureChip(
+                icon: Icons.playlist_add_check_circle_rounded,
+                title: 'Parallel Batch',
+                subtitle: 'Selective download',
+              ),
+              const SizedBox(width: 8),
+              _buildFeatureChip(
+                icon: Icons.folder_special_rounded,
+                title: 'Direct Storage',
+                subtitle: 'Zero duplicates',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFeatureChip({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(5),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 15, color: AppColors.primary),
+          ),
+          const SizedBox(width: 8),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w500,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentDownloadsPreview() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'RECENT DOWNLOADS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textMuted,
+                letterSpacing: 0.8,
+              ),
+            ),
+            if (widget.onOpenLibrary != null)
+              InkWell(
+                onTap: widget.onOpenLibrary,
+                child: const Text(
+                  'View All →',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primary,
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        ..._recentDownloads.map(
+          (item) => Container(
+            margin: const EdgeInsets.only(bottom: 8),
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.surfaceBorder),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  item.format == DownloadFormat.mp3 ? Icons.music_note_rounded : Icons.videocam_rounded,
+                  size: 20,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.title,
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Text(
+                        '${item.format.name.toUpperCase()} • ${item.quality} ${item.formattedFileSize.isNotEmpty ? "• ${item.formattedFileSize}" : ""}',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.play_circle_outline_rounded, size: 20, color: AppColors.primary),
+                  onPressed: () => FileOpener.open(item.filePath),
+                  tooltip: 'Play',
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
