@@ -317,32 +317,37 @@ object AndroidDownloadManager {
                         preferMusicDirectory = isMusicDir
                     )
 
+                    val finalTitle = detectedTitle ?: finalStagingFile.nameWithoutExtension
+                    DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
                             "status" to "completed",
                             "progress" to 1.0,
                             "percentage" to "100%",
-                            "title" to (detectedTitle ?: finalStagingFile.nameWithoutExtension),
+                            "title" to finalTitle,
                             "path" to publicPath,
                             "filename" to finalStagingFile.name
                         )
                     )
                 } else {
                     // Completed with stdout log
+                    val finalTitle = detectedTitle ?: "Media Download"
+                    DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
                             "status" to "completed",
                             "progress" to 1.0,
                             "percentage" to "100%",
-                            "title" to (detectedTitle ?: "Media Download"),
+                            "title" to finalTitle,
                             "path" to stagingDir.absolutePath
                         )
                     )
                 }
             } catch (e: Exception) {
                 if (e is YoutubeDLException && e.message?.contains("destroy") == true) {
+                    DownloadForegroundService.stop(context)
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
@@ -352,11 +357,13 @@ object AndroidDownloadManager {
                     )
                 } else {
                     Log.e(TAG, "Download execution failed", e)
+                    val errorMsg = e.message ?: "Download failed on device"
+                    DownloadForegroundService.showError(context, detectedTitle ?: "Media Download", errorMsg)
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
                             "status" to "failed",
-                            "error" to (e.message ?: "Download failed on device"),
+                            "error" to errorMsg,
                             "title" to detectedTitle
                         )
                     )
@@ -364,7 +371,9 @@ object AndroidDownloadManager {
             } finally {
                 activeProcessIds.remove(downloadId)
                 activeJobs.remove(downloadId)
-                DownloadForegroundService.stop(context)
+                if (activeJobs.isEmpty()) {
+                    DownloadForegroundService.stop(context)
+                }
             }
         }
         activeJobs[downloadId] = job

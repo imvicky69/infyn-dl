@@ -419,6 +419,121 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
+          if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ...[
+            const SizedBox(height: 24),
+            const Text(
+              'BACKGROUND DOWNLOADS & PERMISSIONS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textMuted,
+                letterSpacing: 0.8,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.surfaceBorder),
+              ),
+              child: Column(
+                children: [
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: const Icon(Icons.notifications_active_outlined,
+                        color: AppColors.primary),
+                    title: const Text(
+                      'Live Download Notifications',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary),
+                    ),
+                    subtitle: const Text(
+                      'Shows live ETA, download speed, and progress in your notification shade',
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    trailing: ElevatedButton(
+                      onPressed: () async {
+                        final service = _downloaderService;
+                        final s = service is AndroidDownloaderService
+                            ? service
+                            : AndroidDownloaderService();
+                        final granted = await s.requestNotificationPermission();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(granted
+                                  ? 'Notifications enabled!'
+                                  : 'Notification permission not granted'),
+                            ),
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text('Grant',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const Divider(
+                      height: 1,
+                      indent: 16,
+                      endIndent: 16,
+                      color: AppColors.surfaceBorder),
+                  ListTile(
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: const Icon(Icons.battery_charging_full_outlined,
+                        color: AppColors.primary),
+                    title: const Text(
+                      'Unrestricted Background Downloading',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary),
+                    ),
+                    subtitle: const Text(
+                      'Prevents Android battery saver from pausing downloads when app is closed or screen is off',
+                      style: TextStyle(
+                          fontSize: 12, color: AppColors.textSecondary),
+                    ),
+                    trailing: ElevatedButton(
+                      onPressed: () async {
+                        final service = _downloaderService;
+                        final s = service is AndroidDownloaderService
+                            ? service
+                            : AndroidDownloaderService();
+                        await s.requestIgnoreBatteryOptimizations();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: const Text('Configure',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+
           const SizedBox(height: 24),
 
           // Section: Diagnostics & Engine Info

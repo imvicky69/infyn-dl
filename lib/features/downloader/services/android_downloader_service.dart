@@ -19,6 +19,46 @@ class AndroidDownloaderService implements DownloaderService {
 
   String? _activeDownloadId;
 
+  Future<bool> hasNotificationPermission() async {
+    try {
+      final granted =
+          await _methodChannel.invokeMethod<bool>('hasNotificationPermission');
+      return granted ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> requestNotificationPermission() async {
+    try {
+      final granted = await _methodChannel
+          .invokeMethod<bool>('requestNotificationPermission');
+      return granted ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> isIgnoringBatteryOptimizations() async {
+    try {
+      final isIgnoring = await _methodChannel
+          .invokeMethod<bool>('isIgnoringBatteryOptimizations');
+      return isIgnoring ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<bool> requestIgnoreBatteryOptimizations() async {
+    try {
+      final result = await _methodChannel
+          .invokeMethod<bool>('requestIgnoreBatteryOptimizations');
+      return result ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
   @override
   Future<bool> isAvailable() async {
     try {

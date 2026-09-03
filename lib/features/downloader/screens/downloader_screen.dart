@@ -85,6 +85,18 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     await SettingsService.instance.init();
     final dir = await SettingsService.instance.resolveDownloadDirectory();
     final history = await DownloadHistoryService.instance.getHistory();
+
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      final service = _downloaderService;
+      final androidService = service is AndroidDownloaderService
+          ? service
+          : AndroidDownloaderService();
+      final hasPerm = await androidService.hasNotificationPermission();
+      if (!hasPerm) {
+        await androidService.requestNotificationPermission();
+      }
+    }
+
     if (mounted) {
       setState(() {
         _currentDownloadDir = dir;

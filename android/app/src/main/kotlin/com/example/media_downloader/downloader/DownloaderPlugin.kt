@@ -1,21 +1,34 @@
 package com.example.media_downloader.downloader
 
+import android.Manifest
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.net.Uri
+import android.os.Build
+import android.os.PowerManager
+import android.provider.Settings
+import androidx.core.app.ActivityCompat
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import io.flutter.embedding.engine.plugins.FlutterPlugin
+import io.flutter.embedding.engine.plugins.activity.ActivityAware
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.plugin.common.PluginRegistry
 import java.io.File
 
-class DownloaderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventChannel.StreamHandler {
+class DownloaderPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler, EventChannel.StreamHandler, PluginRegistry.RequestPermissionsResultListener {
 
     companion object {
         const val METHOD_CHANNEL_NAME = "com.example.media_downloader/downloader_methods"
         const val EVENT_CHANNEL_NAME = "com.example.media_downloader/downloader_events"
+        private const val REQUEST_CODE_NOTIFICATIONS = 1002
 
         fun register(context: Context, messenger: BinaryMessenger): DownloaderPlugin {
             val plugin = DownloaderPlugin()
@@ -25,8 +38,11 @@ class DownloaderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventCh
     }
 
     private var context: Context? = null
+    private var activity: Activity? = null
+    private var activityBinding: ActivityPluginBinding? = null
     private var methodChannel: MethodChannel? = null
     private var eventChannel: EventChannel? = null
+    private var pendingPermissionResult: MethodChannel.Result? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         init(binding.applicationContext, binding.binaryMessenger)
@@ -38,6 +54,30 @@ class DownloaderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventCh
         methodChannel = null
         eventChannel = null
         context = null
+    }
+
+    override fun onAttachedToActivity(binding: ActivityPluginBinding) {
+        this.activity = binding.activity
+        this.activityBinding = binding
+        binding.addRequestPermissionsResultListener(this)
+    }
+
+    override fun onDetachedFromActivityForConfigChanges() {
+        activityBinding?.removeRequestPermissionsResultListener(this)
+        this.activity = null
+        this.activityBinding = null
+    }
+
+    override fun onReattachedToActivityForConfigChanges(binding: ActivityPluginBinding) {
+        this.activity = binding.activity
+        this.activityBinding = binding
+        binding.addRequestPermissionsResultListener(this)
+    }
+
+    override fun onDetachedFromActivity() {
+        activityBinding?.removeRequestPermissionsResultListener(this)
+        this.activity = null
+        this.activityBinding = null
     }
 
     fun init(ctx: Context, messenger: BinaryMessenger) {
@@ -70,6 +110,59 @@ class DownloaderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventCh
             }
             "getBackendInfo" -> {
                 result.success(AndroidDownloadManager.getBackendInfo())
+            }
+            "hasNotificationPermission" -> {
+                val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+                } else {
+                    NotificationManagerCompat.from(ctx).areNotificationsEnabled()
+                }
+                result.success(hasPermission)
+            }
+            "requestNotificationPermission" -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val act = activity
+                    if (ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+                        result.success(true)
+                    } else if (act != null) {
+                        pendingPermissionResult = result
+                        ActivityCompat.requestPermissions(
+                            act,
+                            arrayOf(Manifest.permission.POST_NOTIFICATIONS),
+                            REQUEST_CODE_NOTIFICATIONS
+                        )
+                    } else {
+                        result.success(false)
+                    }
+                } else {
+                    result.success(NotificationManagerCompat.from(ctx).areNotificationsEnabled())
+                }
+            }
+            "isIgnoringBatteryOptimizations" -> {
+                val powerManager = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
+                val isIgnoring = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    powerManager.isIgnoringBatteryOptimizations(ctx.packageName)
+                } else {
+                    true
+                }
+                result.success(isIgnoring)
+            }
+            "requestIgnoreBatteryOptimizations" -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        val powerManager = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
+                        if (!powerManager.isIgnoringBatteryOptimizations(ctx.packageName)) {
+                            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
+                                data = Uri.parse("package:${ctx.packageName}")
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            ctx.startActivity(intent)
+                        }
+                    }
+                    result.success(true)
+                } catch (e: Exception) {
+                    result.error("BATTERY_OPT_ERROR", e.localizedMessage ?: "Failed to open battery settings", null)
+                }
             }
             "fetchMetadata" -> {
                 val url = call.argument<String>("url")
@@ -163,6 +256,20 @@ class DownloaderPlugin : FlutterPlugin, MethodChannel.MethodCallHandler, EventCh
             }
             else -> result.notImplemented()
         }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray
+    ): Boolean {
+        if (requestCode == REQUEST_CODE_NOTIFICATIONS) {
+            val isGranted = grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED
+            pendingPermissionResult?.success(isGranted)
+            pendingPermissionResult = null
+            return true
+        }
+        return false
     }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {

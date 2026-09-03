@@ -7,19 +7,26 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.example.media_downloader.MainActivity
 
 class DownloadForegroundService : Service() {
 
     companion object {
+        private const val TAG = "DownloadForegroundService"
         const val CHANNEL_ID = "infyn_yt_downloads_channel"
+        const val CHANNEL_COMPLETE_ID = "infyn_yt_completed_channel"
         const val NOTIFICATION_ID = 1001
 
         const val ACTION_START = "com.example.media_downloader.START"
         const val ACTION_UPDATE = "com.example.media_downloader.UPDATE"
+        const val ACTION_COMPLETE = "com.example.media_downloader.COMPLETE"
+        const val ACTION_ERROR = "com.example.media_downloader.ERROR"
         const val ACTION_STOP = "com.example.media_downloader.STOP"
         const val ACTION_CANCEL_DOWNLOAD = "com.example.media_downloader.CANCEL_DOWNLOAD"
 
@@ -29,101 +36,232 @@ class DownloadForegroundService : Service() {
         const val EXTRA_DOWNLOAD_ID = "extra_download_id"
 
         fun start(context: Context, downloadId: String, title: String) {
-            val intent = Intent(context, DownloadForegroundService::class.java).apply {
-                action = ACTION_START
-                putExtra(EXTRA_DOWNLOAD_ID, downloadId)
-                putExtra(EXTRA_TITLE, title)
-            }
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
+            try {
+                val intent = Intent(context, DownloadForegroundService::class.java).apply {
+                    action = ACTION_START
+                    putExtra(EXTRA_DOWNLOAD_ID, downloadId)
+                    putExtra(EXTRA_TITLE, title)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            } catch (e: Throwable) {
+                Log.w(TAG, "Could not start foreground service: ${e.message}")
             }
         }
 
         fun updateProgress(context: Context, downloadId: String, title: String, progress: Int, statusText: String) {
-            val intent = Intent(context, DownloadForegroundService::class.java).apply {
-                action = ACTION_UPDATE
-                putExtra(EXTRA_DOWNLOAD_ID, downloadId)
-                putExtra(EXTRA_TITLE, title)
-                putExtra(EXTRA_PROGRESS, progress)
-                putExtra(EXTRA_STATUS_TEXT, statusText)
+            try {
+                val intent = Intent(context, DownloadForegroundService::class.java).apply {
+                    action = ACTION_UPDATE
+                    putExtra(EXTRA_DOWNLOAD_ID, downloadId)
+                    putExtra(EXTRA_TITLE, title)
+                    putExtra(EXTRA_PROGRESS, progress)
+                    putExtra(EXTRA_STATUS_TEXT, statusText)
+                }
+                context.startService(intent)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Could not update progress: ${e.message}")
             }
-            context.startService(intent)
+        }
+
+        fun showCompleted(context: Context, title: String, statusText: String) {
+            try {
+                val intent = Intent(context, DownloadForegroundService::class.java).apply {
+                    action = ACTION_COMPLETE
+                    putExtra(EXTRA_TITLE, title)
+                    putExtra(EXTRA_STATUS_TEXT, statusText)
+                }
+                context.startService(intent)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Could not show completion: ${e.message}")
+            }
+        }
+
+        fun showError(context: Context, title: String, errorMsg: String) {
+            try {
+                val intent = Intent(context, DownloadForegroundService::class.java).apply {
+                    action = ACTION_ERROR
+                    putExtra(EXTRA_TITLE, title)
+                    putExtra(EXTRA_STATUS_TEXT, errorMsg)
+                }
+                context.startService(intent)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Could not show error: ${e.message}")
+            }
         }
 
         fun stop(context: Context) {
-            val intent = Intent(context, DownloadForegroundService::class.java).apply {
-                action = ACTION_STOP
+            try {
+                val intent = Intent(context, DownloadForegroundService::class.java).apply {
+                    action = ACTION_STOP
+                }
+                context.startService(intent)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Could not stop service: ${e.message}")
             }
-            context.startService(intent)
         }
     }
 
     private var currentDownloadId: String? = null
     private var currentTitle: String = "Media Download"
+    private var wakeLock: PowerManager.WakeLock? = null
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        createNotificationChannels()
+        acquireWakeLock()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
+                acquireWakeLock()
                 currentDownloadId = intent.getStringExtra(EXTRA_DOWNLOAD_ID)
                 currentTitle = intent.getStringExtra(EXTRA_TITLE) ?: "Media Download"
-                val notification = buildNotification(currentTitle, 0, "Connecting to YouTube...", true)
-                startForeground(NOTIFICATION_ID, notification)
+                val notification = buildOngoingNotification(currentTitle, 0, "Connecting to YouTube...", true)
+                startForegroundCompat(notification)
             }
             ACTION_UPDATE -> {
                 val title = intent.getStringExtra(EXTRA_TITLE) ?: currentTitle
                 val progress = intent.getIntExtra(EXTRA_PROGRESS, 0)
                 val statusText = intent.getStringExtra(EXTRA_STATUS_TEXT) ?: "Downloading..."
-                val notification = buildNotification(title, progress, statusText, false)
+                val notification = buildOngoingNotification(title, progress, statusText, false)
                 val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 manager.notify(NOTIFICATION_ID, notification)
+            }
+            ACTION_COMPLETE -> {
+                val title = intent.getStringExtra(EXTRA_TITLE) ?: "Download Complete"
+                val statusText = intent.getStringExtra(EXTRA_STATUS_TEXT) ?: "Saved to Downloads/infyn-dl"
+                showTerminalNotification(title, statusText, false)
+                releaseWakeLock()
+                stopForegroundCompat()
+                stopSelf()
+            }
+            ACTION_ERROR -> {
+                val title = intent.getStringExtra(EXTRA_TITLE) ?: "Download Failed"
+                val statusText = intent.getStringExtra(EXTRA_STATUS_TEXT) ?: "Failed to download media"
+                showTerminalNotification(title, statusText, true)
+                releaseWakeLock()
+                stopForegroundCompat()
+                stopSelf()
             }
             ACTION_CANCEL_DOWNLOAD -> {
                 currentDownloadId?.let { id ->
                     AndroidDownloadManager.cancelDownload(id)
                 }
-                stopForeground(true)
+                releaseWakeLock()
+                stopForegroundCompat()
                 stopSelf()
             }
             ACTION_STOP -> {
-                stopForeground(true)
+                releaseWakeLock()
+                stopForegroundCompat()
                 stopSelf()
             }
         }
         return START_NOT_STICKY
     }
 
-    override fun onBind(intent: Intent?): IBinder? = null
-
-    private fun createNotificationChannel() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                CHANNEL_ID,
-                "infyn-dl Downloads",
-                NotificationManager.IMPORTANCE_LOW
-            ).apply {
-                description = "Shows live download progress and notifications for infyn-dl"
-                setShowBadge(false)
+    private fun startForegroundCompat(notification: Notification) {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                startForeground(NOTIFICATION_ID, notification)
             }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
+        } catch (e: Throwable) {
+            Log.e(TAG, "startForeground error: ${e.message}", e)
         }
     }
 
-    private fun buildNotification(
+    private fun stopForegroundCompat() {
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } else {
+                @Suppress("DEPRECATION")
+                stopForeground(true)
+            }
+        } catch (e: Throwable) {
+            Log.w(TAG, "stopForeground error: ${e.message}")
+        }
+    }
+
+    override fun onDestroy() {
+        releaseWakeLock()
+        super.onDestroy()
+    }
+
+    override fun onBind(intent: Intent?): IBinder? = null
+
+    private fun acquireWakeLock() {
+        if (wakeLock == null) {
+            try {
+                val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+                wakeLock = powerManager.newWakeLock(
+                    PowerManager.PARTIAL_WAKE_LOCK,
+                    "InfynDL:DownloadForegroundWakeLock"
+                ).apply {
+                    setReferenceCounted(false)
+                    acquire(30 * 60 * 1000L /* 30 minutes max */)
+                }
+                Log.d(TAG, "WakeLock acquired for background downloading")
+            } catch (e: Exception) {
+                Log.w(TAG, "Failed to acquire WakeLock: ${e.message}")
+            }
+        }
+    }
+
+    private fun releaseWakeLock() {
+        try {
+            if (wakeLock?.isHeld == true) {
+                wakeLock?.release()
+                Log.d(TAG, "WakeLock released")
+            }
+            wakeLock = null
+        } catch (e: Exception) {
+            Log.w(TAG, "Failed to release WakeLock: ${e.message}")
+        }
+    }
+
+    private fun createNotificationChannels() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            val progressChannel = NotificationChannel(
+                CHANNEL_ID,
+                "Live Downloads",
+                NotificationManager.IMPORTANCE_LOW
+            ).apply {
+                description = "Shows live download speed, ETA, and progress"
+                setShowBadge(false)
+            }
+
+            val completeChannel = NotificationChannel(
+                CHANNEL_COMPLETE_ID,
+                "Completed Downloads",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Notifies when a media download finishes"
+                setShowBadge(true)
+            }
+
+            manager.createNotificationChannel(progressChannel)
+            manager.createNotificationChannel(completeChannel)
+        }
+    }
+
+    private fun buildOngoingNotification(
         title: String,
         progress: Int,
         statusText: String,
         isIndeterminate: Boolean
     ): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
         }
         val openPendingIntent = PendingIntent.getActivity(
             this,
@@ -147,6 +285,7 @@ class DownloadForegroundService : Service() {
             .setContentText(statusText)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .setContentIntent(openPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
@@ -158,5 +297,31 @@ class DownloadForegroundService : Service() {
         }
 
         return builder.build()
+    }
+
+    private fun showTerminalNotification(title: String, message: String, isError: Boolean) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        val openPendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openAppIntent,
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+        )
+
+        val icon = if (isError) android.R.drawable.stat_notify_error else android.R.drawable.stat_sys_download_done
+        val notification = NotificationCompat.Builder(this, CHANNEL_COMPLETE_ID)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setSmallIcon(icon)
+            .setAutoCancel(true)
+            .setContentIntent(openPendingIntent)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        val notificationId = (System.currentTimeMillis() % 100000).toInt() + 2000
+        manager.notify(notificationId, notification)
     }
 }
