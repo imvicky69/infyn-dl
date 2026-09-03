@@ -4,8 +4,8 @@
   <p><strong>Universal, Local-First Media & Music Downloader for Windows & Android</strong></p>
 
   <p>
-    <a href="https://github.com/imvicky69/infyn-dl/releases/latest"><img src="https://img.shields.io/github/v/release/imvicky69/infyn-dl?logo=github&color=00B4D8&label=Release" alt="Latest Release"></a>
-    <a href="https://github.com/imvicky69/infyn-dl/actions/workflows/ci.yml"><img src="https://github.com/imvicky69/infyn-dl/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+    <a href="https://github.com/imvicky69/infyn-dl/releases"><img src="https://img.shields.io/github/v/release/imvicky69/infyn-dl?include_prereleases&logo=github&color=00B4D8&label=Release" alt="Latest Release"></a>
+    <a href="https://github.com/imvicky69/infyn-dl/actions/workflows/ci.yml"><img src="https://img.shields.io/github/workflows/status/imvicky69/infyn-dl/CI%20&%20Code%20Quality?logo=github&label=CI" alt="CI Status"></a>
     <a href="https://github.com/imvicky69/infyn-dl/releases"><img src="https://img.shields.io/github/downloads/imvicky69/infyn-dl/total?color=success&logo=github" alt="Downloads"></a>
     <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"></a>
     <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white" alt="Dart"></a>
