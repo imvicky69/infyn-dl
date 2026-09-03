@@ -119,7 +119,7 @@ jobs:
         run: flutter pub get
 
       - name: Build Windows Executable Bundle
-        run: flutter build windows --release
+        run: flutter build windows --release -v
 
       - name: Package Windows ZIP Archive & Setup Installer EXE
         shell: pwsh
