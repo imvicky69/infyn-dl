@@ -52,7 +52,7 @@ jobs:
       - name: Run Static Analysis & Tests
         run: |
           flutter analyze
-          flutter test
+          flutter test --reporter expanded
 
       - name: Build Universal Android APK
         run: flutter build apk --release
