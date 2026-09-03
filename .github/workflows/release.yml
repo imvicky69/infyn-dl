@@ -237,16 +237,15 @@ jobs:
 
           cat release_body.md
 
-          # Create or update GitHub Release using GitHub CLI
+          # Delete old release if exists to remove any outdated leftover assets
           if gh release view "$TAG" > /dev/null 2>&1; then
-            echo "Release $TAG exists. Updating release notes and uploading assets with clobber..."
-            gh release edit "$TAG" --title "Infyn DL $TAG" --notes-file release_body.md $PRERELEASE_FLAG
-            gh release upload "$TAG" dist/* --clobber
-          else
-            echo "Creating new release $TAG..."
-            gh release create "$TAG" dist/* \
-              --title "Infyn DL $TAG" \
-              --notes-file release_body.md \
-              $PRERELEASE_FLAG \
-              --clobber
+            echo "Release $TAG exists. Cleaning up previous release assets..."
+            gh release delete "$TAG" --yes --cleanup-tag=false || true
           fi
+
+          echo "Creating clean release $TAG with only the latest packages..."
+          gh release create "$TAG" dist/* \
+            --title "Infyn DL $TAG" \
+            --notes-file release_body.md \
+            $PRERELEASE_FLAG \
+            --clobber
