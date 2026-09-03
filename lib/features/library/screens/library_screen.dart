@@ -262,12 +262,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
       } else if (folder.isUnorganized) {
         targetDir = baseDir;
       } else {
-        targetDir = p.join(baseDir, folder.name);
+        final sanitized =
+            folder.name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '').trim();
+        targetDir = p.join(baseDir, sanitized);
       }
 
-      final dir = Directory(targetDir);
-      if (await dir.exists()) {
+      if (await FileResolver.safeDirExists(targetDir)) {
         await FileOpener.open(targetDir);
+      } else if (await FileResolver.safeDirExists(p.join(baseDir, folder.name))) {
+        await FileOpener.open(p.join(baseDir, folder.name));
       } else {
         await FileOpener.open(baseDir);
       }

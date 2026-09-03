@@ -5,9 +5,16 @@ import 'package:media_downloader/core/utils/file_resolver.dart';
 import 'package:media_downloader/features/downloader/models/download_format.dart';
 import 'package:media_downloader/features/downloader/models/download_item.dart';
 import 'package:media_downloader/features/library/models/library_folder.dart';
+import 'package:media_downloader/features/settings/services/settings_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    await SettingsService.instance.init();
+  });
 
   // Mock path_provider method channel for unit tests
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
@@ -73,6 +80,44 @@ void main() {
       final resolved = await FileResolver.resolveFile(item);
       expect(resolved, isNotNull);
       expect(File(resolved!).existsSync(), isTrue);
+      expect(resolved, equals(realFile.path));
+    });
+
+    test(
+        'Safely handles playlist names with illegal Windows characters (e.g. pipe |) without throwing OS errno 123',
+        () async {
+      final tempDir =
+          await Directory.systemTemp.createTemp('file_resolver_pipe_test_');
+      addTearDown(() => tempDir.deleteSync(recursive: true));
+
+      // The playlist folder created on disk is sanitized (pipes removed)
+      final sanitizedFolder = Directory(
+        '${tempDir.path}${Platform.pathSeparator}Mix - Pakistani OST for you  Pakistani songs',
+      );
+      await sanitizedFolder.create(recursive: true);
+
+      final realFile = File(
+        '${sanitizedFolder.path}${Platform.pathSeparator}Sample Song.mp3',
+      );
+      await realFile.writeAsString('audio-data');
+
+      await SettingsService.instance.setCustomDownloadPath(tempDir.path);
+
+      // The DownloadItem has the raw online playlist name containing illegal pipe characters
+      final item = DownloadItem(
+        id: 'test_pipe_item',
+        title: 'Sample Song',
+        url: 'https://youtube.com/watch?v=abc',
+        filePath: 'invalid/nonexistent/path.mp3',
+        format: DownloadFormat.mp3,
+        quality: '320k',
+        timestamp: DateTime.now(),
+        playlistName: 'Mix - Pakistani OST for you | Pakistani songs',
+      );
+
+      // Verify safe resolution doesn't throw PathNotFoundException
+      final resolved = await FileResolver.resolveFile(item);
+      expect(resolved, isNotNull);
       expect(resolved, equals(realFile.path));
     });
   });

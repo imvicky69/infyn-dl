@@ -8,7 +8,7 @@ import '../../features/settings/services/settings_service.dart';
 
 /// Intelligent file resolver that matches and self-heals media file paths on disk,
 /// gracefully handling Unicode fullwidth substitutions (e.g. \uFF5C), yt-dlp sanitizations,
-/// and moved files.
+/// and moved files without crashing on OS-illegal path characters.
 class FileResolver {
   FileResolver._();
 
@@ -21,6 +21,37 @@ class FileResolver {
         .replaceAll(RegExp(r'[^\p{L}\p{N}\p{M}]', unicode: true), '');
   }
 
+  /// Checks whether a given path string contains illegal filesystem characters on Windows.
+  static bool hasIllegalCharacters(String path) {
+    if (!kIsWeb && Platform.isWindows) {
+      // Allow drive letter e.g. "C:\"
+      final checkPath =
+          path.length >= 3 && path[1] == ':' ? path.substring(2) : path;
+      return checkPath.contains(RegExp(r'[*?"<>|]'));
+    }
+    return false;
+  }
+
+  /// Safely checks if a directory exists on disk without throwing OS errno 123 for invalid names.
+  static Future<bool> safeDirExists(String path) async {
+    if (path.isEmpty || hasIllegalCharacters(path)) return false;
+    try {
+      return await Directory(path).exists();
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Safely checks if a file exists on disk without throwing OS errno 123 for invalid names.
+  static Future<bool> safeFileExists(String path) async {
+    if (path.isEmpty || hasIllegalCharacters(path)) return false;
+    try {
+      return await File(path).exists();
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Attempts to resolve the actual filesystem path of a [DownloadItem].
   ///
   /// 1. Checks if [item.filePath] exists directly.
@@ -31,55 +62,91 @@ class FileResolver {
   static Future<String?> resolveFile(DownloadItem item) async {
     // 1. Direct path check
     if (item.filePath.isNotEmpty) {
-      try {
-        final directFile = File(item.filePath);
-        if (await directFile.exists()) {
-          return item.filePath;
-        }
-      } catch (_) {}
+      if (await safeFileExists(item.filePath)) {
+        return item.filePath;
+      }
     }
 
     // 2. Gather candidate search directories
     final candidateDirs = <Directory>{};
 
     if (item.filePath.isNotEmpty) {
-      try {
-        final parent = Directory(p.dirname(item.filePath));
-        if (await parent.exists()) {
-          candidateDirs.add(parent);
-        }
-      } catch (_) {}
+      final parentPath = p.dirname(item.filePath);
+      if (await safeDirExists(parentPath)) {
+        candidateDirs.add(Directory(parentPath));
+      }
     }
 
     try {
       final baseDir = await SettingsService.instance.resolveDownloadDirectory();
-      final baseDirObj = Directory(baseDir);
-      if (await baseDirObj.exists()) {
+      if (await safeDirExists(baseDir)) {
+        final baseDirObj = Directory(baseDir);
         candidateDirs.add(baseDirObj);
-      }
 
-      if (item.playlistName != null && item.playlistName!.trim().isNotEmpty) {
-        final playlistName = item.playlistName!.trim();
-        final pDir = Directory(p.join(baseDir, playlistName));
-        if (await pDir.exists()) {
-          candidateDirs.add(pDir);
-        }
-        final sanitizedPDir =
-            Directory(p.join(baseDir, _sanitizeFolderName(playlistName)));
-        if (await sanitizedPDir.exists()) {
-          candidateDirs.add(sanitizedPDir);
-        }
-      }
-
-      // Also check Videos folder if it's a video or moved
-      final videosDir = Directory(p.join(baseDir, 'Videos'));
-      if (await videosDir.exists()) {
-        candidateDirs.add(videosDir);
         if (item.playlistName != null && item.playlistName!.trim().isNotEmpty) {
-          final vidPDir =
-              Directory(p.join(videosDir.path, item.playlistName!.trim()));
-          if (await vidPDir.exists()) {
-            candidateDirs.add(vidPDir);
+          final playlistName = item.playlistName!.trim();
+          final sanitizedName = _sanitizeFolderName(playlistName);
+
+          // 1. Primary candidate: Sanitized folder name created by resolveDestinationFolder / yt-dlp
+          if (sanitizedName.isNotEmpty) {
+            final sanitizedPath = p.join(baseDir, sanitizedName);
+            if (await safeDirExists(sanitizedPath)) {
+              candidateDirs.add(Directory(sanitizedPath));
+            }
+          }
+
+          // 2. Secondary: Raw folder name if different and syntax is valid
+          if (playlistName != sanitizedName &&
+              !hasIllegalCharacters(playlistName)) {
+            final rawPath = p.join(baseDir, playlistName);
+            if (await safeDirExists(rawPath)) {
+              candidateDirs.add(Directory(rawPath));
+            }
+          }
+
+          // 3. Smart scan: If not found yet, check subdirectories matching normalized name
+          final normTarget = normalize(playlistName);
+          if (normTarget.isNotEmpty) {
+            try {
+              final subEntities = await baseDirObj.list(followLinks: false).toList();
+              for (final entity in subEntities) {
+                if (entity is Directory) {
+                  final folderBase = p.basename(entity.path);
+                  if (normalize(folderBase) == normTarget) {
+                    candidateDirs.add(entity);
+                    break;
+                  }
+                }
+              }
+            } catch (_) {}
+          }
+        }
+
+        // Also check Videos folder if it's a video or moved
+        final videosPath = p.join(baseDir, 'Videos');
+        if (await safeDirExists(videosPath)) {
+          final videosDir = Directory(videosPath);
+          candidateDirs.add(videosDir);
+
+          if (item.playlistName != null &&
+              item.playlistName!.trim().isNotEmpty) {
+            final playlistName = item.playlistName!.trim();
+            final sanitizedName = _sanitizeFolderName(playlistName);
+
+            if (sanitizedName.isNotEmpty) {
+              final sanitizedVidPath = p.join(videosPath, sanitizedName);
+              if (await safeDirExists(sanitizedVidPath)) {
+                candidateDirs.add(Directory(sanitizedVidPath));
+              }
+            }
+
+            if (playlistName != sanitizedName &&
+                !hasIllegalCharacters(playlistName)) {
+              final rawVidPath = p.join(videosPath, playlistName);
+              if (await safeDirExists(rawVidPath)) {
+                candidateDirs.add(Directory(rawVidPath));
+              }
+            }
           }
         }
       }
