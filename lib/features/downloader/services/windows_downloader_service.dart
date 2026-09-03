@@ -46,7 +46,8 @@ class WindowsDownloaderService implements DownloaderService {
     try {
       final result = await Process.run(ytDlpPath, args);
       if (result.exitCode == 0 && result.stdout is String) {
-        final jsonMap = jsonDecode(result.stdout as String) as Map<String, dynamic>;
+        final jsonMap =
+            jsonDecode(result.stdout as String) as Map<String, dynamic>;
         return VideoMetadata.fromJson(jsonMap);
       }
     } catch (_) {
@@ -65,7 +66,8 @@ class WindowsDownloaderService implements DownloaderService {
       cleanUrl = 'https://$cleanUrl';
     }
     if (cleanUrl.contains('music.youtube.com/playlist')) {
-      cleanUrl = cleanUrl.replaceAll('music.youtube.com/playlist', 'www.youtube.com/playlist');
+      cleanUrl = cleanUrl.replaceAll(
+          'music.youtube.com/playlist', 'www.youtube.com/playlist');
     }
 
     final args = <String>[
@@ -86,7 +88,8 @@ class WindowsDownloaderService implements DownloaderService {
     try {
       final result = await Process.run(ytDlpPath, args);
       if (result.exitCode == 0 && result.stdout is String) {
-        final jsonMap = jsonDecode(result.stdout as String) as Map<String, dynamic>;
+        final jsonMap =
+            jsonDecode(result.stdout as String) as Map<String, dynamic>;
         return PlaylistMetadata.fromJson(jsonMap);
       }
     } catch (e) {
@@ -178,7 +181,8 @@ class WindowsDownloaderService implements DownloaderService {
         if (jsRuntime != null) {
           args.addAll(['--js-runtimes', jsRuntime]);
         } else {
-          args.addAll(['--extractor-args', 'youtube:player_client=android,web']);
+          args.addAll(
+              ['--extractor-args', 'youtube:player_client=android,web']);
         }
 
         args.addAll([
@@ -210,7 +214,8 @@ class WindowsDownloaderService implements DownloaderService {
         }
 
         var cleanUrl = url.trim();
-        if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        if (!cleanUrl.startsWith('http://') &&
+            !cleanUrl.startsWith('https://')) {
           cleanUrl = 'https://$cleanUrl';
         }
         args.add(cleanUrl);
@@ -224,7 +229,8 @@ class WindowsDownloaderService implements DownloaderService {
             workingDirectory: destDir,
           );
         } catch (e) {
-          controller.add(DownloadProgress.failed('Failed to launch yt-dlp.exe: $e'));
+          controller
+              .add(DownloadProgress.failed('Failed to launch yt-dlp.exe: $e'));
           await controller.close();
           return;
         }
@@ -254,7 +260,8 @@ class WindowsDownloaderService implements DownloaderService {
             if (match != null && match.groupCount >= 1) {
               detectedDestinationPath = match.group(1)?.trim();
               if (detectedDestinationPath != null) {
-                var clean = p.basenameWithoutExtension(detectedDestinationPath!);
+                var clean =
+                    p.basenameWithoutExtension(detectedDestinationPath!);
                 clean = clean.replaceAll(RegExp(r'\.f[0-9]+$'), '');
                 detectedTitle ??= clean;
               }
@@ -264,7 +271,8 @@ class WindowsDownloaderService implements DownloaderService {
             if (match != null && match.groupCount >= 1) {
               detectedDestinationPath = match.group(1)?.trim();
               if (detectedDestinationPath != null) {
-                var clean = p.basenameWithoutExtension(detectedDestinationPath!);
+                var clean =
+                    p.basenameWithoutExtension(detectedDestinationPath!);
                 clean = clean.replaceAll(RegExp(r'\.f[0-9]+$'), '');
                 detectedTitle = clean;
               }
@@ -274,7 +282,8 @@ class WindowsDownloaderService implements DownloaderService {
             if (match != null && match.groupCount >= 1) {
               detectedDestinationPath = match.group(1)?.trim();
               if (detectedDestinationPath != null) {
-                var clean = p.basenameWithoutExtension(detectedDestinationPath!);
+                var clean =
+                    p.basenameWithoutExtension(detectedDestinationPath!);
                 clean = clean.replaceAll(RegExp(r'\.f[0-9]+$'), '');
                 detectedTitle ??= clean;
               }
@@ -297,7 +306,8 @@ class WindowsDownloaderService implements DownloaderService {
 
           final fullMatch = progressRegex.firstMatch(trimmed);
           if (fullMatch != null) {
-            final percentNum = double.tryParse(fullMatch.group(1) ?? '0') ?? 0.0;
+            final percentNum =
+                double.tryParse(fullMatch.group(1) ?? '0') ?? 0.0;
             final totalSize = fullMatch.group(2);
             final speed = fullMatch.group(3);
             final eta = fullMatch.group(4);
@@ -318,7 +328,8 @@ class WindowsDownloaderService implements DownloaderService {
 
           final simpleMatch = simplePercentRegex.firstMatch(trimmed);
           if (simpleMatch != null) {
-            final percentNum = double.tryParse(simpleMatch.group(1) ?? '0') ?? 0.0;
+            final percentNum =
+                double.tryParse(simpleMatch.group(1) ?? '0') ?? 0.0;
             currentProgress = currentProgress.copyWith(
               status: DownloadStatus.downloading,
               progress: (percentNum / 100.0).clamp(0.0, 1.0),
@@ -393,7 +404,8 @@ class WindowsDownloaderService implements DownloaderService {
     if (raw.contains('Video unavailable')) {
       return 'The requested YouTube video is unavailable.';
     }
-    if (raw.contains('Incomplete YouTube ID') || raw.contains('not a valid URL')) {
+    if (raw.contains('Incomplete YouTube ID') ||
+        raw.contains('not a valid URL')) {
       return 'Invalid YouTube URL provided.';
     }
     if (raw.contains('Sign in to confirm your age')) {

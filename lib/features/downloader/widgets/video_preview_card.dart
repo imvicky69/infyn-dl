@@ -43,7 +43,8 @@ class VideoPreviewCard extends StatelessWidget {
                     Image.network(
                       metadata.thumbnailUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => const Center(
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Center(
                         child: Icon(Icons.play_circle_outline_rounded,
                             color: AppColors.textMuted, size: 28),
                       ),
@@ -58,7 +59,8 @@ class VideoPreviewCard extends StatelessWidget {
                       bottom: 4,
                       right: 4,
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 5, vertical: 2),
                         decoration: BoxDecoration(
                           color: Colors.black.withValues(alpha: 0.75),
                           borderRadius: BorderRadius.circular(4),

@@ -114,7 +114,8 @@ class AndroidDownloaderService implements DownloaderService {
 
         final statusStr = event['status'] as String? ?? 'preparing';
         final progressRatio = (event['progress'] as num?)?.toDouble() ?? 0.0;
-        final percentage = event['percentage'] as String? ?? '${(progressRatio * 100).toInt()}%';
+        final percentage = event['percentage'] as String? ??
+            '${(progressRatio * 100).toInt()}%';
         final speed = event['speed'] as String?;
         final eta = event['eta'] as String?;
         final totalSize = event['totalSize'] as String?;

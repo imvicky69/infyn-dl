@@ -58,14 +58,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
       if (_selectedFilter == 'audio' && item.format != DownloadFormat.mp3) {
         return false;
       }
-      if (_selectedFilter == 'playlists' && (item.playlistName == null || item.playlistName!.isEmpty)) {
+      if (_selectedFilter == 'playlists' &&
+          (item.playlistName == null || item.playlistName!.isEmpty)) {
         return false;
       }
 
       // Search query
       if (_searchQuery.isNotEmpty) {
-        final titleMatches = item.title.toLowerCase().contains(_searchQuery.toLowerCase());
-        final playlistMatches = item.playlistName?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false;
+        final titleMatches =
+            item.title.toLowerCase().contains(_searchQuery.toLowerCase());
+        final playlistMatches = item.playlistName
+                ?.toLowerCase()
+                .contains(_searchQuery.toLowerCase()) ??
+            false;
         if (!titleMatches && !playlistMatches) return false;
       }
 
@@ -81,7 +86,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     final file = File(item.filePath);
     if (!await file.exists()) {
-      _showSnackbar('File no longer exists at: ${item.filePath}', isError: true);
+      _showSnackbar('File no longer exists at: ${item.filePath}',
+          isError: true);
       return;
     }
 
@@ -97,7 +103,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Delete Download', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        title: const Text('Delete Download',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         content: Text(
           'Remove "${item.title}" from downloads library?\n\nDo you also want to delete the file from disk?',
           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
@@ -139,7 +146,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.surface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Clear All History', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+        title: const Text('Clear All History',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         content: const Text(
           'This will clear all entries from your downloads cache. Files on disk will NOT be deleted.',
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
@@ -214,7 +222,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
         actions: [
           if (_items.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.delete_sweep_rounded, color: AppColors.textMuted),
+              icon: const Icon(Icons.delete_sweep_rounded,
+                  color: AppColors.textMuted),
               tooltip: 'Clear history',
               onPressed: _clearAllHistory,
             ),
@@ -232,7 +241,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               children: [
                 // Search & Filter header
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Column(
                     children: [
                       // Search bar
@@ -245,15 +255,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         ),
                         child: TextField(
                           controller: _searchController,
-                          onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                          style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                          onChanged: (val) =>
+                              setState(() => _searchQuery = val.trim()),
+                          style: const TextStyle(
+                              fontSize: 13, color: AppColors.textPrimary),
                           decoration: InputDecoration(
                             hintText: 'Search downloads...',
-                            hintStyle: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                            prefixIcon: const Icon(Icons.search_rounded, size: 18, color: AppColors.textMuted),
+                            hintStyle: const TextStyle(
+                                fontSize: 13, color: AppColors.textMuted),
+                            prefixIcon: const Icon(Icons.search_rounded,
+                                size: 18, color: AppColors.textMuted),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
-                                    icon: const Icon(Icons.clear_rounded, size: 16),
+                                    icon: const Icon(Icons.clear_rounded,
+                                        size: 16),
                                     onPressed: () {
                                       _searchController.clear();
                                       setState(() => _searchQuery = '');
@@ -261,7 +276,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                   )
                                 : null,
                             border: InputBorder.none,
-                            contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                            contentPadding:
+                                const EdgeInsets.symmetric(vertical: 10),
                           ),
                         ),
                       ),
@@ -277,19 +293,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             _buildFilterChip(
                               'Playlists',
                               'playlists',
-                              _items.where((i) => i.playlistName != null && i.playlistName!.isNotEmpty).length,
+                              _items
+                                  .where((i) =>
+                                      i.playlistName != null &&
+                                      i.playlistName!.isNotEmpty)
+                                  .length,
                             ),
                             const SizedBox(width: 8),
                             _buildFilterChip(
                               'Videos',
                               'video',
-                              _items.where((i) => i.format == DownloadFormat.mp4).length,
+                              _items
+                                  .where((i) => i.format == DownloadFormat.mp4)
+                                  .length,
                             ),
                             const SizedBox(width: 8),
                             _buildFilterChip(
                               'Audio',
                               'audio',
-                              _items.where((i) => i.format == DownloadFormat.mp3).length,
+                              _items
+                                  .where((i) => i.format == DownloadFormat.mp3)
+                                  .length,
                             ),
                           ],
                         ),
@@ -310,7 +334,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           child: ListView.separated(
                             padding: const EdgeInsets.all(16),
                             itemCount: filtered.length,
-                            separatorBuilder: (context, index) => const SizedBox(height: 10),
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 10),
                             itemBuilder: (context, index) {
                               final item = filtered[index];
                               return _buildDownloadCard(item);
@@ -387,18 +412,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   width: 54,
                   height: 54,
                   color: AppColors.surfaceElevated,
-                  child: item.thumbnailUrl != null && item.thumbnailUrl!.isNotEmpty
+                  child: item.thumbnailUrl != null &&
+                          item.thumbnailUrl!.isNotEmpty
                       ? Image.network(
                           item.thumbnailUrl!,
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Icon(
-                            isAudio ? Icons.music_note_rounded : Icons.videocam_rounded,
+                            isAudio
+                                ? Icons.music_note_rounded
+                                : Icons.videocam_rounded,
                             color: AppColors.primary,
                             size: 26,
                           ),
                         )
                       : Icon(
-                          isAudio ? Icons.music_note_rounded : Icons.videocam_rounded,
+                          isAudio
+                              ? Icons.music_note_rounded
+                              : Icons.videocam_rounded,
                           color: AppColors.primary,
                           size: 26,
                         ),
@@ -426,7 +456,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       children: [
                         // Format Badge
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
                           decoration: BoxDecoration(
                             color: isAudio
                                 ? AppColors.primary.withValues(alpha: 0.1)
@@ -443,7 +474,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                             style: TextStyle(
                               fontSize: 10,
                               fontWeight: FontWeight.w700,
-                              color: isAudio ? AppColors.primary : AppColors.textSecondary,
+                              color: isAudio
+                                  ? AppColors.primary
+                                  : AppColors.textSecondary,
                             ),
                           ),
                         ),
@@ -451,33 +484,41 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         if (item.quality.isNotEmpty) ...[
                           Text(
                             item.quality,
-                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            style: const TextStyle(
+                                fontSize: 11, color: AppColors.textMuted),
                           ),
-                          const Text(' • ', style: TextStyle(color: AppColors.textMuted)),
+                          const Text(' • ',
+                              style: TextStyle(color: AppColors.textMuted)),
                         ],
                         if (item.formattedFileSize.isNotEmpty) ...[
                           Text(
                             item.formattedFileSize,
-                            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                            style: const TextStyle(
+                                fontSize: 11, color: AppColors.textMuted),
                           ),
-                          const Text(' • ', style: TextStyle(color: AppColors.textMuted)),
+                          const Text(' • ',
+                              style: TextStyle(color: AppColors.textMuted)),
                         ],
                         Text(
                           _formatTimestamp(item.timestamp),
-                          style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                          style: const TextStyle(
+                              fontSize: 11, color: AppColors.textMuted),
                         ),
                       ],
                     ),
-                    if (item.playlistName != null && item.playlistName!.isNotEmpty) ...[
+                    if (item.playlistName != null &&
+                        item.playlistName!.isNotEmpty) ...[
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          const Icon(Icons.playlist_play_rounded, size: 13, color: AppColors.textMuted),
+                          const Icon(Icons.playlist_play_rounded,
+                              size: 13, color: AppColors.textMuted),
                           const SizedBox(width: 3),
                           Flexible(
                             child: Text(
                               item.playlistName!,
-                              style: const TextStyle(fontSize: 10, color: AppColors.textMuted),
+                              style: const TextStyle(
+                                  fontSize: 10, color: AppColors.textMuted),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -490,9 +531,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
               // Action menu
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded, size: 18, color: AppColors.textMuted),
+                icon: const Icon(Icons.more_vert_rounded,
+                    size: 18, color: AppColors.textMuted),
                 color: AppColors.surface,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
                 onSelected: (action) {
                   if (action == 'open') {
                     _openMediaFile(item);
@@ -505,7 +548,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     value: 'open',
                     child: Row(
                       children: [
-                        Icon(Icons.play_arrow_rounded, size: 18, color: AppColors.primary),
+                        Icon(Icons.play_arrow_rounded,
+                            size: 18, color: AppColors.primary),
                         SizedBox(width: 8),
                         Text('Open File', style: TextStyle(fontSize: 13)),
                       ],
@@ -515,9 +559,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     value: 'delete',
                     child: Row(
                       children: [
-                        Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                        Icon(Icons.delete_outline_rounded,
+                            size: 18, color: AppColors.error),
                         const SizedBox(width: 8),
-                        Text('Delete...', style: TextStyle(fontSize: 13, color: AppColors.error)),
+                        Text('Delete...',
+                            style: TextStyle(
+                                fontSize: 13, color: AppColors.error)),
                       ],
                     ),
                   ),
@@ -564,7 +611,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
             const Text(
               'Downloaded videos and audio will be saved and cached here for quick offline access.',
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 13, color: AppColors.textSecondary, height: 1.4),
+              style: TextStyle(
+                  fontSize: 13, color: AppColors.textSecondary, height: 1.4),
             ),
             if (widget.onNavigateToDownloader != null) ...[
               const SizedBox(height: 20),
@@ -573,11 +621,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
                   foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 icon: const Icon(Icons.download_rounded, size: 18),
-                label: const Text('Go to Downloader', style: TextStyle(fontWeight: FontWeight.w600)),
+                label: const Text('Go to Downloader',
+                    style: TextStyle(fontWeight: FontWeight.w600)),
               ),
             ],
           ],

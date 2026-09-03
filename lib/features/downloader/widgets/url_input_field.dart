@@ -61,11 +61,13 @@ class _UrlInputFieldState extends State<UrlInputField> {
             ),
             content: const Row(
               children: [
-                Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18),
+                Icon(Icons.check_circle_rounded,
+                    color: AppColors.success, size: 18),
                 SizedBox(width: 10),
                 Text(
                   'Link pasted from clipboard',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                      color: Colors.white, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -85,7 +87,8 @@ class _UrlInputFieldState extends State<UrlInputField> {
             ),
             content: const Row(
               children: [
-                Icon(Icons.info_outline_rounded, color: AppColors.textMuted, size: 18),
+                Icon(Icons.info_outline_rounded,
+                    color: AppColors.textMuted, size: 18),
                 SizedBox(width: 10),
                 Text(
                   'Clipboard is empty or contains no text',
@@ -224,7 +227,8 @@ class _UrlInputFieldState extends State<UrlInputField> {
                     onTap: () => _handlePaste(context),
                     borderRadius: BorderRadius.circular(10),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 12, vertical: 7),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceElevated,
                         borderRadius: BorderRadius.circular(10),

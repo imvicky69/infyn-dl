@@ -59,7 +59,8 @@ class DownloadHistoryService {
   /// Returns all cached downloads sorted by latest first.
   Future<List<DownloadItem>> getHistory() async {
     if (!_isInitialized) await init();
-    return List.unmodifiable(_cachedItems..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
+    return List.unmodifiable(
+        _cachedItems..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
   }
 
   /// Adds a completed download item to the persistent history.
@@ -71,7 +72,8 @@ class DownloadHistoryService {
   }
 
   /// Deletes a download from history and optionally removes the physical file from disk.
-  Future<void> removeDownload(String id, {bool deletePhysicalFile = false}) async {
+  Future<void> removeDownload(String id,
+      {bool deletePhysicalFile = false}) async {
     if (!_isInitialized) await init();
     final index = _cachedItems.indexWhere((item) => item.id == id);
     if (index != -1) {
@@ -131,7 +133,8 @@ class DownloadHistoryService {
       try {
         final dir = Directory(targetDirectory);
         if (await dir.exists()) {
-          final expectedFile = File(p.join(targetDirectory, '$cleanTitle.$ext'));
+          final expectedFile =
+              File(p.join(targetDirectory, '$cleanTitle.$ext'));
           if (await expectedFile.exists()) {
             return true;
           }
@@ -140,9 +143,12 @@ class DownloadHistoryService {
           final entities = await dir.list().toList();
           for (final entity in entities) {
             if (entity is File) {
-              final fileName = p.basenameWithoutExtension(entity.path).toLowerCase();
-              final fileExt = p.extension(entity.path).replaceFirst('.', '').toLowerCase();
-              if (fileExt == ext && (fileName == cleanTitle || fileName.contains(cleanTitle))) {
+              final fileName =
+                  p.basenameWithoutExtension(entity.path).toLowerCase();
+              final fileExt =
+                  p.extension(entity.path).replaceFirst('.', '').toLowerCase();
+              if (fileExt == ext &&
+                  (fileName == cleanTitle || fileName.contains(cleanTitle))) {
                 return true;
               }
             }

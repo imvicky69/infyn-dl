@@ -1,0 +1,309 @@
+name: Release Build & Publish
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Tag name for the release (e.g. v1.0.0)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build-android:
+    name: Build Android Packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Java Development Kit (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter & Environment
+        run: |
+          flutter --version
+          flutter doctor -v
+
+      - name: Install Dart & Flutter Dependencies
+        run: flutter pub get
+
+      - name: Run Static Analysis & Tests
+        run: |
+          flutter analyze
+          flutter test
+
+      - name: Build Android Universal APK
+        run: flutter build apk --release
+
+      - name: Build Android Per-ABI Split APKs
+        run: flutter build apk --release --split-per-abi
+
+      - name: Build Android App Bundle (AAB)
+        run: flutter build appbundle --release
+
+      - name: Package & Prepare Android Release Artifacts
+        shell: bash
+        run: |
+          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
+          # Fallback if triggered without a tag
+          TAG="${RAW_TAG:-v1.0.0}"
+          
+          mkdir -p staging-android
+          
+          # Universal APK
+          if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+            cp "build/app/outputs/flutter-apk/app-release.apk" "staging-android/Infyn-DL-${TAG}-android-universal.apk"
+          fi
+          
+          # Split APKs (arm64-v8a, armeabi-v7a, x86_64)
+          if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
+            cp "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" "staging-android/Infyn-DL-${TAG}-android-arm64-v8a.apk"
+          fi
+          if [ -f "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" ]; then
+            cp "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" "staging-android/Infyn-DL-${TAG}-android-armeabi-v7a.apk"
+          fi
+          if [ -f "build/app/outputs/flutter-apk/app-x86_64-release.apk" ]; then
+            cp "build/app/outputs/flutter-apk/app-x86_64-release.apk" "staging-android/Infyn-DL-${TAG}-android-x86_64.apk"
+          fi
+          
+          # Android App Bundle (AAB)
+          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
+            cp "build/app/outputs/bundle/release/app-release.aab" "staging-android/Infyn-DL-${TAG}-android.aab"
+          fi
+          
+          cd staging-android
+          for file in *; do
+            if [ -f "$file" ]; then
+              sha256sum "$file" > "${file}.sha256"
+            fi
+          done
+          ls -la
+
+      - name: Upload Android Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-release-assets
+          path: staging-android/*
+          if-no-files-found: error
+          retention-days: 2
+
+  build-windows:
+    name: Build Windows Portable Package
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Verify Flutter & Environment
+        run: |
+          flutter --version
+          flutter doctor -v
+
+      - name: Download yt-dlp, FFmpeg & QuickJS Binaries
+        shell: pwsh
+        run: |
+          .\tool\setup_binaries.ps1
+
+      - name: Install Dart & Flutter Dependencies
+        run: flutter pub get
+
+      - name: Build Windows Executable Bundle
+        run: flutter build windows --release
+
+      - name: Package Windows ZIP Archive & Setup Installer EXE
+        shell: pwsh
+        run: |
+          $rawTag = "${{ github.event.inputs.tag_name }}"
+          if ([string]::IsNullOrWhiteSpace($rawTag)) {
+            $rawTag = "${{ github.ref_name }}"
+          }
+          if ([string]::IsNullOrWhiteSpace($rawTag)) {
+            $rawTag = "v1.0.0"
+          }
+
+          New-Item -ItemType Directory -Force -Path staging-windows | Out-Null
+
+          # 1. Locate Release directory
+          $releaseDir = "build\windows\x64\runner\Release"
+          if (!(Test-Path $releaseDir)) {
+            $releaseDir = "build\windows\runner\Release"
+          }
+          if (!(Test-Path $releaseDir)) {
+            Write-Error "Could not locate Flutter Windows release build directory!"
+            exit 1
+          }
+
+          Write-Host "Found Windows release directory at $releaseDir"
+
+          # 2. Create Portable ZIP Archive
+          $zipName = "Infyn-DL-$rawTag-windows-portable.zip"
+          $zipPath = Join-Path "staging-windows" $zipName
+          Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
+          Write-Host "Created Windows portable archive: $zipPath"
+
+          $zipHash = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLower()
+          "$zipHash  $zipName" | Out-File -FilePath "$zipPath.sha256" -Encoding ASCII
+
+          # 3. Compile Windows Setup Installer EXE using Inno Setup
+          Write-Host "Compiling Windows Setup Installer EXE with Inno Setup..."
+          if (!(Get-Command iscc.exe -ErrorAction SilentlyContinue)) {
+            if (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe") {
+              $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
+            } else {
+              choco install innosetup --no-progress -y
+              $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
+            }
+          }
+
+          $installerBaseName = "Infyn-DL-$rawTag-windows-setup"
+          $issFile = "windows\installer\inno_setup.iss"
+          $fullReleaseDir = (Resolve-Path $releaseDir).Path
+          $fullStagingDir = (Resolve-Path "staging-windows").Path
+
+          & iscc.exe /DMyAppVersion="$rawTag" /DSourceDir="$fullReleaseDir" /DOutputDir="$fullStagingDir" /DOutputBaseFilename="$installerBaseName" "$issFile"
+
+          $exeName = "$installerBaseName.exe"
+          $exePath = Join-Path "staging-windows" $exeName
+          if (Test-Path $exePath) {
+            Write-Host "Created Windows Installer: $exePath"
+            $exeHash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToLower()
+            "$exeHash  $exeName" | Out-File -FilePath "$exePath.sha256" -Encoding ASCII
+          } else {
+            Write-Warning "Inno Setup output $exePath was not found, portable zip will be used."
+          }
+
+          Get-ChildItem staging-windows
+
+      - name: Upload Windows Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-assets
+          path: staging-windows/*
+          if-no-files-found: error
+          retention-days: 2
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Create Distribution Directory
+        run: mkdir -p dist
+
+      - name: Download Android Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: android-release-assets
+          path: dist/
+
+      - name: Download Windows Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: windows-release-assets
+          path: dist/
+
+      - name: Generate Consolidated Checksums
+        shell: bash
+        run: |
+          cd dist
+          echo "### SHA-256 Checksums" > checksums.txt
+          echo '```' >> checksums.txt
+          for f in *; do
+            if [ -f "$f" ] && [[ "$f" != *.sha256 ]] && [[ "$f" != "checksums.txt" ]]; then
+              sha256sum "$f" >> checksums.txt
+            fi
+          done
+          echo '```' >> checksums.txt
+          cat checksums.txt
+
+      - name: Determine Prerelease Status
+        id: release_info
+        shell: bash
+        run: |
+          TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          if [[ "$TAG" == *"alpha"* ]] || [[ "$TAG" == *"beta"* ]] || [[ "$TAG" == *"rc"* ]]; then
+            echo "is_prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create or Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.release_info.outputs.tag }}
+          name: Infyn DL ${{ steps.release_info.outputs.tag }}
+          draft: false
+          prerelease: ${{ steps.release_info.outputs.is_prerelease == 'true' }}
+          generate_release_notes: true
+          files: |
+            dist/*
+          body: |
+            ## 🚀 Infyn DL Release ${{ steps.release_info.outputs.tag }}
+
+            Universal, local-first media & music downloader for **Windows** and **Android**.
+
+            ---
+
+            ### 📦 Download Packages
+
+            | Platform | Package | Architecture | Description |
+            | :--- | :--- | :--- | :--- |
+            | 🪟 **Windows** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-windows-setup.exe` | x64 (64-bit) | **Recommended**: Single-file setup installer with Desktop & Start Menu shortcuts. |
+            | 🪟 **Windows** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-windows-portable.zip` | x64 (64-bit) | **Portable**: No installation required. Extract and run `media_downloader.exe`. |
+            | 📱 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-universal.apk` | Universal | All-in-one APK for all Android devices (Phones, Tablets, Android TV). |
+            | 📱 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-arm64-v8a.apk` | ARM64 | Optimized APK for modern 64-bit ARM smartphones & tablets. |
+            | 📱 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-armeabi-v7a.apk` | ARMv7 | Optimized APK for older 32-bit ARM Android devices. |
+            | 📱 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-x86_64.apk` | x86_64 | Optimized APK for Android Emulators and x86_64 Chromebooks / Tablets. |
+            | 📦 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android.aab` | Multi | Android App Bundle (Google Play compatible). |
+
+            ---
+
+            ### 🛠️ Quick Installation Guide
+
+            #### Windows:
+            - **Option 1 (Installer)**: Download and run `Infyn-DL-${{ steps.release_info.outputs.tag }}-windows-setup.exe`.
+            - **Option 2 (Portable)**: Download `Infyn-DL-${{ steps.release_info.outputs.tag }}-windows-portable.zip`, extract anywhere, and launch `media_downloader.exe`.
+
+            #### Android:
+            1. Download `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-universal.apk` (or matching CPU architecture).
+            2. Open the APK on your device and tap **Install** (Enable *"Install unknown apps"* if prompted).
+            3. Launch **Infyn DL** and grant storage permissions when prompted.
+
+            ---
+
+            ### 🔒 Integrity & Verification
+            All packages include `.sha256` integrity files. See `checksums.txt` attached to this release for official hashes.

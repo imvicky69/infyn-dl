@@ -5,17 +5,23 @@ class AppColors {
   AppColors._();
 
   // Modern Monochrome Light Palette (Vercel / Apple Minimalist)
-  static const Color background = Color(0xFFFAFAFA); // Ultra-clean zinc-50 canvas
+  static const Color background =
+      Color(0xFFFAFAFA); // Ultra-clean zinc-50 canvas
   static const Color surface = Color(0xFFFFFFFF); // Crisp white card surface
-  static const Color surfaceElevated = Color(0xFFF4F4F5); // Neutral zinc-100 container
-  static const Color surfaceBorder = Color(0xFFE4E4E7); // Subtle zinc-200 border
-  static const Color surfaceBorderActive = Color(0xFF09090B); // Obsidian active border
+  static const Color surfaceElevated =
+      Color(0xFFF4F4F5); // Neutral zinc-100 container
+  static const Color surfaceBorder =
+      Color(0xFFE4E4E7); // Subtle zinc-200 border
+  static const Color surfaceBorderActive =
+      Color(0xFF09090B); // Obsidian active border
 
   // Modern Monochromatic Accents
   static const Color primary = Color(0xFF09090B); // Deep obsidian black
   static const Color primaryEnd = Color(0xFF27272A); // Charcoal zinc-800
-  static const Color primaryGlow = Color(0x14000000); // Clean subtle elevation shadow
-  static const Color primaryContainer = Color(0xFFF4F4F5); // Clean neutral zinc container
+  static const Color primaryGlow =
+      Color(0x14000000); // Clean subtle elevation shadow
+  static const Color primaryContainer =
+      Color(0xFFF4F4F5); // Clean neutral zinc container
 
   static const LinearGradient primaryGradient = LinearGradient(
     colors: [Color(0xFF09090B), Color(0xFF27272A)],
@@ -26,10 +32,12 @@ class AppColors {
   // Typography
   static const Color textPrimary = Color(0xFF09090B); // Crisp obsidian
   static const Color textSecondary = Color(0xFF71717A); // Zinc-500 body
-  static const Color textMuted = Color(0xFFA1A1AA); // Zinc-400 placeholder/caption
+  static const Color textMuted =
+      Color(0xFFA1A1AA); // Zinc-400 placeholder/caption
 
   // Status Accents
-  static const Color success = Color(0xFF10B981); // Crisp emerald green for success
+  static const Color success =
+      Color(0xFF10B981); // Crisp emerald green for success
   static const Color successBg = Color(0xFFECFDF5);
   static const Color error = Color(0xFFEF4444); // Crisp red for errors
   static const Color errorBg = Color(0xFFFEF2F2);

@@ -112,14 +112,17 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const Text(' • ', style: TextStyle(color: AppColors.textMuted)),
+                            const Text(' • ',
+                                style: TextStyle(color: AppColors.textMuted)),
                           ],
                           Text(
                             '$selectedCount of $total selected',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
-                              color: selectedCount > 0 ? AppColors.primary : AppColors.textMuted,
+                              color: selectedCount > 0
+                                  ? AppColors.primary
+                                  : AppColors.textMuted,
                             ),
                           ),
                         ],
@@ -157,7 +160,9 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _isExpanded ? 'Select tracks to download:' : 'Click arrow to preview/choose tracks',
+                    _isExpanded
+                        ? 'Select tracks to download:'
+                        : 'Click arrow to preview/choose tracks',
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
@@ -168,7 +173,8 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                     onTap: _toggleSelectAll,
                     borderRadius: BorderRadius.circular(6),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       child: Text(
                         isAllSelected ? 'Deselect All' : 'Select All ($total)',
                         style: const TextStyle(
@@ -193,8 +199,11 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                 shrinkWrap: true,
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 itemCount: playlist.entries.length,
-                separatorBuilder: (context, index) =>
-                    const Divider(height: 1, indent: 48, endIndent: 14, color: AppColors.surfaceBorder),
+                separatorBuilder: (context, index) => const Divider(
+                    height: 1,
+                    indent: 48,
+                    endIndent: 14,
+                    color: AppColors.surfaceBorder),
                 itemBuilder: (context, index) {
                   final entry = playlist.entries[index];
                   final isSelected = widget.selectedIndices.contains(index);
@@ -202,7 +211,8 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                   return InkWell(
                     onTap: () => _toggleIndex(index),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 6),
                       child: Row(
                         children: [
                           // Interactive Checkbox
@@ -213,8 +223,10 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                               value: isSelected,
                               activeColor: AppColors.primary,
                               checkColor: Colors.white,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                              side: const BorderSide(color: AppColors.textMuted, width: 1.5),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4)),
+                              side: const BorderSide(
+                                  color: AppColors.textMuted, width: 1.5),
                               onChanged: (_) => _toggleIndex(index),
                             ),
                           ),
@@ -224,7 +236,9 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isSelected ? AppColors.textSecondary : AppColors.textMuted,
+                              color: isSelected
+                                  ? AppColors.textSecondary
+                                  : AppColors.textMuted,
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -233,8 +247,12 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                               entry.title,
                               style: TextStyle(
                                 fontSize: 12,
-                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                                color: isSelected ? AppColors.textPrimary : AppColors.textMuted,
+                                fontWeight: isSelected
+                                    ? FontWeight.w600
+                                    : FontWeight.w400,
+                                color: isSelected
+                                    ? AppColors.textPrimary
+                                    : AppColors.textMuted,
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,

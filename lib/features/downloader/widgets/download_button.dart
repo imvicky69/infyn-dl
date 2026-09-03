@@ -19,8 +19,11 @@ class DownloadButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isEnabled = onPressed != null && !isLoading;
-    final formatLabel = selectedFormat != null ? ' ${selectedFormat!.label}' : '';
-    final qualitySuffix = qualityLabel != null && qualityLabel!.isNotEmpty ? ' ($qualityLabel)' : '';
+    final formatLabel =
+        selectedFormat != null ? ' ${selectedFormat!.label}' : '';
+    final qualitySuffix = qualityLabel != null && qualityLabel!.isNotEmpty
+        ? ' ($qualityLabel)'
+        : '';
 
     return Container(
       width: double.infinity,
@@ -58,7 +61,8 @@ class DownloadButton extends StatelessWidget {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                       ),
                       SizedBox(width: 12),

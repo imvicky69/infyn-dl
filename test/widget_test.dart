@@ -100,8 +100,16 @@ class FakeDownloaderService implements DownloaderService {
       title: 'Sample Test Playlist',
       itemCount: 2,
       entries: [
-        PlaylistEntry(id: '1', title: 'Track 1', duration: 180, url: 'https://youtube.com/watch?v=1'),
-        PlaylistEntry(id: '2', title: 'Track 2', duration: 200, url: 'https://youtube.com/watch?v=2'),
+        PlaylistEntry(
+            id: '1',
+            title: 'Track 1',
+            duration: 180,
+            url: 'https://youtube.com/watch?v=1'),
+        PlaylistEntry(
+            id: '2',
+            title: 'Track 2',
+            duration: 200,
+            url: 'https://youtube.com/watch?v=2'),
       ],
     );
   }
@@ -139,7 +147,8 @@ void main() {
     expect(find.text('MP4'), findsNothing);
   });
 
-  testWidgets('Enters valid URL, fetches metadata, and displays formats with download button',
+  testWidgets(
+      'Enters valid URL, fetches metadata, and displays formats with download button',
       (WidgetTester tester) async {
     final fakeService = FakeDownloaderService();
 
@@ -151,7 +160,8 @@ void main() {
 
     // Enter valid URL
     final inputFinder = find.byType(TextField);
-    await tester.enterText(inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await tester.enterText(
+        inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     await tester.pump();
 
     // Advance debounce timer (450ms) to trigger fetchMetadata
@@ -177,7 +187,8 @@ void main() {
 
     // Enter URL and wait for metadata
     final inputFinder = find.byType(TextField);
-    await tester.enterText(inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await tester.enterText(
+        inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
 
@@ -215,7 +226,8 @@ void main() {
 
     // Enter valid URL and fetch
     final inputFinder = find.byType(TextField);
-    await tester.enterText(inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await tester.enterText(
+        inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
 

@@ -81,8 +81,12 @@ class VideoMetadata {
       if (f is! Map<String, dynamic>) continue;
       final vcodec = f['vcodec'] as String?;
       final acodec = f['acodec'] as String?;
-      if ((vcodec == null || vcodec == 'none') && acodec != null && acodec != 'none') {
-        final size = (f['filesize'] as num?)?.toInt() ?? (f['filesize_approx'] as num?)?.toInt() ?? 0;
+      if ((vcodec == null || vcodec == 'none') &&
+          acodec != null &&
+          acodec != 'none') {
+        final size = (f['filesize'] as num?)?.toInt() ??
+            (f['filesize_approx'] as num?)?.toInt() ??
+            0;
         if (size > bestAudioSize) {
           bestAudioSize = size;
         }
@@ -106,14 +110,17 @@ class VideoMetadata {
       if (vcodec == 'none') continue; // audio only
 
       final formatId = f['format_id'] as String? ?? '$height';
-      final videoSize = (f['filesize'] as num?)?.toInt() ?? (f['filesize_approx'] as num?)?.toInt() ?? 0;
+      final videoSize = (f['filesize'] as num?)?.toInt() ??
+          (f['filesize_approx'] as num?)?.toInt() ??
+          0;
       final formatHasAudio = acodec != null && acodec != 'none';
       final totalSize = videoSize > 0
           ? (formatHasAudio ? videoSize : (videoSize + bestAudioSize))
           : 0;
 
       // Prefer formats with higher size or known size
-      if (!heightMap.containsKey(height) || (totalSize > heightMap[height]!.totalSizeBytes)) {
+      if (!heightMap.containsKey(height) ||
+          (totalSize > heightMap[height]!.totalSizeBytes)) {
         heightMap[height] = AvailableFormat(
           formatId: formatId,
           resolutionLabel: '${height}p',
@@ -125,7 +132,8 @@ class VideoMetadata {
     }
 
     // Sort heights descending (e.g. 2160, 1440, 1080, 720, 480, 360, 240)
-    final sortedHeights = heightMap.keys.toList()..sort((a, b) => b.compareTo(a));
+    final sortedHeights = heightMap.keys.toList()
+      ..sort((a, b) => b.compareTo(a));
     final videoFormats = sortedHeights.map((h) => heightMap[h]!).toList();
 
     return VideoMetadata(

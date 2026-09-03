@@ -4,12 +4,14 @@
   <p><strong>Universal, Local-First Media & Music Downloader for Windows & Android</strong></p>
 
   <p>
+    <a href="https://github.com/imvicky69/infyn-dl/releases/latest"><img src="https://img.shields.io/github/v/release/imvicky69/infyn-dl?logo=github&color=00B4D8&label=Release" alt="Latest Release"></a>
+    <a href="https://github.com/imvicky69/infyn-dl/actions/workflows/ci.yml"><img src="https://github.com/imvicky69/infyn-dl/actions/workflows/ci.yml/badge.svg" alt="CI Status"></a>
+    <a href="https://github.com/imvicky69/infyn-dl/releases"><img src="https://img.shields.io/github/downloads/imvicky69/infyn-dl/total?color=success&logo=github" alt="Downloads"></a>
     <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"></a>
     <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white" alt="Dart"></a>
     <a href="https://github.com/yt-dlp/yt-dlp"><img src="https://img.shields.io/badge/Engine-yt--dlp%20Native-FF0000?logo=youtube&logoColor=white" alt="yt-dlp"></a>
     <a href="https://ffmpeg.org"><img src="https://img.shields.io/badge/Audio-FFmpeg%20320k-007808?logo=ffmpeg&logoColor=white" alt="FFmpeg"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-black.svg" alt="License: MIT"></a>
-    <img src="https://img.shields.io/badge/Platforms-Windows%20%7C%20Android-4B0082" alt="Platforms">
   </p>
 </div>
 
@@ -20,6 +22,20 @@
 **Infyn DL** is a high-performance, privacy-respecting media downloader built with Flutter. It executes **`yt-dlp` and `FFmpeg` locally on your device** without routing traffic through third-party servers or APIs.
 
 Whether you're grabbing a 4K 60fps video, extracting 320kbps pristine audio from YouTube Music, or batch-downloading a 200+ track playlist in parallel, Infyn DL provides a clean, responsive, and distraction-free experience across Windows desktop and Android mobile devices.
+
+---
+
+## 📥 Downloads & Releases
+
+Pre-compiled, ready-to-run releases for **Windows** and **Android** are available on our [**GitHub Releases Page**](https://github.com/imvicky69/infyn-dl/releases).
+
+| Platform | Download Asset | Instructions |
+| :--- | :--- | :--- |
+| 🪟 **Windows** (Setup Installer) | [`Infyn-DL-*-windows-setup.exe`](https://github.com/imvicky69/infyn-dl/releases/latest) | **Recommended**: Single-file setup wizard. Installs to system with Desktop & Start Menu shortcuts. |
+| 🪟 **Windows** (Portable ZIP) | [`Infyn-DL-*-windows-portable.zip`](https://github.com/imvicky69/infyn-dl/releases/latest) | Portable bundle. Extract and run `media_downloader.exe`. No installation required. |
+| 📱 **Android** (Universal) | [`Infyn-DL-*-android-universal.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Compatible with all Android phones, tablets, and TVs (Android 7.0+). |
+| 📱 **Android** (ARM64) | [`Infyn-DL-*-android-arm64-v8a.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Optimized, smaller package for modern 64-bit Android smartphones. |
+| 📱 **Android** (x86_64) | [`Infyn-DL-*-android-x86_64.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Optimized for Android emulators and Chromebooks. |
 
 ---
 
@@ -166,6 +182,58 @@ media_downloader/
    flutter run -d android
    ```
    *(Note: The Android build automatically bundles `youtubedl-android` and `ffmpeg-kit` so no manual binary downloads are required!)*
+
+---
+
+## 📦 Production Builds & Release Automation
+
+### 🚀 Automated GitHub Releases (Recommended)
+
+Infyn DL uses **GitHub Actions** to automatically build, package, sign checksums, and publish releases for **both Windows & Android** whenever a semantic version tag is pushed:
+
+```bash
+# 1. Ensure working directory is clean
+git status
+
+# 2. Create a version tag (e.g., v1.0.0)
+git tag -a v1.0.0 -m "Release v1.0.0"
+
+# 3. Push the tag to GitHub
+git push origin v1.0.0
+```
+
+The [`.github/workflows/release.yml`](.github/workflows/release.yml) workflow will automatically:
+1. Compile Windows release executable and package portable `Infyn-DL-v1.0.0-windows-x64.zip` with bundled `yt-dlp.exe` and `ffmpeg.exe`.
+2. Compile Android Universal APK, Split-ABI APKs (`arm64-v8a`, `armeabi-v7a`, `x86_64`), and Android App Bundle (`.aab`).
+3. Generate SHA256 checksums (`checksums.txt` and `.sha256` files).
+4. Publish a structured GitHub Release with changelog notes and attached binary artifacts.
+
+---
+
+### 💻 Local Production Builds
+
+#### Building Windows Portable Bundle locally:
+```powershell
+# Setup required dependencies
+powershell -ExecutionPolicy Bypass -File tool\setup_binaries.ps1
+
+# Build release executable
+flutter build windows --release
+```
+*The compiled portable package is created in `build\windows\x64\runner\Release\`.*
+
+#### Building Android APKs & Bundle locally:
+```bash
+# Build universal APK
+flutter build apk --release
+
+# Build split APKs per CPU architecture (smaller file size)
+flutter build apk --release --split-per-abi
+
+# Build Google Play App Bundle (AAB)
+flutter build appbundle --release
+```
+*The outputs are generated in `build/app/outputs/flutter-apk/` and `build/app/outputs/bundle/release/`.*
 
 ---
 

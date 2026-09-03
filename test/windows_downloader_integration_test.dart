@@ -14,7 +14,8 @@ void main() {
 
     setUp(() async {
       service = WindowsDownloaderService();
-      tempDownloadDir = await Directory.systemTemp.createTemp('media_downloader_test_');
+      tempDownloadDir =
+          await Directory.systemTemp.createTemp('media_downloader_test_');
     });
 
     tearDown(() async {
@@ -38,7 +39,9 @@ void main() {
       expect(File(ffmpegPath!).existsSync(), isTrue);
     });
 
-    test('Downloads public domain YouTube clip, tracks progress, and creates file', () async {
+    test(
+        'Downloads public domain YouTube clip, tracks progress, and creates file',
+        () async {
       final updates = <DownloadProgress>[];
 
       await for (final update in service.download(
@@ -53,7 +56,8 @@ void main() {
       expect(updates.any((u) => u.status == DownloadStatus.preparing), isTrue);
 
       // Verify download progress was parsed
-      final downloadUpdates = updates.where((u) => u.status == DownloadStatus.downloading).toList();
+      final downloadUpdates =
+          updates.where((u) => u.status == DownloadStatus.downloading).toList();
       expect(downloadUpdates.isNotEmpty, isTrue);
 
       // Verify completion

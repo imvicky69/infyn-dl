@@ -25,7 +25,9 @@ class PlaylistEntry {
     final entryId = json['id'] as String? ?? '';
     final rawUrl = json['url'] as String?;
     final resolvedUrl = (rawUrl != null && rawUrl.isNotEmpty)
-        ? (rawUrl.startsWith('http') ? rawUrl : 'https://www.youtube.com/watch?v=$rawUrl')
+        ? (rawUrl.startsWith('http')
+            ? rawUrl
+            : 'https://www.youtube.com/watch?v=$rawUrl')
         : 'https://www.youtube.com/watch?v=$entryId';
 
     return PlaylistEntry(
@@ -70,7 +72,8 @@ class PlaylistMetadata {
       id: json['id'] as String? ?? '',
       title: json['title'] as String? ?? 'YouTube Playlist',
       uploader: json['uploader'] as String? ?? json['channel'] as String?,
-      itemCount: (json['playlist_count'] as num?)?.toInt() ?? parsedEntries.length,
+      itemCount:
+          (json['playlist_count'] as num?)?.toInt() ?? parsedEntries.length,
       entries: parsedEntries,
       webpageUrl: json['webpage_url'] as String?,
     );

@@ -98,7 +98,9 @@ class FormatSelector extends StatelessWidget {
                   ),
                   child: Icon(
                     format.icon,
-                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                     size: 20,
                   ),
                 ),
@@ -114,7 +116,9 @@ class FormatSelector extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
-                          color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+                          color: isSelected
+                              ? AppColors.textPrimary
+                              : AppColors.textSecondary,
                         ),
                       ),
                       const SizedBox(height: 2),
@@ -123,7 +127,9 @@ class FormatSelector extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
-                          color: isSelected ? AppColors.textSecondary : AppColors.textMuted,
+                          color: isSelected
+                              ? AppColors.textSecondary
+                              : AppColors.textMuted,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -140,7 +146,9 @@ class FormatSelector extends StatelessWidget {
                     shape: BoxShape.circle,
                     color: isSelected ? AppColors.primary : Colors.transparent,
                     border: Border.all(
-                      color: isSelected ? AppColors.primary : AppColors.surfaceBorder,
+                      color: isSelected
+                          ? AppColors.primary
+                          : AppColors.surfaceBorder,
                       width: 1.8,
                     ),
                   ),

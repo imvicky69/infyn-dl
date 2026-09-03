@@ -42,16 +42,14 @@ class SettingsService {
   }
 
   /// Whether to group playlist downloads into a dedicated subfolder named after the playlist.
-  bool get playlistSubfolder =>
-      _prefs?.getBool(_keyPlaylistSubfolder) ?? true;
+  bool get playlistSubfolder => _prefs?.getBool(_keyPlaylistSubfolder) ?? true;
 
   Future<void> setPlaylistSubfolder(bool value) async {
     await _prefs?.setBool(_keyPlaylistSubfolder, value);
   }
 
   /// Number of simultaneous parallel downloads for playlists (1 to 5, default: 3).
-  int get concurrentDownloads =>
-      _prefs?.getInt(_keyConcurrentDownloads) ?? 3;
+  int get concurrentDownloads => _prefs?.getInt(_keyConcurrentDownloads) ?? 3;
 
   Future<void> setConcurrentDownloads(int count) async {
     await _prefs?.setInt(_keyConcurrentDownloads, count.clamp(1, 5));

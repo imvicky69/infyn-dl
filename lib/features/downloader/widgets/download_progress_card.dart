@@ -224,13 +224,16 @@ class DownloadProgressCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   TextButton(
-                    onPressed: () => _openDestinationFolder(progress.outputFilePath!),
+                    onPressed: () =>
+                        _openDestinationFolder(progress.outputFilePath!),
                     style: TextButton.styleFrom(
                       padding: const EdgeInsets.symmetric(horizontal: 8),
                       minimumSize: const Size(0, 28),
                       foregroundColor: AppColors.primary,
                     ),
-                    child: const Text('Open Folder', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                    child: const Text('Open Folder',
+                        style: TextStyle(
+                            fontSize: 11, fontWeight: FontWeight.w700)),
                   ),
                 ],
               ),
@@ -273,12 +276,16 @@ class DownloadProgressCard extends StatelessWidget {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error,
                     side: BorderSide(
-                      color: Theme.of(context).colorScheme.error.withValues(alpha: 0.3),
+                      color: Theme.of(context)
+                          .colorScheme
+                          .error
+                          .withValues(alpha: 0.3),
                     ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   ),
                 ),
               ],

@@ -45,9 +45,8 @@ class QualitySelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final isVideo = format == DownloadFormat.mp4;
     final title = isVideo ? 'Video Resolution' : 'Audio Bitrate';
-    final subtitle = isVideo
-        ? selectedVideoQuality.subtitle
-        : selectedAudioQuality.subtitle;
+    final subtitle =
+        isVideo ? selectedVideoQuality.subtitle : selectedAudioQuality.subtitle;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

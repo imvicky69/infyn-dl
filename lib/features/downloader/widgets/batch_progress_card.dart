@@ -27,8 +27,11 @@ class BatchProgressCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final effectiveProcessed = (currentIndex + skippedCount).clamp(0, totalItems);
-    final overallProgress = totalItems > 0 ? (effectiveProcessed / totalItems).clamp(0.0, 1.0) : 0.0;
+    final effectiveProcessed =
+        (currentIndex + skippedCount).clamp(0, totalItems);
+    final overallProgress = totalItems > 0
+        ? (effectiveProcessed / totalItems).clamp(0.0, 1.0)
+        : 0.0;
     final overallPercent = (overallProgress * 100).toInt();
 
     return Container(
@@ -92,16 +95,19 @@ class BatchProgressCard extends StatelessWidget {
               ),
               if (concurrency > 1)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   decoration: BoxDecoration(
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    border: Border.all(
+                        color: AppColors.primary.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.bolt_rounded, size: 14, color: AppColors.primary),
+                      const Icon(Icons.bolt_rounded,
+                          size: 14, color: AppColors.primary),
                       const SizedBox(width: 2),
                       Text(
                         '${concurrency}x Parallel',
@@ -142,7 +148,9 @@ class BatchProgressCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  currentItemTitle.isNotEmpty ? currentItemTitle : 'Downloading tracks in parallel...',
+                  currentItemTitle.isNotEmpty
+                      ? currentItemTitle
+                      : 'Downloading tracks in parallel...',
                   style: const TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
@@ -173,7 +181,8 @@ class BatchProgressCard extends StatelessWidget {
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    if (itemProgress.speed != null && itemProgress.speed!.isNotEmpty)
+                    if (itemProgress.speed != null &&
+                        itemProgress.speed!.isNotEmpty)
                       Text(
                         itemProgress.speed!,
                         style: const TextStyle(
@@ -181,7 +190,8 @@ class BatchProgressCard extends StatelessWidget {
                           color: AppColors.textMuted,
                         ),
                       ),
-                    if (itemProgress.eta != null && itemProgress.eta!.isNotEmpty)
+                    if (itemProgress.eta != null &&
+                        itemProgress.eta!.isNotEmpty)
                       Text(
                         'ETA: ${itemProgress.eta}',
                         style: const TextStyle(
@@ -200,7 +210,8 @@ class BatchProgressCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(
               children: [
-                const Icon(Icons.check_circle_outline_rounded, size: 14, color: AppColors.success),
+                const Icon(Icons.check_circle_outline_rounded,
+                    size: 14, color: AppColors.success),
                 const SizedBox(width: 6),
                 Text(
                   '$skippedCount duplicate${skippedCount > 1 ? 's' : ''} auto-skipped (already downloaded)',
@@ -224,8 +235,10 @@ class BatchProgressCard extends StatelessWidget {
               style: OutlinedButton.styleFrom(
                 foregroundColor: AppColors.error,
                 side: BorderSide(color: AppColors.error),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
               ),
               icon: const Icon(Icons.stop_circle_outlined, size: 16),
               label: const Text(

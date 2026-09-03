@@ -145,7 +145,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     }
 
     if (_isValidUrl(trimmed)) {
-      if (_isYouTubeMusicUrl(trimmed) && _selectedFormat != DownloadFormat.mp3) {
+      if (_isYouTubeMusicUrl(trimmed) &&
+          _selectedFormat != DownloadFormat.mp3) {
         setState(() {
           _selectedFormat = DownloadFormat.mp3;
         });
@@ -169,16 +170,19 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     try {
       var queryUrl = rawUrl.trim();
       if (queryUrl.contains('music.youtube.com/playlist')) {
-        queryUrl = queryUrl.replaceAll('music.youtube.com/playlist', 'www.youtube.com/playlist');
+        queryUrl = queryUrl.replaceAll(
+            'music.youtube.com/playlist', 'www.youtube.com/playlist');
       }
 
       if (_isPlaylistUrl(queryUrl)) {
-        final playlist = await _downloaderService.fetchPlaylistMetadata(queryUrl);
+        final playlist =
+            await _downloaderService.fetchPlaylistMetadata(queryUrl);
         if (!mounted) return;
         if (playlist != null && playlist.entries.isNotEmpty) {
           setState(() {
             _playlistMetadata = playlist;
-            _selectedPlaylistIndices = Set.from(List.generate(playlist.entries.length, (i) => i));
+            _selectedPlaylistIndices =
+                Set.from(List.generate(playlist.entries.length, (i) => i));
             _isFetchingMetadata = false;
           });
           return;
@@ -206,7 +210,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
       );
       if (selected != null && selected.isNotEmpty) {
         await SettingsService.instance.setCustomDownloadPath(selected);
-        final resolved = await SettingsService.instance.resolveDownloadDirectory();
+        final resolved =
+            await SettingsService.instance.resolveDownloadDirectory();
         if (mounted) {
           setState(() {
             _currentDownloadDir = resolved;
@@ -359,7 +364,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         final entry = playlist.entries[originalIndex];
 
         if (autoSkip) {
-          final isDuplicate = await DownloadHistoryService.instance.isAlreadyDownloaded(
+          final isDuplicate =
+              await DownloadHistoryService.instance.isAlreadyDownloaded(
             title: entry.title,
             format: _selectedFormat,
             targetDirectory: targetFolder,
@@ -548,7 +554,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                   UrlInputField(
                     controller: _urlController,
                     onChanged: _handleUrlChanged,
-                    onSubmitted: (_) => _fetchDetails(_urlController.text.trim()),
+                    onSubmitted: (_) =>
+                        _fetchDetails(_urlController.text.trim()),
                     errorText: _errorMessage,
                   ),
                   const SizedBox(height: 12),
@@ -565,41 +572,40 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                   // 5. Dynamic Content (Fetched Media Card & Available Sizes)
                   if (hasDetails) ...[
                     const SizedBox(height: 18),
-
                     if (_metadata != null)
                       VideoPreviewCard(metadata: _metadata!),
-
                     if (_playlistMetadata != null)
                       PlaylistPreviewCard(
                         playlist: _playlistMetadata!,
                         selectedIndices: _selectedPlaylistIndices,
-                        onSelectionChanged: (set) => setState(() => _selectedPlaylistIndices = set),
+                        onSelectionChanged: (set) =>
+                            setState(() => _selectedPlaylistIndices = set),
                       ),
-
                     const SizedBox(height: 16),
-
                     FormatSelector(
                       selectedFormat: _selectedFormat,
                       onFormatChanged: _handleFormatChanged,
                     ),
                     const SizedBox(height: 16),
-
                     QualitySelector(
                       format: _selectedFormat,
                       selectedVideoQuality: _selectedVideoQuality,
                       selectedAudioQuality: _selectedAudioQuality,
                       metadata: _metadata,
                       onVideoQualityChanged: (quality) {
-                        if (_downloadProgress.isActive || _isBatchDownloading) return;
+                        if (_downloadProgress.isActive || _isBatchDownloading) {
+                          return;
+                        }
                         setState(() => _selectedVideoQuality = quality);
                       },
                       onAudioQualityChanged: (quality) {
-                        if (_downloadProgress.isActive || _isBatchDownloading) return;
+                        if (_downloadProgress.isActive || _isBatchDownloading) {
+                          return;
+                        }
                         setState(() => _selectedAudioQuality = quality);
                       },
                     ),
                     const SizedBox(height: 20),
-
                     DownloadButton(
                       key: const Key('download_action_button'),
                       selectedFormat: _selectedFormat,
@@ -608,8 +614,10 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                           : (_selectedFormat == DownloadFormat.mp4
                               ? _selectedVideoQuality.shortLabel
                               : _selectedAudioQuality.shortLabel),
-                      isLoading: _downloadProgress.isActive || _isBatchDownloading,
-                      onPressed: (_playlistMetadata != null && _selectedPlaylistIndices.isEmpty)
+                      isLoading:
+                          _downloadProgress.isActive || _isBatchDownloading,
+                      onPressed: (_playlistMetadata != null &&
+                              _selectedPlaylistIndices.isEmpty)
                           ? null
                           : _handleDownload,
                     ),
@@ -625,7 +633,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                       key: const Key('download_progress_card'),
                       progress: _downloadProgress,
                       onCancel: _handleCancel,
-                      onDismiss: () => setState(() => _downloadProgress = DownloadProgress.idle()),
+                      onDismiss: () => setState(
+                          () => _downloadProgress = DownloadProgress.idle()),
                     ),
                   ],
 
@@ -633,7 +642,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                   if (_isBatchDownloading) ...[
                     const SizedBox(height: 16),
                     BatchProgressCard(
-                      playlistTitle: _playlistMetadata?.title ?? 'Batch Playlist',
+                      playlistTitle:
+                          _playlistMetadata?.title ?? 'Batch Playlist',
                       currentIndex: _batchCurrentIndex,
                       totalItems: _batchTotalItems,
                       skippedCount: _batchSkippedCount,
@@ -645,7 +655,10 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                   ],
 
                   // 8. Rich Dashboard Section (Shown when no media is fetched, avoids empty screen!)
-                  if (!hasDetails && !_isFetchingMetadata && !_downloadProgress.isActive && !_isBatchDownloading) ...[
+                  if (!hasDetails &&
+                      !_isFetchingMetadata &&
+                      !_downloadProgress.isActive &&
+                      !_isBatchDownloading) ...[
                     const SizedBox(height: 24),
                     _buildFeaturesShowcase(),
                     if (_recentDownloads.isNotEmpty) ...[
@@ -755,7 +768,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
       ),
       child: Row(
         children: [
-          const Icon(Icons.folder_outlined, size: 16, color: AppColors.textSecondary),
+          const Icon(Icons.folder_outlined,
+              size: 16, color: AppColors.textSecondary),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -1017,7 +1031,9 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
             child: Row(
               children: [
                 Icon(
-                  item.format == DownloadFormat.mp3 ? Icons.music_note_rounded : Icons.videocam_rounded,
+                  item.format == DownloadFormat.mp3
+                      ? Icons.music_note_rounded
+                      : Icons.videocam_rounded,
                   size: 20,
                   color: AppColors.primary,
                 ),
@@ -1028,19 +1044,24 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                     children: [
                       Text(
                         item.title,
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                        style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
                       Text(
                         '${item.format.name.toUpperCase()} • ${item.quality} ${item.formattedFileSize.isNotEmpty ? "• ${item.formattedFileSize}" : ""}',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+                        style: const TextStyle(
+                            fontSize: 11, color: AppColors.textMuted),
                       ),
                     ],
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.play_circle_outline_rounded, size: 20, color: AppColors.primary),
+                  icon: const Icon(Icons.play_circle_outline_rounded,
+                      size: 20, color: AppColors.primary),
                   onPressed: () => FileOpener.open(item.filePath),
                   tooltip: 'Play',
                 ),

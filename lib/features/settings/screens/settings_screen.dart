@@ -65,7 +65,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       if (selectedDirectory != null && selectedDirectory.isNotEmpty) {
         await SettingsService.instance.setCustomDownloadPath(selectedDirectory);
-        final resolved = await SettingsService.instance.resolveDownloadDirectory();
+        final resolved =
+            await SettingsService.instance.resolveDownloadDirectory();
         if (mounted) {
           setState(() {
             _currentDownloadDir = resolved;
@@ -153,7 +154,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.folder_rounded, color: AppColors.primary, size: 20),
+                      child: const Icon(Icons.folder_rounded,
+                          color: AppColors.primary, size: 20),
                     ),
                     const SizedBox(width: 12),
                     const Expanded(
@@ -162,11 +164,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           Text(
                             'Save Destination',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary),
                           ),
                           Text(
                             'Where completed videos and music files are saved',
-                            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.textSecondary),
                           ),
                         ],
                       ),
@@ -178,7 +184,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 // Current path badge
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   decoration: BoxDecoration(
                     color: AppColors.surfaceElevated,
                     borderRadius: BorderRadius.circular(10),
@@ -204,11 +211,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(vertical: 10),
                         ),
-                        icon: const Icon(Icons.drive_file_move_rounded, size: 16),
-                        label: const Text('Change Folder', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        icon:
+                            const Icon(Icons.drive_file_move_rounded, size: 16),
+                        label: const Text('Change Folder',
+                            style: TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -217,11 +228,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: _resetDefaultDirectory,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textSecondary,
-                          side: const BorderSide(color: AppColors.surfaceBorder),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          side:
+                              const BorderSide(color: AppColors.surfaceBorder),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
                         ),
-                        child: const Text('Reset', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                        child: const Text('Reset',
+                            style: TextStyle(
+                                fontSize: 13, fontWeight: FontWeight.w600)),
                       ),
                   ],
                 ),
@@ -255,45 +271,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SwitchListTile(
                   value: _autoSkip,
                   activeThumbColor: AppColors.primary,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   title: const Text(
                     'Auto-Skip Already Downloaded Files',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary),
                   ),
                   subtitle: const Text(
                     'Instantly skips songs or videos that already exist on disk or in history',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   onChanged: (val) async {
                     await SettingsService.instance.setAutoSkipDuplicates(val);
                     setState(() => _autoSkip = val);
                   },
                 ),
-                const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.surfaceBorder),
+                const Divider(
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                    color: AppColors.surfaceBorder),
 
                 // Playlist subfolder toggle
                 SwitchListTile(
                   value: _playlistSubfolder,
                   activeThumbColor: AppColors.primary,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   title: const Text(
                     'Create Playlist Subfolder',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary),
                   ),
                   subtitle: const Text(
                     'Groups batch playlist downloads into a dedicated folder named after the playlist',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 12, color: AppColors.textSecondary),
                   ),
                   onChanged: (val) async {
                     await SettingsService.instance.setPlaylistSubfolder(val);
                     setState(() => _playlistSubfolder = val);
                   },
                 ),
-                const Divider(height: 1, indent: 16, endIndent: 16, color: AppColors.surfaceBorder),
+                const Divider(
+                    height: 1,
+                    indent: 16,
+                    endIndent: 16,
+                    color: AppColors.surfaceBorder),
 
                 // Parallel Downloads Speed
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -302,17 +337,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         children: [
                           const Text(
                             'Parallel Playlist Downloads',
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                            style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               '${_concurrentDownloads}x Speed',
-                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+                              style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primary),
                             ),
                           ),
                         ],
@@ -320,7 +362,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       const SizedBox(height: 4),
                       const Text(
                         'Downloads multiple tracks simultaneously to drastically accelerate batch playlists.',
-                        style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
                       ),
                       const SizedBox(height: 10),
                       Row(
@@ -328,20 +371,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           final isSelected = _concurrentDownloads == count;
                           return Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 3),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 3),
                               child: InkWell(
                                 onTap: () async {
-                                  await SettingsService.instance.setConcurrentDownloads(count);
+                                  await SettingsService.instance
+                                      .setConcurrentDownloads(count);
                                   setState(() => _concurrentDownloads = count);
                                 },
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 8),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
                                   decoration: BoxDecoration(
-                                    color: isSelected ? AppColors.primary : AppColors.surfaceElevated,
+                                    color: isSelected
+                                        ? AppColors.primary
+                                        : AppColors.surfaceElevated,
                                     borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: isSelected ? AppColors.primary : AppColors.surfaceBorder,
+                                      color: isSelected
+                                          ? AppColors.primary
+                                          : AppColors.surfaceBorder,
                                     ),
                                   ),
                                   child: Center(
@@ -350,7 +400,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                       style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
-                                        color: isSelected ? Colors.white : AppColors.textPrimary,
+                                        color: isSelected
+                                            ? Colors.white
+                                            : AppColors.textPrimary,
                                       ),
                                     ),
                                   ),
@@ -390,7 +442,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             child: _isLoadingBackend
                 ? const Center(
-                    child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: AppColors.primary),
                   )
                 : Column(
                     children: [
@@ -435,7 +488,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 8),
                 const Text(
                   'Infyn DL • v1.0.0',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 2),
                 const Text(
@@ -451,7 +507,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildDiagnosticRow(String title, String subtitle, IconData icon, Color iconColor) {
+  Widget _buildDiagnosticRow(
+      String title, String subtitle, IconData icon, Color iconColor) {
     return Row(
       children: [
         Icon(icon, size: 18, color: iconColor),
@@ -460,8 +517,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-              Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+              Text(title,
+                  style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary)),
+              Text(subtitle,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
             ],
           ),
         ),
@@ -473,7 +536,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
           child: const Text(
             'ACTIVE',
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.success),
+            style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w800,
+                color: AppColors.success),
           ),
         ),
       ],
