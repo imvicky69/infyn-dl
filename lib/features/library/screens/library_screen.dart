@@ -19,8 +19,10 @@ import '../../downloader/services/downloader_service.dart';
 import '../../downloader/services/windows_downloader_service.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/library_folder.dart';
+import '../models/track.dart';
 import '../widgets/folder_card.dart';
 import '../widgets/move_to_folder_sheet.dart';
+import '../../player/services/audio_player_service.dart';
 
 /// Screen showcasing downloaded media organized by playlist folders,
 /// unorganized direct downloads, and separate video folders with rich thumbnail artwork.
@@ -230,6 +232,30 @@ class _LibraryScreenState extends State<LibraryScreen> {
         'File no longer exists at: ${item.filePath}',
         isError: true,
       );
+      return;
+    }
+
+    final ext = p.extension(resolvedPath).toLowerCase();
+    if (item.format == DownloadFormat.mp3 ||
+        ext == '.mp3' ||
+        ext == '.m4a' ||
+        ext == '.wav' ||
+        ext == '.flac') {
+      final rawName = p.basenameWithoutExtension(resolvedPath);
+      String artist = 'Unknown Artist';
+      if (rawName.contains(' - ')) {
+        final parts = rawName.split(' - ');
+        artist = parts[0].trim();
+      }
+      final track = Track(
+        id: resolvedPath,
+        title: item.title,
+        artist: artist,
+        filePath: resolvedPath,
+        artworkPath: item.thumbnailUrl,
+        album: item.playlistName,
+      );
+      await AudioPlayerService.instance.playTrack(track);
       return;
     }
 

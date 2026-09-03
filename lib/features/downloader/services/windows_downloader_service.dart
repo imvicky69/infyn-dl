@@ -205,8 +205,20 @@ class WindowsDownloaderService implements DownloaderService {
         ]);
 
         if (ffmpegDir != null) {
-          args.addAll(['--ffmpeg-location', ffmpegDir]);
+          args.addAll([
+            '--ffmpeg-location',
+            ffmpegDir,
+            '--embed-thumbnail',
+          ]);
         }
+
+        // Keep thumbnail on disk and embed rich metadata for audio/video players
+        args.addAll([
+          '--embed-metadata',
+          '--write-thumbnail',
+          '--convert-thumbnails',
+          'jpg',
+        ]);
 
         if (format == DownloadFormat.mp4) {
           args.addAll([
