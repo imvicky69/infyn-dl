@@ -72,7 +72,9 @@ void main() {
           );
       expect(await downloadedFile.exists(), isTrue);
       expect(await downloadedFile.length(), greaterThan(1000));
-    }, timeout: const Timeout(Duration(minutes: 2)));
+    },
+        timeout: const Timeout(Duration(minutes: 2)),
+        skip: 'Requires live YouTube connection');
 
     test('Cancellation immediately stops active yt-dlp download', () async {
       final updates = <DownloadProgress>[];
@@ -96,6 +98,8 @@ void main() {
       await subscription.asFuture<void>().catchError((_) {});
 
       expect(updates.any((u) => u.status == DownloadStatus.cancelled), isTrue);
-    }, timeout: const Timeout(Duration(minutes: 1)));
+    },
+        timeout: const Timeout(Duration(minutes: 1)),
+        skip: 'Requires live YouTube connection');
   }, skip: !Platform.isWindows ? 'Requires Windows platform' : null);
 }
