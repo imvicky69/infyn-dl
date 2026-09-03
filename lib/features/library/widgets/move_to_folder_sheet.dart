@@ -153,7 +153,8 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
             // Destinations List
             Flexible(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: Column(
                   children: [
                     // 1. Unorganized Option

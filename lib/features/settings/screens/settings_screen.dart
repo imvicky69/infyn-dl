@@ -612,7 +612,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       if (!kIsWeb &&
                           defaultTargetPlatform == TargetPlatform.android) ...[
-                        const Divider(height: 16, color: AppColors.surfaceBorder),
+                        const Divider(
+                            height: 16, color: AppColors.surfaceBorder),
                         Row(
                           children: [
                             const Icon(Icons.system_update_alt_rounded,

@@ -19,7 +19,9 @@ void main() {
   );
 
   group('FileResolver Tests', () {
-    test('Normalizes strings across fullwidth characters, spaces, and punctuation', () {
+    test(
+        'Normalizes strings across fullwidth characters, spaces, and punctuation',
+        () {
       const titleWithPipes =
           'Sunta Hai Mera Khuda Full Lyrical Video | Pukar | Melody Maker - A.R Rahman';
       const fileWithFullwidthPipe =
@@ -43,8 +45,11 @@ void main() {
       expect(normalized, contains('kumarsanu'));
     });
 
-    test('Resolves existing file on disk even when cached path has character mismatches', () async {
-      final tempDir = await Directory.systemTemp.createTemp('file_resolver_test_');
+    test(
+        'Resolves existing file on disk even when cached path has character mismatches',
+        () async {
+      final tempDir =
+          await Directory.systemTemp.createTemp('file_resolver_test_');
       addTearDown(() => tempDir.deleteSync(recursive: true));
 
       // Create physical file with fullwidth pipe (\uFF5C) as yt-dlp creates
@@ -58,7 +63,8 @@ void main() {
         id: 'test_item_1',
         title: 'Sunta Hai Mera Khuda | Pukar',
         url: 'https://www.youtube.com/watch?v=3sULzt1AC3I',
-        filePath: '${tempDir.path}${Platform.pathSeparator}Sunta Hai Mera Khuda  Pukar.mp3',
+        filePath:
+            '${tempDir.path}${Platform.pathSeparator}Sunta Hai Mera Khuda  Pukar.mp3',
         format: DownloadFormat.mp3,
         quality: '320k',
         timestamp: DateTime.now(),
@@ -118,7 +124,8 @@ void main() {
         timestamp: DateTime.now(),
       );
 
-      expect(item.effectiveThumbnailUrl, equals('https://example.com/custom_artwork.jpg'));
+      expect(item.effectiveThumbnailUrl,
+          equals('https://example.com/custom_artwork.jpg'));
     });
 
     test('copyWith updates fields and clears playlistName when requested', () {
@@ -179,7 +186,8 @@ void main() {
       expect(folder.videoCount, equals(0));
       expect(folder.formattedTotalSize, equals('15.0 MB'));
       expect(folder.previewThumbnailUrls.length, equals(2));
-      expect(folder.previewThumbnailUrls[0], equals('https://img.youtube.com/vi/vid11111111/mqdefault.jpg'));
+      expect(folder.previewThumbnailUrls[0],
+          equals('https://img.youtube.com/vi/vid11111111/mqdefault.jpg'));
     });
 
     test('Unorganized and Videos folders are correctly flagged', () {

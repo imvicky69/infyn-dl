@@ -385,7 +385,10 @@ class WindowsDownloaderService implements DownloaderService {
                 final entities = await dir.list().toList();
                 entities.sort((a, b) {
                   try {
-                    return b.statSync().modified.compareTo(a.statSync().modified);
+                    return b
+                        .statSync()
+                        .modified
+                        .compareTo(a.statSync().modified);
                   } catch (_) {
                     return 0;
                   }
@@ -393,7 +396,9 @@ class WindowsDownloaderService implements DownloaderService {
                 for (final e in entities) {
                   if (e is File) {
                     final eExt = p.extension(e.path).toLowerCase();
-                    if (eExt == ext || (format == DownloadFormat.mp4 && (eExt == '.mkv' || eExt == '.webm'))) {
+                    if (eExt == ext ||
+                        (format == DownloadFormat.mp4 &&
+                            (eExt == '.mkv' || eExt == '.webm'))) {
                       finalOutput = e.path;
                       break;
                     }

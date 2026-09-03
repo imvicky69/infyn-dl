@@ -113,7 +113,8 @@ class FileResolver {
           // Exact normalized match against title or original filename
           if (entityNorm.isNotEmpty &&
               (entityNorm == targetNormTitle ||
-                  (targetNormFile.isNotEmpty && entityNorm == targetNormFile))) {
+                  (targetNormFile.isNotEmpty &&
+                      entityNorm == targetNormFile))) {
             _healItemPath(item, entity.path);
             return entity.path;
           }
@@ -138,8 +139,7 @@ class FileResolver {
   /// Silently updates the cached item filePath in [DownloadHistoryService].
   static void _healItemPath(DownloadItem item, String realPath) {
     if (item.filePath != realPath) {
-      debugPrint(
-          'FileResolver self-healed: "${item.title}" -> "$realPath"');
+      debugPrint('FileResolver self-healed: "${item.title}" -> "$realPath"');
       DownloadHistoryService.instance.updateItemFilePath(item.id, realPath);
     }
   }

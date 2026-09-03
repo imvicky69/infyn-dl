@@ -226,10 +226,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   void _openMoveSheet(List<DownloadItem> items) {
-    final playlists = _folders
-        .where((f) => f.isPlaylist)
-        .map((f) => f.name)
-        .toList();
+    final playlists =
+        _folders.where((f) => f.isPlaylist).map((f) => f.name).toList();
 
     MoveToFolderSheet.show(
       context: context,
@@ -677,10 +675,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     : 'Moved to "${folder.name}"',
               );
             },
-            onOpenInExplorer: _isDesktop
-                ? () => _openFolderInExplorer(folder)
-                : null,
-            onRename: folder.isPlaylist ? () => _renameFolderDialog(folder) : null,
+            onOpenInExplorer:
+                _isDesktop ? () => _openFolderInExplorer(folder) : null,
+            onRename:
+                folder.isPlaylist ? () => _renameFolderDialog(folder) : null,
             onDelete: () => _deleteFolderDialog(folder),
           );
         },
@@ -864,8 +862,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     const TextStyle(fontSize: 13, color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search in "${current.name}"...',
-                  hintStyle: const TextStyle(
-                      fontSize: 13, color: AppColors.textMuted),
+                  hintStyle:
+                      const TextStyle(fontSize: 13, color: AppColors.textMuted),
                   prefixIcon: const Icon(Icons.search_rounded,
                       size: 18, color: AppColors.textMuted),
                   suffixIcon: _searchQuery.isNotEmpty

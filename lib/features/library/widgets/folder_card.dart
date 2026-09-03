@@ -67,9 +67,8 @@ class _FolderCardState extends State<FolderCard> {
                 : AppColors.surface,
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: _isDragHovered
-                  ? AppColors.primary
-                  : AppColors.surfaceBorder,
+              color:
+                  _isDragHovered ? AppColors.primary : AppColors.surfaceBorder,
               width: _isDragHovered ? 2.0 : 1.0,
             ),
             boxShadow: _isDragHovered
