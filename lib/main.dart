@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/screens/main_shell_screen.dart';
+import 'features/settings/services/settings_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await SettingsService.instance.init();
   runApp(const MediaDownloaderApp());
 }
 
@@ -12,13 +14,22 @@ class MediaDownloaderApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Infyn DL',
-      debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.light,
-      home: const MainShellScreen(),
+    return ValueListenableBuilder<ThemeMode>(
+      valueListenable: SettingsService.instance.themeModeNotifier,
+      builder: (context, themeMode, _) {
+        return MaterialApp(
+          title: 'Infyn DL',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeMode,
+          builder: (context, child) {
+            AppColors.isDark = Theme.of(context).brightness == Brightness.dark;
+            return child!;
+          },
+          home: const MainShellScreen(),
+        );
+      },
     );
   }
 }

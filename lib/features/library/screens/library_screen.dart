@@ -313,7 +313,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         content: TextField(
           controller: controller,
           autofocus: true,
-          style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+          style: TextStyle(fontSize: 14, color: AppColors.textPrimary),
           decoration: const InputDecoration(
             labelText: 'Folder Name',
             border: OutlineInputBorder(),
@@ -360,7 +360,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         content: Text(
           'Remove all ${folder.count} items in "${folder.name}" from your library?\n\nDo you also want to delete the physical files from disk?',
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
@@ -403,7 +403,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
         content: Text(
           'Remove "${item.title}" from downloads library?\n\nDo you also want to delete the file from disk?',
-          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
@@ -444,7 +444,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: const Text('Clear All History',
             style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-        content: const Text(
+        content: Text(
           'This will clear all entries from your downloads cache. Files on disk will NOT be deleted.',
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
@@ -505,7 +505,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: const Text(
+        title: Text(
           'Downloads Library',
           style: TextStyle(
             fontSize: 20,
@@ -542,8 +542,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           const SizedBox(width: 8),
           if (_items.isNotEmpty)
             IconButton(
-              icon: const Icon(Icons.delete_sweep_rounded,
-                  color: AppColors.textMuted),
+              icon:
+                  Icon(Icons.delete_sweep_rounded, color: AppColors.textMuted),
               tooltip: 'Clear history',
               onPressed: _clearAllHistory,
             ),
@@ -551,7 +551,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ],
       ),
       body: _isLoading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(
                 strokeWidth: 2,
                 color: AppColors.primary,
@@ -577,15 +577,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           controller: _searchController,
                           onChanged: (val) =>
                               setState(() => _searchQuery = val.trim()),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 13, color: AppColors.textPrimary),
                           decoration: InputDecoration(
                             hintText: _viewMode == 'folders'
                                 ? 'Search folders or tracks...'
                                 : 'Search downloads...',
-                            hintStyle: const TextStyle(
+                            hintStyle: TextStyle(
                                 fontSize: 13, color: AppColors.textMuted),
-                            prefixIcon: const Icon(Icons.search_rounded,
+                            prefixIcon: Icon(Icons.search_rounded,
                                 size: 18, color: AppColors.textMuted),
                             suffixIcon: _searchQuery.isNotEmpty
                                 ? IconButton(
@@ -644,7 +644,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                 ),
 
-                const Divider(height: 1, color: AppColors.surfaceBorder),
+                Divider(height: 1, color: AppColors.surfaceBorder),
 
                 // Main Content
                 Expanded(
@@ -797,8 +797,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         elevation: 0,
         scrolledUnderElevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded,
-              color: AppColors.textPrimary),
+          icon: Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
           onPressed: () {
             setState(() {
               _openedFolder = null;
@@ -831,7 +830,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 children: [
                   Text(
                     current.name,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w800,
                       color: AppColors.textPrimary,
@@ -840,8 +839,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                   Text(
                     '${current.count} ${current.count == 1 ? 'track' : 'tracks'}${current.formattedTotalSize.isNotEmpty ? ' • ${current.formattedTotalSize}' : ''}',
-                    style: const TextStyle(
-                        fontSize: 11, color: AppColors.textSecondary),
+                    style:
+                        TextStyle(fontSize: 11, color: AppColors.textSecondary),
                   ),
                 ],
               ),
@@ -868,15 +867,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           if (_isDesktop)
             IconButton(
-              icon: const Icon(Icons.open_in_new_rounded,
+              icon: Icon(Icons.open_in_new_rounded,
                   color: AppColors.textSecondary),
               tooltip: 'Open in Explorer',
               onPressed: () => _openFolderInExplorer(current),
             ),
           if (current.isPlaylist)
             PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert_rounded,
-                  color: AppColors.textSecondary),
+              icon:
+                  Icon(Icons.more_vert_rounded, color: AppColors.textSecondary),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               onSelected: (val) {
@@ -889,7 +888,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 if (val == 'delete') _deleteFolderDialog(current);
               },
               itemBuilder: (ctx) => [
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'sync',
                   child: Row(
                     children: [
@@ -903,7 +902,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
                 if (current.playlistUrl != null &&
                     current.playlistUrl!.isNotEmpty)
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'copy_link',
                     child: Row(
                       children: [
@@ -919,7 +918,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   value: 'edit_link',
                   child: Row(
                     children: [
-                      const Icon(Icons.link_rounded,
+                      Icon(Icons.link_rounded,
                           size: 16, color: AppColors.textSecondary),
                       const SizedBox(width: 8),
                       Text(
@@ -933,7 +932,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                 ),
                 const PopupMenuDivider(),
-                const PopupMenuItem(
+                PopupMenuItem(
                   value: 'rename',
                   child: Row(
                     children: [
@@ -977,13 +976,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
               child: TextField(
                 controller: _searchController,
                 onChanged: (val) => setState(() => _searchQuery = val.trim()),
-                style:
-                    const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
                 decoration: InputDecoration(
                   hintText: 'Search in "${current.name}"...',
                   hintStyle:
-                      const TextStyle(fontSize: 13, color: AppColors.textMuted),
-                  prefixIcon: const Icon(Icons.search_rounded,
+                      TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  prefixIcon: Icon(Icons.search_rounded,
                       size: 18, color: AppColors.textMuted),
                   suffixIcon: _searchQuery.isNotEmpty
                       ? IconButton(
@@ -1004,7 +1002,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           // Playlist sync bar
           if (current.isPlaylist) _buildPlaylistSyncBar(current),
 
-          const Divider(height: 1, color: AppColors.surfaceBorder),
+          Divider(height: 1, color: AppColors.surfaceBorder),
 
           // Items inside folder
           Expanded(
@@ -1014,7 +1012,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       _searchQuery.isNotEmpty
                           ? 'No matches found'
                           : 'No items in this folder',
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 13, color: AppColors.textSecondary),
                     ),
                   )
@@ -1049,7 +1047,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                               const SizedBox(width: 8),
                               Text(
                                 'Missing from Library (${_missingEntries.length})',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 13,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.textPrimary,
@@ -1084,7 +1082,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           if (_isMultiSelectMode)
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              decoration: const BoxDecoration(
+              decoration: BoxDecoration(
                 color: AppColors.surface,
                 border: Border(
                   top: BorderSide(color: AppColors.surfaceBorder),
@@ -1095,7 +1093,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   children: [
                     Text(
                       '${_selectedItemIds.length} selected',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
@@ -1283,7 +1281,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   children: [
                     Text(
                       item.title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
@@ -1324,24 +1322,24 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         if (item.quality.isNotEmpty) ...[
                           Text(
                             item.quality,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 11, color: AppColors.textMuted),
                           ),
-                          const Text(' • ',
+                          Text(' • ',
                               style: TextStyle(color: AppColors.textMuted)),
                         ],
                         if (item.formattedFileSize.isNotEmpty) ...[
                           Text(
                             item.formattedFileSize,
-                            style: const TextStyle(
+                            style: TextStyle(
                                 fontSize: 11, color: AppColors.textMuted),
                           ),
-                          const Text(' • ',
+                          Text(' • ',
                               style: TextStyle(color: AppColors.textMuted)),
                         ],
                         Text(
                           _formatTimestamp(item.timestamp),
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11, color: AppColors.textMuted),
                         ),
                       ],
@@ -1351,13 +1349,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       const SizedBox(height: 3),
                       Row(
                         children: [
-                          const Icon(Icons.playlist_play_rounded,
+                          Icon(Icons.playlist_play_rounded,
                               size: 13, color: AppColors.textMuted),
                           const SizedBox(width: 3),
                           Flexible(
                             child: Text(
                               item.playlistName!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 10, color: AppColors.textMuted),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1371,7 +1369,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
               // Action menu
               PopupMenuButton<String>(
-                icon: const Icon(Icons.more_vert_rounded,
+                icon: Icon(Icons.more_vert_rounded,
                     size: 18, color: AppColors.textMuted),
                 color: AppColors.surface,
                 shape: RoundedRectangleBorder(
@@ -1388,7 +1386,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'open',
                     child: Row(
                       children: [
@@ -1399,7 +1397,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       ],
                     ),
                   ),
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'move',
                     child: Row(
                       children: [
@@ -1412,7 +1410,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     ),
                   ),
                   if (_isDesktop)
-                    const PopupMenuItem(
+                    PopupMenuItem(
                       value: 'explorer',
                       child: Row(
                         children: [
@@ -1463,7 +1461,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.drive_file_move_rounded,
+                Icon(Icons.drive_file_move_rounded,
                     size: 18, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Expanded(
@@ -1523,16 +1521,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
           children: [
             Text(
               'Link YouTube or YouTube Music playlist for "${folder.name}". This enables checking for missing tracks and 1-click downloads directly in this folder.',
-              style:
-                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 14),
             TextField(
               controller: controller,
               autofocus: true,
-              style:
-                  const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-              decoration: const InputDecoration(
+              style: TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              decoration: InputDecoration(
                 hintText: 'https://www.youtube.com/playlist?list=...',
                 hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
                 prefixIcon: Icon(Icons.link_rounded, size: 18),
@@ -1784,7 +1780,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       fit: BoxFit.cover,
                       errorBuilder: (_, __, ___) => Container(
                         color: AppColors.surfaceElevated,
-                        child: const Icon(Icons.music_note_rounded,
+                        child: Icon(Icons.music_note_rounded,
                             color: AppColors.textMuted, size: 20),
                       ),
                     ),
@@ -1808,7 +1804,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 children: [
                   Text(
                     entry.title,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
@@ -1826,7 +1822,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           color: AppColors.surfaceElevated,
                           borderRadius: BorderRadius.circular(4),
                         ),
-                        child: const Text(
+                        child: Text(
                           'Not Downloaded',
                           style: TextStyle(
                             fontSize: 9,
@@ -1839,7 +1835,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         const SizedBox(width: 8),
                         Text(
                           entry.formattedDuration,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             color: AppColors.textMuted,
                           ),
@@ -1849,7 +1845,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         const SizedBox(width: 8),
                         Text(
                           '${(progress * 100).toInt()}%',
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
                             color: AppColors.primary,
@@ -1877,7 +1873,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
             // One-click download button
             if (isDownloading)
-              const SizedBox(
+              SizedBox(
                 width: 28,
                 height: 28,
                 child: Padding(
@@ -1890,7 +1886,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               )
             else
               IconButton(
-                icon: const Icon(Icons.download_rounded,
+                icon: Icon(Icons.download_rounded,
                     color: AppColors.primary, size: 20),
                 tooltip: 'Download track to this playlist',
                 onPressed: () => _downloadSingleMissingSong(
@@ -1943,7 +1939,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
               if (hasUrl) ...[
                 IconButton(
-                  icon: const Icon(Icons.copy_rounded,
+                  icon: Icon(Icons.copy_rounded,
                       size: 16, color: AppColors.textSecondary),
                   tooltip: 'Copy Playlist Link',
                   padding: EdgeInsets.zero,
@@ -1952,7 +1948,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   onPressed: () => _copyPlaylistLink(current.playlistUrl!),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.open_in_new_rounded,
+                  icon: Icon(Icons.open_in_new_rounded,
                       size: 16, color: AppColors.textSecondary),
                   tooltip: 'Open in Browser',
                   padding: EdgeInsets.zero,
@@ -1977,7 +1973,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           Row(
             children: [
               if (_isSyncingPlaylist) ...[
-                const SizedBox(
+                SizedBox(
                   width: 14,
                   height: 14,
                   child: CircularProgressIndicator(
@@ -1986,7 +1982,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Checking playlist online...',
                   style: TextStyle(
                       fontSize: 12,
@@ -2059,14 +2055,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(color: AppColors.surfaceBorder),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.folder_open_rounded,
                 size: 36,
                 color: AppColors.textMuted,
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
+            Text(
               'No Downloads Yet',
               style: TextStyle(
                 fontSize: 16,
@@ -2075,7 +2071,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            const Text(
+            Text(
               'Downloaded media will be organized here into playlist folders, unorganized downloads, and videos.',
               textAlign: TextAlign.center,
               style: TextStyle(

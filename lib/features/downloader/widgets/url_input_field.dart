@@ -85,7 +85,7 @@ class _UrlInputFieldState extends State<UrlInputField> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
-            content: const Row(
+            content: Row(
               children: [
                 Icon(Icons.info_outline_rounded,
                     color: AppColors.textMuted, size: 18),
@@ -152,7 +152,7 @@ class _UrlInputFieldState extends State<UrlInputField> {
                   color: AppColors.primaryContainer,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.link_rounded,
                   color: AppColors.primary,
                   size: 20,
@@ -174,13 +174,13 @@ class _UrlInputFieldState extends State<UrlInputField> {
                       textInputAction: TextInputAction.done,
                       onChanged: widget.onChanged,
                       onSubmitted: widget.onSubmitted,
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
                       cursorColor: AppColors.primary,
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         isDense: true,
                         hintText: 'Paste YouTube link (Shorts, Video)...',
                         hintStyle: TextStyle(
@@ -212,7 +212,7 @@ class _UrlInputFieldState extends State<UrlInputField> {
                           color: AppColors.surfaceElevated,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.close_rounded,
                           size: 15,
                           color: AppColors.textSecondary,
@@ -234,7 +234,7 @@ class _UrlInputFieldState extends State<UrlInputField> {
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: AppColors.surfaceBorder),
                       ),
-                      child: const Row(
+                      child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(

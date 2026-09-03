@@ -60,7 +60,7 @@ class BatchProgressCard extends StatelessWidget {
                   color: AppColors.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.playlist_play_rounded,
                   color: AppColors.primary,
                   size: 20,
@@ -73,7 +73,7 @@ class BatchProgressCard extends StatelessWidget {
                   children: [
                     Text(
                       playlistTitle,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
@@ -84,7 +84,7 @@ class BatchProgressCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       'Processed $effectiveProcessed of $totalItems ($overallPercent% overall)',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textSecondary,
@@ -106,12 +106,12 @@ class BatchProgressCard extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.bolt_rounded,
+                      Icon(Icons.bolt_rounded,
                           size: 14, color: AppColors.primary),
                       const SizedBox(width: 2),
                       Text(
                         '${concurrency}x Parallel',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
@@ -151,7 +151,7 @@ class BatchProgressCard extends StatelessWidget {
                   currentItemTitle.isNotEmpty
                       ? currentItemTitle
                       : 'Downloading tracks in parallel...',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: AppColors.textPrimary,
@@ -175,7 +175,7 @@ class BatchProgressCard extends StatelessWidget {
                   children: [
                     Text(
                       itemProgress.percentage,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                         color: AppColors.textPrimary,
@@ -185,7 +185,7 @@ class BatchProgressCard extends StatelessWidget {
                         itemProgress.speed!.isNotEmpty)
                       Text(
                         itemProgress.speed!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textMuted,
                         ),
@@ -194,7 +194,7 @@ class BatchProgressCard extends StatelessWidget {
                         itemProgress.eta!.isNotEmpty)
                       Text(
                         'ETA: ${itemProgress.eta}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textMuted,
                         ),

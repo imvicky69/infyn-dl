@@ -31,14 +31,14 @@ class EmptyStateCard extends StatelessWidget {
                   color: AppColors.primaryContainer,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.tips_and_updates_outlined,
                   color: AppColors.primary,
                   size: 16,
                 ),
               ),
               const SizedBox(width: 10),
-              const Expanded(
+              Expanded(
                 child: Text(
                   'Quick Guide',
                   style: TextStyle(
@@ -69,7 +69,7 @@ class EmptyStateCard extends StatelessWidget {
           ),
 
           const SizedBox(height: 14),
-          const Divider(height: 1, color: AppColors.surfaceBorder),
+          Divider(height: 1, color: AppColors.surfaceBorder),
           const SizedBox(height: 12),
 
           // Clean tags
@@ -104,7 +104,7 @@ class EmptyStateCard extends StatelessWidget {
           alignment: Alignment.center,
           child: Text(
             number,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 11,
               fontWeight: FontWeight.w700,
@@ -115,7 +115,7 @@ class EmptyStateCard extends StatelessWidget {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(
+            style: TextStyle(
               color: AppColors.textSecondary,
               fontSize: 12,
               fontWeight: FontWeight.w500,
@@ -135,7 +135,7 @@ class EmptyStateCard extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: const TextStyle(
+        style: TextStyle(
           color: AppColors.textSecondary,
           fontSize: 11,
           fontWeight: FontWeight.w500,

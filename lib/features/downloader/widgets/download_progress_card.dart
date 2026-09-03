@@ -125,7 +125,7 @@ class DownloadProgressCard extends StatelessWidget {
                       const SizedBox(height: 2),
                       Text(
                         progress.title!,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary,
@@ -213,7 +213,7 @@ class DownloadProgressCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       'Saved: ${p.basename(progress.outputFilePath!)}',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary,
@@ -308,14 +308,14 @@ class DownloadProgressCard extends StatelessWidget {
         const SizedBox(width: 4),
         Text(
           '$label: ',
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             color: AppColors.textMuted,
           ),
         ),
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 11,
             fontWeight: FontWeight.w700,
             color: AppColors.textSecondary,

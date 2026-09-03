@@ -4,7 +4,6 @@ import '../../downloader/screens/downloader_screen.dart';
 import '../../downloader/services/downloader_service.dart';
 import '../../library/screens/library_screen.dart';
 import '../../settings/screens/settings_screen.dart';
-import '../../tools/screens/tools_screen.dart';
 
 /// Top-level shell screen providing modern bottom tab navigation.
 class MainShellScreen extends StatefulWidget {
@@ -33,14 +32,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
         children: [
           DownloaderScreen(
             downloaderService: widget.downloaderService,
-            onOpenSettings: () => setState(() => _currentIndex = 3),
+            onOpenSettings: () => setState(() => _currentIndex = 2),
             onOpenLibrary: () => setState(() => _currentIndex = 1),
           ),
           LibraryScreen(
             downloaderService: widget.downloaderService,
             onNavigateToDownloader: () => setState(() => _currentIndex = 0),
           ),
-          const ToolsScreen(),
           SettingsScreen(
             downloaderService: widget.downloaderService,
           ),
@@ -49,13 +47,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDark ? AppColors.surfaceElevated : AppColors.surface,
-          border: const Border(
+          border: Border(
             top: BorderSide(color: AppColors.surfaceBorder, width: 1),
           ),
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -73,12 +71,6 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ),
                 _buildNavItem(
                   index: 2,
-                  icon: Icons.handyman_outlined,
-                  selectedIcon: Icons.handyman_rounded,
-                  label: 'Tools',
-                ),
-                _buildNavItem(
-                  index: 3,
                   icon: Icons.tune_outlined,
                   selectedIcon: Icons.tune_rounded,
                   label: 'Settings',
@@ -103,13 +95,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
       onTap: () => setState(() => _currentIndex = index),
       borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.primary.withValues(alpha: 0.12)

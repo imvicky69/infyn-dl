@@ -91,7 +91,7 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                     color: AppColors.primary.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.playlist_play_rounded,
                     color: AppColors.primary,
                     size: 26,
@@ -106,7 +106,7 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                     children: [
                       Text(
                         playlist.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
@@ -121,13 +121,13 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                           if (playlist.uploader != null) ...[
                             Text(
                               playlist.uploader!,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 12,
                                 color: AppColors.textSecondary,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
-                            const Text(' • ',
+                            Text(' • ',
                                 style: TextStyle(color: AppColors.textMuted)),
                           ],
                           Text(
@@ -141,7 +141,7 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                             ),
                           ),
                           if (widget.alreadyDownloadedIndices.isNotEmpty) ...[
-                            const Text(' • ',
+                            Text(' • ',
                                 style: TextStyle(color: AppColors.textMuted)),
                             Text(
                               '${widget.alreadyDownloadedIndices.length} in library',
@@ -180,7 +180,7 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
 
           // Action bar for Select All / Deselect All
           if (playlist.entries.isNotEmpty) ...[
-            const Divider(height: 1, color: AppColors.surfaceBorder),
+            Divider(height: 1, color: AppColors.surfaceBorder),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
               child: Row(
@@ -190,7 +190,7 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                     _isExpanded
                         ? 'Select tracks to download:'
                         : 'Click arrow to preview/choose tracks',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textMuted,
@@ -206,7 +206,7 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                         isAllSelected
                             ? 'Deselect All'
                             : 'Select All (${_selectableIndices.length})',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
                           color: AppColors.primary,
@@ -221,14 +221,14 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
 
           // Collapsible track list preview with checkboxes
           if (_isExpanded && playlist.entries.isNotEmpty) ...[
-            const Divider(height: 1, color: AppColors.surfaceBorder),
+            Divider(height: 1, color: AppColors.surfaceBorder),
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 240),
               child: ListView.separated(
                 shrinkWrap: true,
                 padding: const EdgeInsets.symmetric(vertical: 4),
                 itemCount: playlist.entries.length,
-                separatorBuilder: (context, index) => const Divider(
+                separatorBuilder: (context, index) => Divider(
                     height: 1,
                     indent: 48,
                     endIndent: 14,
@@ -273,7 +273,7 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                                 checkColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(4)),
-                                side: const BorderSide(
+                                side: BorderSide(
                                     color: AppColors.textMuted, width: 1.5),
                                 onChanged: (_) => _toggleIndex(index),
                               ),
@@ -340,7 +340,7 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                             const SizedBox(width: 8),
                             Text(
                               entry.formattedDuration,
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 color: AppColors.textMuted,
                               ),

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -11,6 +12,7 @@ class SettingsService {
   static const String _keyAutoSkipDuplicates = 'auto_skip_duplicates';
   static const String _keyPlaylistSubfolder = 'playlist_subfolder';
   static const String _keyConcurrentDownloads = 'concurrent_downloads';
+  static const String _keyThemeMode = 'theme_mode';
 
   static SettingsService? _instance;
   static SettingsService get instance => _instance ??= SettingsService._();
@@ -18,9 +20,30 @@ class SettingsService {
   SettingsService._();
 
   SharedPreferences? _prefs;
+  final ValueNotifier<ThemeMode> themeModeNotifier =
+      ValueNotifier<ThemeMode>(ThemeMode.system);
 
   Future<void> init() async {
     _prefs ??= await SharedPreferences.getInstance();
+    final savedTheme = _prefs?.getString(_keyThemeMode);
+    if (savedTheme == 'light') {
+      themeModeNotifier.value = ThemeMode.light;
+    } else if (savedTheme == 'dark') {
+      themeModeNotifier.value = ThemeMode.dark;
+    } else {
+      themeModeNotifier.value = ThemeMode.system;
+    }
+  }
+
+  /// Current global theme mode (system, light, or dark).
+  ThemeMode get themeMode => themeModeNotifier.value;
+
+  Future<void> setThemeMode(ThemeMode mode) async {
+    themeModeNotifier.value = mode;
+    final str = mode == ThemeMode.dark
+        ? 'dark'
+        : (mode == ThemeMode.light ? 'light' : 'system');
+    await _prefs?.setString(_keyThemeMode, str);
   }
 
   /// The custom download directory chosen by the user, if set.

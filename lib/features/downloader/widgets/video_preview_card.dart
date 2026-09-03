@@ -43,14 +43,13 @@ class VideoPreviewCard extends StatelessWidget {
                     Image.network(
                       metadata.thumbnailUrl!,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Center(
+                      errorBuilder: (context, error, stackTrace) => Center(
                         child: Icon(Icons.play_circle_outline_rounded,
                             color: AppColors.textMuted, size: 28),
                       ),
                     )
                   else
-                    const Center(
+                    Center(
                       child: Icon(Icons.play_circle_outline_rounded,
                           color: AppColors.textMuted, size: 28),
                     ),
@@ -89,7 +88,7 @@ class VideoPreviewCard extends StatelessWidget {
               children: [
                 Text(
                   metadata.title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
@@ -102,13 +101,13 @@ class VideoPreviewCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Icon(Icons.account_circle_outlined,
+                      Icon(Icons.account_circle_outlined,
                           size: 13, color: AppColors.textMuted),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           metadata.uploader!,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.w500,
                             color: AppColors.textSecondary,

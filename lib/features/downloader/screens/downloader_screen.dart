@@ -703,7 +703,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
             width: 32,
             height: 32,
             fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => const Icon(
+            errorBuilder: (context, error, stackTrace) => Icon(
               Icons.all_inclusive_rounded,
               size: 32,
               color: AppColors.textPrimary,
@@ -713,7 +713,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         const SizedBox(width: 10),
 
         // Brand Title
-        const Column(
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
@@ -757,14 +757,14 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.folder_outlined,
+                Icon(Icons.folder_outlined,
                     size: 14, color: AppColors.textSecondary),
                 const SizedBox(width: 6),
                 ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 120),
                   child: Text(
                     displayDir,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: AppColors.textSecondary,
@@ -788,7 +788,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppColors.surfaceBorder),
       ),
-      child: const Row(
+      child: Row(
         children: [
           SizedBox(
             width: 20,
@@ -847,14 +847,14 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                     color: AppColors.primaryContainer,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.headphones_rounded,
                     size: 20,
                     color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '320k Audio',
                   style: TextStyle(
                     fontSize: 14,
@@ -863,7 +863,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                   ),
                 ),
                 const SizedBox(height: 3),
-                const Text(
+                Text(
                   'Pristine MP3 music & audio extraction',
                   style: TextStyle(
                     fontSize: 11,
@@ -892,14 +892,14 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                     color: AppColors.primaryContainer,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.movie_filter_rounded,
                     size: 20,
                     color: AppColors.primary,
                   ),
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   '4K & 1080p',
                   style: TextStyle(
                     fontSize: 14,
@@ -908,7 +908,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                   ),
                 ),
                 const SizedBox(height: 3),
-                const Text(
+                Text(
                   'High-res video with original audio',
                   style: TextStyle(
                     fontSize: 11,
@@ -930,7 +930,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'RECENT DOWNLOADS',
               style: TextStyle(
                 fontSize: 11,
@@ -943,7 +943,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
               InkWell(
                 onTap: widget.onOpenLibrary,
                 borderRadius: BorderRadius.circular(6),
-                child: const Padding(
+                child: Padding(
                   padding: EdgeInsets.symmetric(horizontal: 4, vertical: 2),
                   child: Text(
                     'View All →',
@@ -991,7 +991,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                     children: [
                       Text(
                         item.title,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppColors.textPrimary,
@@ -1002,7 +1002,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                       const SizedBox(height: 2),
                       Text(
                         '${item.format.name.toUpperCase()} • ${item.quality} ${item.formattedFileSize.isNotEmpty ? "• ${item.formattedFileSize}" : ""}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
                           color: AppColors.textMuted,
                         ),
@@ -1011,7 +1011,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.play_circle_fill_rounded,
                     size: 26,
                     color: AppColors.primary,

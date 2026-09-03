@@ -132,7 +132,7 @@ class _FolderCardState extends State<FolderCard> {
                           const SizedBox(height: 5),
                           Text(
                             folder.name,
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontSize: 14,
                               fontWeight: FontWeight.w700,
                               color: AppColors.textPrimary,
@@ -146,20 +146,20 @@ class _FolderCardState extends State<FolderCard> {
                             children: [
                               Text(
                                 '${folder.count} ${folder.count == 1 ? 'item' : 'items'}',
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
                                   color: AppColors.textSecondary,
                                 ),
                               ),
                               if (folder.formattedTotalSize.isNotEmpty) ...[
-                                const Text(' • ',
+                                Text(' • ',
                                     style: TextStyle(
                                         color: AppColors.textMuted,
                                         fontSize: 11)),
                                 Text(
                                   folder.formattedTotalSize,
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 11,
                                     color: AppColors.textMuted,
                                   ),
@@ -167,11 +167,11 @@ class _FolderCardState extends State<FolderCard> {
                               ],
                               if (folder.audioCount > 0 &&
                                   folder.videoCount == 0) ...[
-                                const Text(' • ',
+                                Text(' • ',
                                     style: TextStyle(
                                         color: AppColors.textMuted,
                                         fontSize: 11)),
-                                const Text(
+                                Text(
                                   'Audio',
                                   style: TextStyle(
                                     fontSize: 11,
@@ -180,11 +180,11 @@ class _FolderCardState extends State<FolderCard> {
                                 ),
                               ] else if (folder.videoCount > 0 &&
                                   folder.audioCount == 0) ...[
-                                const Text(' • ',
+                                Text(' • ',
                                     style: TextStyle(
                                         color: AppColors.textMuted,
                                         fontSize: 11)),
-                                const Text(
+                                Text(
                                   'Video',
                                   style: TextStyle(
                                     fontSize: 11,
@@ -200,7 +200,7 @@ class _FolderCardState extends State<FolderCard> {
 
                     // Actions Menu
                     PopupMenuButton<String>(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.more_vert_rounded,
                         size: 18,
                         color: AppColors.textMuted,
@@ -208,7 +208,7 @@ class _FolderCardState extends State<FolderCard> {
                       color: AppColors.surface,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
-                        side: const BorderSide(color: AppColors.surfaceBorder),
+                        side: BorderSide(color: AppColors.surfaceBorder),
                       ),
                       onSelected: (val) {
                         if (val == 'open') {
@@ -228,7 +228,7 @@ class _FolderCardState extends State<FolderCard> {
                         }
                       },
                       itemBuilder: (context) => [
-                        const PopupMenuItem(
+                        PopupMenuItem(
                           value: 'open',
                           child: Row(
                             children: [
@@ -241,7 +241,7 @@ class _FolderCardState extends State<FolderCard> {
                           ),
                         ),
                         if (folder.isPlaylist && widget.onSyncPlaylist != null)
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'sync',
                             child: Row(
                               children: [
@@ -257,7 +257,7 @@ class _FolderCardState extends State<FolderCard> {
                             folder.playlistUrl != null &&
                             folder.playlistUrl!.isNotEmpty &&
                             widget.onCopyPlaylistLink != null)
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'copy_link',
                             child: Row(
                               children: [
@@ -275,7 +275,7 @@ class _FolderCardState extends State<FolderCard> {
                             value: 'edit_link',
                             child: Row(
                               children: [
-                                const Icon(Icons.link_rounded,
+                                Icon(Icons.link_rounded,
                                     size: 16, color: AppColors.textSecondary),
                                 const SizedBox(width: 8),
                                 Text(
@@ -289,7 +289,7 @@ class _FolderCardState extends State<FolderCard> {
                             ),
                           ),
                         if (widget.onOpenInExplorer != null)
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'explorer',
                             child: Row(
                               children: [
@@ -302,7 +302,7 @@ class _FolderCardState extends State<FolderCard> {
                             ),
                           ),
                         if (folder.isPlaylist && widget.onRename != null)
-                          const PopupMenuItem(
+                          PopupMenuItem(
                             value: 'rename',
                             child: Row(
                               children: [
@@ -451,7 +451,7 @@ class _FolderCardState extends State<FolderCard> {
         fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) => Container(
           color: AppColors.surfaceElevated,
-          child: const Icon(Icons.music_note_rounded,
+          child: Icon(Icons.music_note_rounded,
               color: AppColors.textMuted, size: 14),
         ),
       ),

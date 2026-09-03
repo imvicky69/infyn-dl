@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/downloader_service.dart';
@@ -30,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Map<String, String?> _backendInfo = {};
   bool _isLoadingBackend = true;
   bool _isUpdatingEngine = false;
+  ThemeMode _themeMode = ThemeMode.system;
 
   @override
   void initState() {
@@ -53,6 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _playlistSubfolder = SettingsService.instance.playlistSubfolder;
         _concurrentDownloads = SettingsService.instance.concurrentDownloads;
         _backendInfo = backend;
+        _themeMode = SettingsService.instance.themeMode;
         _isLoadingBackend = false;
       });
     }
@@ -129,13 +132,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
         backgroundColor: AppColors.background,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: const Text(
+        title: Text(
           'Settings',
           style: TextStyle(
             fontSize: 20,
@@ -148,8 +153,99 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         children: [
+          // Section: Appearance & Dark Mode
+          Text(
+            'APPEARANCE',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textMuted,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          Container(
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.surfaceBorder),
+            ),
+            child: ListTile(
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  _themeMode == ThemeMode.dark ||
+                          (_themeMode == ThemeMode.system && isDark)
+                      ? Icons.dark_mode_rounded
+                      : Icons.light_mode_rounded,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
+              ),
+              title: Text(
+                'Theme Mode',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              subtitle: Text(
+                _themeMode == ThemeMode.dark
+                    ? 'Obsidian Dark'
+                    : (_themeMode == ThemeMode.light
+                        ? 'Clean Light'
+                        : 'System Default'),
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              trailing: SegmentedButton<ThemeMode>(
+                showSelectedIcon: false,
+                segments: const [
+                  ButtonSegment(
+                    value: ThemeMode.light,
+                    icon: Icon(Icons.light_mode_rounded, size: 16),
+                    tooltip: 'Light',
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.system,
+                    icon: Icon(Icons.brightness_auto_rounded, size: 16),
+                    tooltip: 'System',
+                  ),
+                  ButtonSegment(
+                    value: ThemeMode.dark,
+                    icon: Icon(Icons.dark_mode_rounded, size: 16),
+                    tooltip: 'Dark',
+                  ),
+                ],
+                selected: {_themeMode},
+                onSelectionChanged: (newSelection) async {
+                  final mode = newSelection.first;
+                  setState(() => _themeMode = mode);
+                  await SettingsService.instance.setThemeMode(mode);
+                },
+                style: SegmentedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  selectedBackgroundColor: AppColors.primary,
+                  selectedForegroundColor: AppColors.onPrimary,
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 24),
+
           // Section: Download Storage Location
-          const Text(
+          Text(
             'DOWNLOAD LOCATION',
             style: TextStyle(
               fontSize: 11,
@@ -178,11 +274,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: AppColors.primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.folder_rounded,
+                      child: Icon(Icons.folder_rounded,
                           color: AppColors.primary, size: 20),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -217,7 +313,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   child: Text(
                     _currentDownloadDir,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 12,
                       fontFamily: 'monospace',
                       color: AppColors.textPrimary,
@@ -252,8 +348,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: _resetDefaultDirectory,
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textSecondary,
-                          side:
-                              const BorderSide(color: AppColors.surfaceBorder),
+                          side: BorderSide(color: AppColors.surfaceBorder),
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(
@@ -272,7 +367,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // Section: Download Preferences
-          const Text(
+          Text(
             'DOWNLOAD PREFERENCES',
             style: TextStyle(
               fontSize: 11,
@@ -297,14 +392,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   activeThumbColor: AppColors.primary,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  title: const Text(
+                  title: Text(
                     'Auto-Skip Already Downloaded Files',
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'Instantly skips songs or videos that already exist on disk or in history',
                     style:
                         TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -314,7 +409,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() => _autoSkip = val);
                   },
                 ),
-                const Divider(
+                Divider(
                     height: 1,
                     indent: 16,
                     endIndent: 16,
@@ -326,14 +421,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   activeThumbColor: AppColors.primary,
                   contentPadding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                  title: const Text(
+                  title: Text(
                     'Create Playlist Subfolder',
                     style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                         color: AppColors.textPrimary),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'Groups batch playlist downloads into a dedicated folder named after the playlist',
                     style:
                         TextStyle(fontSize: 12, color: AppColors.textSecondary),
@@ -343,7 +438,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     setState(() => _playlistSubfolder = val);
                   },
                 ),
-                const Divider(
+                Divider(
                     height: 1,
                     indent: 16,
                     endIndent: 16,
@@ -359,7 +454,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Parallel Playlist Downloads',
                             style: TextStyle(
                                 fontSize: 14,
@@ -375,7 +470,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             ),
                             child: Text(
                               '${_concurrentDownloads}x Speed',
-                              style: const TextStyle(
+                              style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: AppColors.primary),
@@ -384,7 +479,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      const Text(
+                      Text(
                         'Downloads multiple tracks simultaneously to drastically accelerate batch playlists.',
                         style: TextStyle(
                             fontSize: 12, color: AppColors.textSecondary),
@@ -445,7 +540,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ...[
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'BACKGROUND DOWNLOADS & PERMISSIONS',
               style: TextStyle(
                 fontSize: 11,
@@ -466,16 +561,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ListTile(
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    leading: const Icon(Icons.notifications_active_outlined,
+                    leading: Icon(Icons.notifications_active_outlined,
                         color: AppColors.primary),
-                    title: const Text(
+                    title: Text(
                       'Live Download Notifications',
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Shows live ETA, download speed, and progress in your notification shade',
                       style: TextStyle(
                           fontSize: 12, color: AppColors.textSecondary),
@@ -510,7 +605,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               fontSize: 12, fontWeight: FontWeight.w600)),
                     ),
                   ),
-                  const Divider(
+                  Divider(
                       height: 1,
                       indent: 16,
                       endIndent: 16,
@@ -518,16 +613,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ListTile(
                     contentPadding:
                         const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    leading: const Icon(Icons.battery_charging_full_outlined,
+                    leading: Icon(Icons.battery_charging_full_outlined,
                         color: AppColors.primary),
-                    title: const Text(
+                    title: Text(
                       'Unrestricted Background Downloading',
                       style: TextStyle(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: AppColors.textPrimary),
                     ),
-                    subtitle: const Text(
+                    subtitle: Text(
                       'Prevents Android battery saver from pausing downloads when app is closed or screen is off',
                       style: TextStyle(
                           fontSize: 12, color: AppColors.textSecondary),
@@ -561,7 +656,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 24),
 
           // Section: Diagnostics & Engine Info
-          const Text(
+          Text(
             'LOCAL ENGINE STATUS',
             style: TextStyle(
               fontSize: 11,
@@ -580,7 +675,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               border: Border.all(color: AppColors.surfaceBorder),
             ),
             child: _isLoadingBackend
-                ? const Center(
+                ? Center(
                     child: CircularProgressIndicator(
                         strokeWidth: 2, color: AppColors.primary),
                   )
@@ -594,14 +689,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         Icons.check_circle_rounded,
                         AppColors.success,
                       ),
-                      const Divider(height: 16, color: AppColors.surfaceBorder),
+                      Divider(height: 16, color: AppColors.surfaceBorder),
                       _buildDiagnosticRow(
                         'Audio Processor',
                         'FFmpeg 320kbps Encoder',
                         Icons.check_circle_rounded,
                         AppColors.success,
                       ),
-                      const Divider(height: 16, color: AppColors.surfaceBorder),
+                      Divider(height: 16, color: AppColors.surfaceBorder),
                       _buildDiagnosticRow(
                         'Architecture',
                         defaultTargetPlatform == TargetPlatform.android
@@ -612,14 +707,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       if (!kIsWeb &&
                           defaultTargetPlatform == TargetPlatform.android) ...[
-                        const Divider(
-                            height: 16, color: AppColors.surfaceBorder),
+                        Divider(height: 16, color: AppColors.surfaceBorder),
                         Row(
                           children: [
-                            const Icon(Icons.system_update_alt_rounded,
+                            Icon(Icons.system_update_alt_rounded,
                                 size: 18, color: AppColors.primary),
                             const SizedBox(width: 12),
-                            const Expanded(
+                            Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -653,7 +747,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                               ),
                               child: _isUpdatingEngine
-                                  ? const SizedBox(
+                                  ? SizedBox(
                                       width: 14,
                                       height: 14,
                                       child: CircularProgressIndicator(
@@ -676,6 +770,110 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
           ),
 
+          const SizedBox(height: 24),
+
+          // Section: Infyn Suite & Web Utilities Overview
+          Text(
+            'INFYN WEB UTILITIES SUITE',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textMuted,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.surfaceBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.handyman_rounded,
+                          color: AppColors.primary, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Infyn Browser Tools Suite',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          Text(
+                            'Free in-browser document & image tools',
+                            style: TextStyle(
+                                fontSize: 11, color: AppColors.textSecondary),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Access Infyn\'s complete web-based tool suite directly in your browser. Includes PDF tools (PDF to Image, Compress, Merge, Split) and Image converters (WebP, PNG, JPG, Resizer, Optimizer) — processed locally in your browser with zero server uploads.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                    height: 1.45,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: [
+                    _buildToolChip('PDF to Image'),
+                    _buildToolChip('Compress PDF'),
+                    _buildToolChip('Merge PDF'),
+                    _buildToolChip('Image to WebP'),
+                    _buildToolChip('Image Resizer'),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () => _openUrl('https://infyn.software'),
+                    icon: const Icon(Icons.open_in_browser_rounded, size: 18),
+                    label: const Text(
+                      'Launch Infyn Tools (infyn.software)',
+                      style:
+                          TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
           const SizedBox(height: 32),
 
           // Branding footer
@@ -687,7 +885,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: Image.asset('assets/logo.png', width: 44, height: 44),
                 ),
                 const SizedBox(height: 8),
-                const Text(
+                Text(
                   'Infyn DL • v1.0.0',
                   style: TextStyle(
                       fontSize: 13,
@@ -695,7 +893,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       color: AppColors.textPrimary),
                 ),
                 const SizedBox(height: 2),
-                const Text(
+                Text(
                   'Zero-Backend Offline YouTube & Music Downloader',
                   style: TextStyle(fontSize: 11, color: AppColors.textMuted),
                 ),
@@ -719,13 +917,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(title,
-                  style: const TextStyle(
+                  style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppColors.textPrimary)),
               Text(subtitle,
-                  style: const TextStyle(
-                      fontSize: 11, color: AppColors.textSecondary)),
+                  style:
+                      TextStyle(fontSize: 11, color: AppColors.textSecondary)),
             ],
           ),
         ),
@@ -745,5 +943,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
         ),
       ],
     );
+  }
+
+  Widget _buildToolChip(String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: AppColors.textSecondary),
+      ),
+    );
+  }
+
+  Future<void> _openUrl(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnackbar('Could not launch: $url', isError: true);
+      }
+    } catch (e) {
+      _showSnackbar('Error opening link: $e', isError: true);
+    }
   }
 }

@@ -17,7 +17,7 @@ class FormatSelector extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Format',
           style: TextStyle(
             fontSize: 13,

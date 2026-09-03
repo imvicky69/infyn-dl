@@ -71,7 +71,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
     final currentPlaylist = allSame ? firstPlaylist : null;
 
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -110,7 +110,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(color: AppColors.surfaceBorder),
                     ),
-                    child: const Icon(Icons.drive_file_move_rounded,
+                    child: Icon(Icons.drive_file_move_rounded,
                         size: 20, color: AppColors.primary),
                   ),
                   const SizedBox(width: 12),
@@ -118,7 +118,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
+                        Text(
                           'Move to Folder',
                           style: TextStyle(
                             fontSize: 16,
@@ -129,7 +129,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
                         ),
                         Text(
                           titleText,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
                           ),
@@ -140,7 +140,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.close_rounded,
+                    icon: Icon(Icons.close_rounded,
                         size: 20, color: AppColors.textMuted),
                     onPressed: () => Navigator.of(context).pop(),
                   ),
@@ -148,7 +148,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
               ),
             ),
 
-            const Divider(height: 1, color: AppColors.surfaceBorder),
+            Divider(height: 1, color: AppColors.surfaceBorder),
 
             // Destinations List
             Flexible(
@@ -203,7 +203,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
                             ),
                             color: AppColors.surfaceElevated,
                           ),
-                          child: const Row(
+                          child: Row(
                             children: [
                               Icon(Icons.create_new_folder_rounded,
                                   size: 20, color: AppColors.primary),
@@ -234,9 +234,9 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
                               child: TextField(
                                 controller: _newFolderController,
                                 autofocus: true,
-                                style: const TextStyle(
+                                style: TextStyle(
                                     fontSize: 13, color: AppColors.textPrimary),
-                                decoration: const InputDecoration(
+                                decoration: InputDecoration(
                                   hintText: 'New folder name...',
                                   hintStyle: TextStyle(
                                       fontSize: 13, color: AppColors.textMuted),
@@ -315,7 +315,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
                       if (subtitle != null)
                         Text(
                           subtitle,
-                          style: const TextStyle(
+                          style: TextStyle(
                               fontSize: 11, color: AppColors.textMuted),
                         ),
                     ],
@@ -330,7 +330,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(color: AppColors.surfaceBorder),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Current',
                       style: TextStyle(
                           fontSize: 10,
@@ -339,7 +339,7 @@ class _MoveToFolderSheetState extends State<MoveToFolderSheet> {
                     ),
                   )
                 else
-                  const Icon(Icons.arrow_forward_ios_rounded,
+                  Icon(Icons.arrow_forward_ios_rounded,
                       size: 14, color: AppColors.textMuted),
               ],
             ),
