@@ -154,12 +154,17 @@ jobs:
 
           # 3. Compile Windows Setup Installer EXE using Inno Setup
           Write-Host "Compiling Windows Setup Installer EXE with Inno Setup..."
-          if (!(Get-Command iscc.exe -ErrorAction SilentlyContinue)) {
+          $isccExe = "iscc.exe"
+          if (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe") {
+            $isccExe = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+          } elseif (Test-Path "C:\Program Files\Inno Setup 6\ISCC.exe") {
+            $isccExe = "C:\Program Files\Inno Setup 6\ISCC.exe"
+          } elseif (!(Get-Command iscc.exe -ErrorAction SilentlyContinue)) {
+            choco install innosetup --no-progress -y
             if (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe") {
-              $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
-            } else {
-              choco install innosetup --no-progress -y
-              $env:PATH += ";C:\Program Files (x86)\Inno Setup 6"
+              $isccExe = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe"
+            } elseif (Test-Path "C:\Program Files\Inno Setup 6\ISCC.exe") {
+              $isccExe = "C:\Program Files\Inno Setup 6\ISCC.exe"
             }
           }
 
@@ -168,7 +173,7 @@ jobs:
           $fullReleaseDir = (Resolve-Path $releaseDir).Path
           $fullStagingDir = (Resolve-Path "staging-windows").Path
 
-          & iscc.exe /DMyAppVersion="$rawTag" /DSourceDir="$fullReleaseDir" /DOutputDir="$fullStagingDir" /DOutputBaseFilename="$installerBaseName" "$issFile"
+          & $isccExe /DMyAppVersion="$rawTag" /DSourceDir="$fullReleaseDir" /DOutputDir="$fullStagingDir" /DOutputBaseFilename="$installerBaseName" "$issFile"
 
           Get-ChildItem staging-windows
 
