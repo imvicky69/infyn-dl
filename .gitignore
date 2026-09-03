@@ -48,3 +48,7 @@ app.*.map.json
 windows/bin/x64/*.exe
 !windows/bin/x64/.gitkeep
 
+# Release output packages
+release_v*/
+staging-*/
+
