@@ -17,7 +17,7 @@ class AudioPlayerService extends ChangeNotifier {
     _initPlayer();
   }
 
-  final AudioPlayer _player = AudioPlayer();
+  AudioPlayer? _player;
 
   Track? _currentTrack;
   List<Track> _queue = [];
@@ -54,40 +54,47 @@ class AudioPlayerService extends ChangeNotifier {
       (_currentIndex < _queue.length - 1 || _loopMode == PlayerLoopMode.all);
 
   void _initPlayer() {
-    _playerStateSubscription = _player.playerStateStream.listen((state) {
-      final wasPlaying = _isPlaying;
-      _isPlaying = state.playing;
-      _isBuffering = state.processingState == ProcessingState.buffering ||
-          state.processingState == ProcessingState.loading;
+    try {
+      final player = AudioPlayer();
+      _player = player;
 
-      if (state.processingState == ProcessingState.completed) {
-        _handleTrackCompleted();
-      }
+      _playerStateSubscription = player.playerStateStream.listen((state) {
+        final wasPlaying = _isPlaying;
+        _isPlaying = state.playing;
+        _isBuffering = state.processingState == ProcessingState.buffering ||
+            state.processingState == ProcessingState.loading;
 
-      if (wasPlaying != _isPlaying || _isBuffering) {
-        notifyListeners();
-      }
-    });
-
-    _positionSubscription = _player.positionStream.listen((pos) {
-      _position = pos;
-      notifyListeners();
-    });
-
-    _durationSubscription = _player.durationStream.listen((dur) {
-      if (dur != null && dur != Duration.zero) {
-        _duration = dur;
-        if (_currentTrack != null && _currentTrack!.duration == null) {
-          _currentTrack = _currentTrack!.copyWith(duration: dur);
+        if (state.processingState == ProcessingState.completed) {
+          _handleTrackCompleted();
         }
-        notifyListeners();
-      }
-    });
 
-    _volumeSubscription = _player.volumeStream.listen((vol) {
-      _volume = vol.clamp(0.0, 1.0);
-      notifyListeners();
-    });
+        if (wasPlaying != _isPlaying || _isBuffering) {
+          notifyListeners();
+        }
+      });
+
+      _positionSubscription = player.positionStream.listen((pos) {
+        _position = pos;
+        notifyListeners();
+      });
+
+      _durationSubscription = player.durationStream.listen((dur) {
+        if (dur != null && dur != Duration.zero) {
+          _duration = dur;
+          if (_currentTrack != null && _currentTrack!.duration == null) {
+            _currentTrack = _currentTrack!.copyWith(duration: dur);
+          }
+          notifyListeners();
+        }
+      });
+
+      _volumeSubscription = player.volumeStream.listen((vol) {
+        _volume = vol.clamp(0.0, 1.0);
+        notifyListeners();
+      });
+    } catch (e) {
+      debugPrint('AudioPlayerService initialization error: $e');
+    }
   }
 
   /// Plays a track and optionally updates the playback queue.
@@ -117,15 +124,15 @@ class AudioPlayerService extends ChangeNotifier {
       notifyListeners();
 
       final playablePath = WindowsPathHelper.getPlayablePath(track.filePath);
-      await _player.setFilePath(playablePath);
+      await _player?.setFilePath(playablePath);
 
-      final loadedDuration = _player.duration;
+      final loadedDuration = _player?.duration;
       if (loadedDuration != null) {
         _duration = loadedDuration;
         _currentTrack = _currentTrack?.copyWith(duration: loadedDuration);
       }
 
-      await _player.play();
+      await _player?.play();
     } catch (e) {
       debugPrint('Error playing track "${track.title}": $e');
     }
@@ -146,11 +153,11 @@ class AudioPlayerService extends ChangeNotifier {
       await playTrack(_queue.first);
       return;
     }
-    await _player.play();
+    await _player?.play();
   }
 
   Future<void> pause() async {
-    await _player.pause();
+    await _player?.pause();
   }
 
   Future<void> seek(Duration targetPosition) async {
@@ -163,7 +170,7 @@ class AudioPlayerService extends ChangeNotifier {
     );
     _position = clamped;
     notifyListeners();
-    await _player.seek(clamped);
+    await _player?.seek(clamped);
   }
 
   /// Skips to next track in queue.
@@ -179,12 +186,16 @@ class AudioPlayerService extends ChangeNotifier {
     if (_currentIndex < _queue.length - 1) {
       final nextTrack = _queue[_currentIndex + 1];
       await playTrack(nextTrack);
-    } else if (_loopMode == PlayerLoopMode.all && _queue.isNotEmpty) {
-      await playTrack(_queue.first);
+    } else if (_loopMode == PlayerLoopMode.all) {
+      final firstTrack = _queue.first;
+      await playTrack(firstTrack);
+    } else {
+      await pause();
+      await seek(Duration.zero);
     }
   }
 
-  /// Skips to previous track or seeks to beginning if > 3 seconds in.
+  /// Skips to previous track in queue or restarts current track if > 3s.
   Future<void> skipToPrevious() async {
     if (_queue.isEmpty) return;
 
@@ -196,6 +207,9 @@ class AudioPlayerService extends ChangeNotifier {
     if (_currentIndex > 0) {
       final prevTrack = _queue[_currentIndex - 1];
       await playTrack(prevTrack);
+    } else if (_loopMode == PlayerLoopMode.all) {
+      final lastTrack = _queue.last;
+      await playTrack(lastTrack);
     } else {
       await seek(Duration.zero);
     }
@@ -206,7 +220,7 @@ class AudioPlayerService extends ChangeNotifier {
     final clamped = volume.clamp(0.0, 1.0);
     _volume = clamped;
     notifyListeners();
-    await _player.setVolume(clamped);
+    await _player?.setVolume(clamped);
   }
 
   /// Toggles shuffle mode.
@@ -258,7 +272,7 @@ class AudioPlayerService extends ChangeNotifier {
   }
 
   Future<void> stop() async {
-    await _player.stop();
+    await _player?.stop();
     _currentTrack = null;
     _position = Duration.zero;
     _duration = Duration.zero;
@@ -272,7 +286,7 @@ class AudioPlayerService extends ChangeNotifier {
     _positionSubscription?.cancel();
     _durationSubscription?.cancel();
     _volumeSubscription?.cancel();
-    _player.dispose();
+    _player?.dispose();
     super.dispose();
   }
 }

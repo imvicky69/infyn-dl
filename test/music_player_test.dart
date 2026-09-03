@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_downloader/features/library/models/music_playlist.dart';
 import 'package:media_downloader/features/library/models/track.dart';
@@ -7,6 +8,16 @@ import 'package:media_downloader/features/player/services/audio_player_service.d
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('com.ryanheise.just_audio.methods'),
+      (MethodCall methodCall) async {
+        return null;
+      },
+    );
+  });
 
   group('Track Model Tests', () {
     test('Formats duration correctly', () {
