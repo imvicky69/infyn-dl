@@ -10,11 +10,13 @@ class PlaylistPreviewCard extends StatefulWidget {
     required this.playlist,
     required this.selectedIndices,
     required this.onSelectionChanged,
+    this.alreadyDownloadedIndices = const {},
   });
 
   final PlaylistMetadata playlist;
   final Set<int> selectedIndices;
   final ValueChanged<Set<int>> onSelectionChanged;
+  final Set<int> alreadyDownloadedIndices;
 
   @override
   State<PlaylistPreviewCard> createState() => _PlaylistPreviewCardState();
@@ -23,18 +25,29 @@ class PlaylistPreviewCard extends StatefulWidget {
 class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
   bool _isExpanded = false;
 
-  void _toggleSelectAll() {
+  Set<int> get _selectableIndices {
     final total = widget.playlist.entries.length;
-    if (widget.selectedIndices.length == total) {
+    return Set.from(
+      List.generate(total, (i) => i)
+          .where((i) => !widget.alreadyDownloadedIndices.contains(i)),
+    );
+  }
+
+  void _toggleSelectAll() {
+    final selectable = _selectableIndices;
+    if (widget.selectedIndices.length == selectable.length &&
+        selectable.isNotEmpty) {
       // Deselect all
       widget.onSelectionChanged({});
     } else {
-      // Select all
-      widget.onSelectionChanged(Set.from(List.generate(total, (i) => i)));
+      // Select all selectable
+      widget.onSelectionChanged(selectable);
     }
   }
 
   void _toggleIndex(int index) {
+    if (widget.alreadyDownloadedIndices.contains(index)) return;
+
     final updated = Set<int>.from(widget.selectedIndices);
     if (updated.contains(index)) {
       updated.remove(index);
@@ -51,7 +64,9 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
     final playlist = widget.playlist;
     final total = playlist.entries.length;
     final selectedCount = widget.selectedIndices.length;
-    final isAllSelected = selectedCount == total && total > 0;
+    final selectableCount = _selectableIndices.length;
+    final isAllSelected =
+        selectedCount == selectableCount && selectableCount > 0;
 
     return AnimatedContainer(
       duration: const Duration(milliseconds: 200),
@@ -125,6 +140,18 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                                   : AppColors.textMuted,
                             ),
                           ),
+                          if (widget.alreadyDownloadedIndices.isNotEmpty) ...[
+                            const Text(' • ',
+                                style: TextStyle(color: AppColors.textMuted)),
+                            Text(
+                              '${widget.alreadyDownloadedIndices.length} in library',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF10B981),
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -176,7 +203,9 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 4),
                       child: Text(
-                        isAllSelected ? 'Deselect All' : 'Select All ($total)',
+                        isAllSelected
+                            ? 'Deselect All'
+                            : 'Select All (${_selectableIndices.length})',
                         style: const TextStyle(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
@@ -206,56 +235,105 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                     color: AppColors.surfaceBorder),
                 itemBuilder: (context, index) {
                   final entry = playlist.entries[index];
+                  final isAlreadyDownloaded =
+                      widget.alreadyDownloadedIndices.contains(index);
                   final isSelected = widget.selectedIndices.contains(index);
 
                   return InkWell(
-                    onTap: () => _toggleIndex(index),
+                    onTap:
+                        isAlreadyDownloaded ? null : () => _toggleIndex(index),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 6),
                       child: Row(
                         children: [
-                          // Interactive Checkbox
-                          SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: Checkbox(
-                              value: isSelected,
-                              activeColor: AppColors.primary,
-                              checkColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4)),
-                              side: const BorderSide(
-                                  color: AppColors.textMuted, width: 1.5),
-                              onChanged: (_) => _toggleIndex(index),
+                          if (isAlreadyDownloaded)
+                            Container(
+                              width: 24,
+                              height: 24,
+                              alignment: Alignment.center,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981)
+                                    .withValues(alpha: 0.15),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.check_rounded,
+                                color: Color(0xFF10B981),
+                                size: 14,
+                              ),
+                            )
+                          else
+                            SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: Checkbox(
+                                value: isSelected,
+                                activeColor: AppColors.primary,
+                                checkColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(4)),
+                                side: const BorderSide(
+                                    color: AppColors.textMuted, width: 1.5),
+                                onChanged: (_) => _toggleIndex(index),
+                              ),
                             ),
-                          ),
                           const SizedBox(width: 8),
                           Text(
                             '${index + 1}.',
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: isSelected
-                                  ? AppColors.textSecondary
-                                  : AppColors.textMuted,
+                              color: isAlreadyDownloaded
+                                  ? AppColors.textMuted
+                                  : (isSelected
+                                      ? AppColors.textSecondary
+                                      : AppColors.textMuted),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Expanded(
-                            child: Text(
-                              entry.title,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: isSelected
-                                    ? FontWeight.w600
-                                    : FontWeight.w400,
-                                color: isSelected
-                                    ? AppColors.textPrimary
-                                    : AppColors.textMuted,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    entry.title,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: isSelected
+                                          ? FontWeight.w600
+                                          : FontWeight.w400,
+                                      color: isAlreadyDownloaded
+                                          ? AppColors.textMuted
+                                          : (isSelected
+                                              ? AppColors.textPrimary
+                                              : AppColors.textSecondary),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (isAlreadyDownloaded) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 5, vertical: 1.5),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF10B981)
+                                          .withValues(alpha: 0.12),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text(
+                                      'In Library',
+                                      style: TextStyle(
+                                        fontSize: 9,
+                                        fontWeight: FontWeight.w700,
+                                        color: Color(0xFF10B981),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
                           ),
                           if (entry.duration > 0) ...[

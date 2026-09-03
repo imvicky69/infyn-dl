@@ -18,6 +18,7 @@ class DownloadHistoryService {
   DownloadHistoryService._();
 
   final List<DownloadItem> _cachedItems = [];
+  final Map<String, String> _playlistUrls = {};
   bool _isInitialized = false;
 
   Future<void> init() async {
@@ -31,9 +32,30 @@ class DownloadHistoryService {
           _cachedItems.clear();
           for (final item in jsonList) {
             if (item is Map<String, dynamic>) {
-              _cachedItems.add(DownloadItem.fromJson(item));
+              final parsed = DownloadItem.fromJson(item);
+              _cachedItems.add(parsed);
+              if (parsed.playlistName != null &&
+                  parsed.playlistName!.isNotEmpty &&
+                  parsed.playlistUrl != null &&
+                  parsed.playlistUrl!.isNotEmpty) {
+                _playlistUrls[parsed.playlistName!] = parsed.playlistUrl!;
+              }
             }
           }
+        }
+      }
+
+      // Load playlist URLs file
+      final urlFile = await _getPlaylistUrlsFile();
+      if (await urlFile.exists()) {
+        final content = await urlFile.readAsString();
+        if (content.isNotEmpty) {
+          final Map<String, dynamic> map = jsonDecode(content);
+          map.forEach((k, v) {
+            if (v is String && v.isNotEmpty) {
+              _playlistUrls[k] = v;
+            }
+          });
         }
       }
     } catch (e) {
@@ -47,6 +69,11 @@ class DownloadHistoryService {
     return File(p.join(docsDir.path, _cacheFileName));
   }
 
+  Future<File> _getPlaylistUrlsFile() async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    return File(p.join(docsDir.path, 'playlist_urls.json'));
+  }
+
   Future<void> _persistToDisk() async {
     try {
       final file = await _getCacheFile();
@@ -55,6 +82,48 @@ class DownloadHistoryService {
     } catch (e) {
       debugPrint('Error saving download history: $e');
     }
+  }
+
+  Future<void> _persistPlaylistUrls() async {
+    try {
+      final file = await _getPlaylistUrlsFile();
+      await file.writeAsString(jsonEncode(_playlistUrls));
+    } catch (e) {
+      debugPrint('Error saving playlist URLs: $e');
+    }
+  }
+
+  /// Gets the stored online playlist URL for a given playlist folder name.
+  Future<String?> getPlaylistUrl(String playlistName) async {
+    if (!_isInitialized) await init();
+    return _playlistUrls[playlistName.trim()];
+  }
+
+  /// Associates an online playlist URL with a playlist folder name and persists it.
+  Future<void> setPlaylistUrl(String playlistName, String url) async {
+    if (!_isInitialized) await init();
+    final cleanName = playlistName.trim();
+    final cleanUrl = url.trim();
+    if (cleanName.isEmpty) return;
+
+    if (cleanUrl.isEmpty) {
+      _playlistUrls.remove(cleanName);
+    } else {
+      _playlistUrls[cleanName] = cleanUrl;
+    }
+
+    var changed = false;
+    for (var i = 0; i < _cachedItems.length; i++) {
+      if (_cachedItems[i].playlistName?.trim() == cleanName &&
+          _cachedItems[i].playlistUrl != cleanUrl) {
+        _cachedItems[i] = _cachedItems[i].copyWith(playlistUrl: cleanUrl);
+        changed = true;
+      }
+    }
+    if (changed) {
+      await _persistToDisk();
+    }
+    await _persistPlaylistUrls();
   }
 
   /// Returns all cached downloads sorted by latest first.
@@ -69,6 +138,15 @@ class DownloadHistoryService {
     if (!_isInitialized) await init();
     _cachedItems.removeWhere((existing) => existing.id == item.id);
     _cachedItems.insert(0, item);
+
+    if (item.playlistName != null &&
+        item.playlistName!.trim().isNotEmpty &&
+        item.playlistUrl != null &&
+        item.playlistUrl!.trim().isNotEmpty) {
+      _playlistUrls[item.playlistName!.trim()] = item.playlistUrl!.trim();
+      await _persistPlaylistUrls();
+    }
+
     await _persistToDisk();
   }
 
@@ -287,6 +365,13 @@ class DownloadHistoryService {
         );
       }
     }
+
+    if (_playlistUrls.containsKey(cleanOld)) {
+      final url = _playlistUrls.remove(cleanOld)!;
+      _playlistUrls[cleanNew] = url;
+      await _persistPlaylistUrls();
+    }
+
     await _persistToDisk();
   }
 
@@ -306,6 +391,9 @@ class DownloadHistoryService {
     for (final id in toRemove) {
       await removeDownload(id, deletePhysicalFile: deletePhysicalFiles);
     }
+
+    _playlistUrls.remove(cleanName);
+    await _persistPlaylistUrls();
   }
 
   static String _sanitizeFilename(String input) {

@@ -37,6 +37,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
             onOpenLibrary: () => setState(() => _currentIndex = 1),
           ),
           LibraryScreen(
+            downloaderService: widget.downloaderService,
             onNavigateToDownloader: () => setState(() => _currentIndex = 0),
           ),
           const ToolsScreen(),

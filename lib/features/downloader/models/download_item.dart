@@ -12,6 +12,7 @@ class DownloadItem {
   final int? fileSizeBytes;
   final DateTime timestamp;
   final String? playlistName;
+  final String? playlistUrl;
 
   const DownloadItem({
     required this.id,
@@ -24,6 +25,7 @@ class DownloadItem {
     this.fileSizeBytes,
     required this.timestamp,
     this.playlistName,
+    this.playlistUrl,
   });
 
   Map<String, dynamic> toJson() => {
@@ -37,6 +39,7 @@ class DownloadItem {
         'fileSizeBytes': fileSizeBytes,
         'timestamp': timestamp.toIso8601String(),
         'playlistName': playlistName,
+        'playlistUrl': playlistUrl,
       };
 
   factory DownloadItem.fromJson(Map<String, dynamic> json) {
@@ -55,6 +58,7 @@ class DownloadItem {
           ? DateTime.tryParse(json['timestamp'] as String) ?? DateTime.now()
           : DateTime.now(),
       playlistName: json['playlistName'] as String?,
+      playlistUrl: json['playlistUrl'] as String?,
     );
   }
 
@@ -108,6 +112,7 @@ class DownloadItem {
     int? fileSizeBytes,
     DateTime? timestamp,
     String? playlistName,
+    String? playlistUrl,
     bool clearPlaylist = false,
   }) {
     return DownloadItem(
@@ -121,6 +126,7 @@ class DownloadItem {
       fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
       timestamp: timestamp ?? this.timestamp,
       playlistName: clearPlaylist ? null : (playlistName ?? this.playlistName),
+      playlistUrl: clearPlaylist ? null : (playlistUrl ?? this.playlistUrl),
     );
   }
 }

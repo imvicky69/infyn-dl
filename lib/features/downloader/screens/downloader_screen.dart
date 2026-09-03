@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_opener.dart';
+import '../../../core/utils/file_resolver.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/download_format.dart';
 import '../models/download_item.dart';
@@ -60,6 +61,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   // Batch playlist state
   bool _isBatchDownloading = false;
   Set<int> _selectedPlaylistIndices = {};
+  Set<int> _alreadyDownloadedIndices = {};
   int _batchCurrentIndex = 0;
   int _batchTotalItems = 0;
   int _batchSkippedCount = 0;
@@ -190,10 +192,36 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
             await _downloaderService.fetchPlaylistMetadata(queryUrl);
         if (!mounted) return;
         if (playlist != null && playlist.entries.isNotEmpty) {
+          final history = await DownloadHistoryService.instance.getHistory();
+          final alreadyDownloaded = <int>{};
+
+          for (var i = 0; i < playlist.entries.length; i++) {
+            final entry = playlist.entries[i];
+            final exists = history.any((item) {
+              if (entry.id.isNotEmpty && item.url.contains(entry.id)) {
+                return true;
+              }
+              if (item.url.isNotEmpty && item.url == entry.url) {
+                return true;
+              }
+              if (FileResolver.normalize(item.title) ==
+                  FileResolver.normalize(entry.title)) {
+                return true;
+              }
+              return false;
+            });
+            if (exists) {
+              alreadyDownloaded.add(i);
+            }
+          }
+
           setState(() {
             _playlistMetadata = playlist;
-            _selectedPlaylistIndices =
-                Set.from(List.generate(playlist.entries.length, (i) => i));
+            _alreadyDownloadedIndices = alreadyDownloaded;
+            _selectedPlaylistIndices = Set.from(
+              List.generate(playlist.entries.length, (i) => i)
+                  .where((i) => !alreadyDownloaded.contains(i)),
+            );
             _isFetchingMetadata = false;
           });
           return;
@@ -437,6 +465,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                     ? 'https://img.youtube.com/vi/${entry.id}/mqdefault.jpg'
                     : null,
                 playlistName: playlist.title,
+                playlistUrl: playlist.webpageUrl ?? playlistUrl,
                 timestamp: DateTime.now(),
               );
               await DownloadHistoryService.instance.addDownload(downloadItem);
@@ -563,6 +592,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                       PlaylistPreviewCard(
                         playlist: _playlistMetadata!,
                         selectedIndices: _selectedPlaylistIndices,
+                        alreadyDownloadedIndices: _alreadyDownloadedIndices,
                         onSelectionChanged: (set) =>
                             setState(() => _selectedPlaylistIndices = set),
                       ),

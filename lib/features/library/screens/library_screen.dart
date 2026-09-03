@@ -1,13 +1,22 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_opener.dart';
 import '../../../core/utils/file_resolver.dart';
 import '../../downloader/models/download_format.dart';
 import '../../downloader/models/download_item.dart';
+import '../../downloader/models/download_progress.dart';
+import '../../downloader/models/media_quality.dart';
+import '../../downloader/models/playlist_metadata.dart';
+import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/download_history_service.dart';
+import '../../downloader/services/downloader_service.dart';
+import '../../downloader/services/windows_downloader_service.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/library_folder.dart';
 import '../widgets/folder_card.dart';
@@ -19,15 +28,22 @@ class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
     this.onNavigateToDownloader,
+    this.downloaderService,
   });
 
   final VoidCallback? onNavigateToDownloader;
+  final DownloaderService? downloaderService;
 
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  late final DownloaderService _downloaderService = widget.downloaderService ??
+      (Platform.isWindows
+          ? WindowsDownloaderService()
+          : AndroidDownloaderService());
+
   List<DownloadItem> _items = [];
   bool _isLoading = true;
   String _selectedFilter = 'all'; // 'all', 'playlists', 'video', 'audio'
@@ -45,6 +61,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
   bool _isMultiSelectMode = false;
   final Set<String> _selectedItemIds = {};
 
+  Map<String, String> _playlistUrlMap = {};
+  bool _isSyncingPlaylist = false;
+  List<PlaylistEntry> _missingEntries = [];
+  final Map<String, double> _downloadingItemProgress = {};
+  bool _isDownloadingAllMissing = false;
+
   @override
   void initState() {
     super.initState();
@@ -60,9 +82,25 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Future<void> _loadHistory() async {
     setState(() => _isLoading = true);
     final history = await DownloadHistoryService.instance.getHistory();
+    final urlMap = <String, String>{};
+    for (final item in history) {
+      if (item.playlistName != null && item.playlistName!.trim().isNotEmpty) {
+        final pName = item.playlistName!.trim();
+        if (item.playlistUrl != null && item.playlistUrl!.trim().isNotEmpty) {
+          urlMap[pName] = item.playlistUrl!.trim();
+        } else if (!urlMap.containsKey(pName)) {
+          final savedUrl =
+              await DownloadHistoryService.instance.getPlaylistUrl(pName);
+          if (savedUrl != null && savedUrl.isNotEmpty) {
+            urlMap[pName] = savedUrl;
+          }
+        }
+      }
+    }
     if (mounted) {
       setState(() {
         _items = history;
+        _playlistUrlMap = urlMap;
         _isLoading = false;
       });
     }
@@ -104,10 +142,21 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
     // 1. Audio Playlists
     for (final entry in playlistGroups.entries) {
+      String? pUrl = _playlistUrlMap[entry.key];
+      if (pUrl == null || pUrl.isEmpty) {
+        for (final item in entry.value) {
+          if (item.playlistUrl != null && item.playlistUrl!.isNotEmpty) {
+            pUrl = item.playlistUrl;
+            break;
+          }
+        }
+      }
+
       result.add(LibraryFolder(
         name: entry.key,
         folderType: LibraryFolderType.playlist,
         items: entry.value,
+        playlistUrl: pUrl,
       ));
     }
 
@@ -661,7 +710,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           final folder = folders[index];
           return FolderCard(
             folder: folder,
-            onTap: () => setState(() => _openedFolder = folder),
+            onTap: () => setState(() {
+              _openedFolder = folder;
+              _missingEntries.clear();
+            }),
             onItemDropped: (droppedItem) async {
               final target = folder.isUnorganized ? null : folder.name;
               await DownloadHistoryService.instance.moveItemsToPlaylist(
@@ -680,6 +732,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
             onRename:
                 folder.isPlaylist ? () => _renameFolderDialog(folder) : null,
             onDelete: () => _deleteFolderDialog(folder),
+            onSyncPlaylist: folder.isPlaylist
+                ? () {
+                    setState(() {
+                      _openedFolder = folder;
+                      _missingEntries.clear();
+                    });
+                    _syncPlaylistMissingSongs(folder);
+                  }
+                : null,
+            onCopyPlaylistLink:
+                folder.playlistUrl != null && folder.playlistUrl!.isNotEmpty
+                    ? () => _copyPlaylistLink(folder.playlistUrl!)
+                    : null,
+            onEditPlaylistLink: folder.isPlaylist
+                ? () => _attachOrEditPlaylistUrl(folder)
+                : null,
           );
         },
       ),
@@ -736,6 +804,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               _openedFolder = null;
               _isMultiSelectMode = false;
               _selectedItemIds.clear();
+              _missingEntries.clear();
+              _downloadingItemProgress.clear();
             });
           },
         ),
@@ -810,10 +880,59 @@ class _LibraryScreenState extends State<LibraryScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
               onSelected: (val) {
+                if (val == 'sync') _syncPlaylistMissingSongs(current);
+                if (val == 'copy_link' && current.playlistUrl != null) {
+                  _copyPlaylistLink(current.playlistUrl!);
+                }
+                if (val == 'edit_link') _attachOrEditPlaylistUrl(current);
                 if (val == 'rename') _renameFolderDialog(current);
                 if (val == 'delete') _deleteFolderDialog(current);
               },
               itemBuilder: (ctx) => [
+                const PopupMenuItem(
+                  value: 'sync',
+                  child: Row(
+                    children: [
+                      Icon(Icons.sync_rounded,
+                          size: 16, color: AppColors.primary),
+                      SizedBox(width: 8),
+                      Text('Check & Download Missing',
+                          style: TextStyle(fontSize: 13)),
+                    ],
+                  ),
+                ),
+                if (current.playlistUrl != null &&
+                    current.playlistUrl!.isNotEmpty)
+                  const PopupMenuItem(
+                    value: 'copy_link',
+                    child: Row(
+                      children: [
+                        Icon(Icons.copy_rounded,
+                            size: 16, color: AppColors.textSecondary),
+                        SizedBox(width: 8),
+                        Text('Copy Playlist Link',
+                            style: TextStyle(fontSize: 13)),
+                      ],
+                    ),
+                  ),
+                PopupMenuItem(
+                  value: 'edit_link',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.link_rounded,
+                          size: 16, color: AppColors.textSecondary),
+                      const SizedBox(width: 8),
+                      Text(
+                        current.playlistUrl != null &&
+                                current.playlistUrl!.isNotEmpty
+                            ? 'Edit Playlist Link'
+                            : 'Attach Playlist Link',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
                 const PopupMenuItem(
                   value: 'rename',
                   child: Row(
@@ -882,11 +1001,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
             ),
           ),
 
+          // Playlist sync bar
+          if (current.isPlaylist) _buildPlaylistSyncBar(current),
+
           const Divider(height: 1, color: AppColors.surfaceBorder),
 
           // Items inside folder
           Expanded(
-            child: items.isEmpty
+            child: (items.isEmpty && _missingEntries.isEmpty)
                 ? Center(
                     child: Text(
                       _searchQuery.isNotEmpty
@@ -896,13 +1018,64 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           fontSize: 13, color: AppColors.textSecondary),
                     ),
                   )
-                : ListView.separated(
+                : ListView.builder(
                     padding: const EdgeInsets.all(16),
-                    itemCount: items.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
+                    itemCount: items.length +
+                        (_missingEntries.isNotEmpty
+                            ? (_missingEntries.length + 1)
+                            : 0),
                     itemBuilder: (context, index) {
-                      final item = items[index];
-                      return _buildDownloadCard(item);
+                      if (index < items.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: _buildDownloadCard(items[index]),
+                        );
+                      }
+
+                      if (index == items.length) {
+                        return Padding(
+                          padding: const EdgeInsets.only(
+                              top: 16, bottom: 8, left: 4, right: 4),
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 8,
+                                height: 8,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF59E0B),
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Missing from Library (${_missingEntries.length})',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '1-click to download',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.textMuted
+                                      .withValues(alpha: 0.8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      final missingIndex = index - items.length - 1;
+                      final entry = _missingEntries[missingIndex];
+                      return _buildMissingSongCard(
+                        folder: current,
+                        entry: entry,
+                        index: missingIndex,
+                      );
                     },
                   ),
           ),
@@ -1311,6 +1484,564 @@ class _LibraryScreenState extends State<LibraryScreen> {
     }
 
     return cardContent;
+  }
+
+  void _copyPlaylistLink(String url) {
+    Clipboard.setData(ClipboardData(text: url));
+    _showSnackbar('Playlist link copied to clipboard');
+  }
+
+  Future<void> _openPlaylistInBrowser(String url) async {
+    try {
+      final uri = Uri.parse(url);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        _showSnackbar('Could not launch URL', isError: true);
+      }
+    } catch (e) {
+      _showSnackbar('Error opening link: $e', isError: true);
+    }
+  }
+
+  Future<void> _attachOrEditPlaylistUrl(LibraryFolder folder) async {
+    final controller = TextEditingController(text: folder.playlistUrl ?? '');
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(
+          folder.playlistUrl != null && folder.playlistUrl!.isNotEmpty
+              ? 'Edit Playlist Link'
+              : 'Attach Playlist Link',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Link YouTube or YouTube Music playlist for "${folder.name}". This enables checking for missing tracks and 1-click downloads directly in this folder.',
+              style:
+                  const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              autofocus: true,
+              style:
+                  const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              decoration: const InputDecoration(
+                hintText: 'https://www.youtube.com/playlist?list=...',
+                hintStyle: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                prefixIcon: Icon(Icons.link_rounded, size: 18),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          if (folder.playlistUrl != null && folder.playlistUrl!.isNotEmpty)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, ''),
+              style: TextButton.styleFrom(foregroundColor: AppColors.error),
+              child: const Text('Remove Link'),
+            ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, controller.text.trim()),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Save & Check'),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null) {
+      await DownloadHistoryService.instance.setPlaylistUrl(folder.name, result);
+      await _loadHistory();
+      if (result.isNotEmpty) {
+        _showSnackbar('Playlist link saved! Checking for missing songs...');
+        _syncPlaylistMissingSongs(folder.copyWith(playlistUrl: result));
+      } else {
+        _showSnackbar('Playlist link removed');
+      }
+    }
+  }
+
+  Future<void> _syncPlaylistMissingSongs(LibraryFolder folder) async {
+    final url = folder.playlistUrl;
+    if (url == null || url.isEmpty) {
+      await _attachOrEditPlaylistUrl(folder);
+      return;
+    }
+
+    setState(() {
+      _isSyncingPlaylist = true;
+    });
+
+    try {
+      var queryUrl = url.trim();
+      if (queryUrl.contains('music.youtube.com/playlist')) {
+        queryUrl = queryUrl.replaceAll(
+            'music.youtube.com/playlist', 'www.youtube.com/playlist');
+      }
+
+      final playlist = await _downloaderService.fetchPlaylistMetadata(queryUrl);
+      if (!mounted) return;
+
+      if (playlist == null || playlist.entries.isEmpty) {
+        _showSnackbar(
+            'Could not fetch playlist from YouTube. Check URL or internet.',
+            isError: true);
+        setState(() => _isSyncingPlaylist = false);
+        return;
+      }
+
+      // Check which entries are missing from this folder (and history)
+      final missing = <PlaylistEntry>[];
+      for (final entry in playlist.entries) {
+        final alreadyInFolder = folder.items.any((item) {
+          if (entry.id.isNotEmpty && item.url.contains(entry.id)) {
+            return true;
+          }
+          if (item.url.isNotEmpty && item.url == entry.url) {
+            return true;
+          }
+          if (FileResolver.normalize(item.title) ==
+              FileResolver.normalize(entry.title)) {
+            return true;
+          }
+          return false;
+        });
+
+        if (!alreadyInFolder) {
+          missing.add(entry);
+        }
+      }
+
+      setState(() {
+        _missingEntries = missing;
+        _isSyncingPlaylist = false;
+      });
+
+      if (missing.isEmpty) {
+        _showSnackbar(
+            'All ${playlist.entries.length} songs are downloaded and up to date in "${folder.name}"!');
+      } else {
+        _showSnackbar(
+            'Found ${missing.length} missing songs in "${folder.name}". Shown below for 1-click download.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSyncingPlaylist = false);
+        _showSnackbar('Failed to sync playlist: $e', isError: true);
+      }
+    }
+  }
+
+  Future<void> _downloadSingleMissingSong({
+    required LibraryFolder folder,
+    required PlaylistEntry entry,
+  }) async {
+    if (_downloadingItemProgress.containsKey(entry.id)) return;
+
+    setState(() {
+      _downloadingItemProgress[entry.id] = 0.0;
+    });
+
+    try {
+      final destDir =
+          await SettingsService.instance.resolveDownloadDirectoryForFormat(
+        format: DownloadFormat.mp3,
+        playlistName: folder.name,
+      );
+
+      final completer = Completer<void>();
+      StreamSubscription<DownloadProgress>? sub;
+
+      sub = _downloaderService
+          .download(
+        url: entry.url,
+        format: DownloadFormat.mp3,
+        audioQuality: AudioQuality.k320,
+        destinationDirectory: destDir,
+      )
+          .listen(
+        (progress) async {
+          if (!mounted) return;
+          setState(() {
+            _downloadingItemProgress[entry.id] = progress.progress;
+          });
+
+          if (progress.isCompleted) {
+            final downloadItem = DownloadItem(
+              id: '${DateTime.now().millisecondsSinceEpoch}_${entry.id}',
+              title: entry.title,
+              url: entry.url,
+              filePath: progress.outputFilePath ?? '',
+              format: DownloadFormat.mp3,
+              quality: '320k',
+              thumbnailUrl: entry.id.isNotEmpty
+                  ? 'https://img.youtube.com/vi/${entry.id}/mqdefault.jpg'
+                  : null,
+              playlistName: folder.name,
+              playlistUrl: folder.playlistUrl,
+              timestamp: DateTime.now(),
+            );
+            await DownloadHistoryService.instance.addDownload(downloadItem);
+            if (mounted) {
+              setState(() {
+                _missingEntries.removeWhere((e) => e.id == entry.id);
+                _downloadingItemProgress.remove(entry.id);
+              });
+              await _loadHistory();
+              _showSnackbar('Downloaded "${entry.title}"');
+            }
+            sub?.cancel();
+            if (!completer.isCompleted) completer.complete();
+          } else if (progress.isFailed || progress.isCancelled) {
+            if (mounted) {
+              setState(() {
+                _downloadingItemProgress.remove(entry.id);
+              });
+              _showSnackbar(
+                'Failed to download "${entry.title}": ${progress.errorMessage ?? "Unknown error"}',
+                isError: true,
+              );
+            }
+            sub?.cancel();
+            if (!completer.isCompleted) completer.complete();
+          }
+        },
+      );
+
+      await completer.future;
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _downloadingItemProgress.remove(entry.id);
+        });
+        _showSnackbar('Download error: $e', isError: true);
+      }
+    }
+  }
+
+  Future<void> _downloadAllMissingSongs(LibraryFolder folder) async {
+    if (_isDownloadingAllMissing || _missingEntries.isEmpty) return;
+    setState(() => _isDownloadingAllMissing = true);
+
+    final list = List<PlaylistEntry>.from(_missingEntries);
+    for (final entry in list) {
+      if (!_isDownloadingAllMissing || !mounted) break;
+      await _downloadSingleMissingSong(folder: folder, entry: entry);
+    }
+
+    if (mounted) {
+      setState(() => _isDownloadingAllMissing = false);
+    }
+  }
+
+  Widget _buildMissingSongCard({
+    required LibraryFolder folder,
+    required PlaylistEntry entry,
+    required int index,
+  }) {
+    final progress = _downloadingItemProgress[entry.id];
+    final isDownloading = progress != null;
+
+    return Opacity(
+      opacity: isDownloading ? 1.0 : 0.65,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AppColors.surface.withValues(alpha: 0.6),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDownloading
+                ? AppColors.primary
+                : AppColors.surfaceBorder.withValues(alpha: 0.6),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            // Thumbnail with cloud download badge
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.network(
+                      'https://img.youtube.com/vi/${entry.id}/mqdefault.jpg',
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => Container(
+                        color: AppColors.surfaceElevated,
+                        child: const Icon(Icons.music_note_rounded,
+                            color: AppColors.textMuted, size: 20),
+                      ),
+                    ),
+                    Container(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      child: const Center(
+                        child: Icon(Icons.cloud_download_outlined,
+                            color: Colors.white, size: 20),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+
+            // Track info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    entry.title,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1.5),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceElevated,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: const Text(
+                          'Not Downloaded',
+                          style: TextStyle(
+                            fontSize: 9,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                      if (entry.duration > 0) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          entry.formattedDuration,
+                          style: const TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ],
+                      if (isDownloading) ...[
+                        const SizedBox(width: 8),
+                        Text(
+                          '${(progress * 100).toInt()}%',
+                          style: const TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  if (isDownloading) ...[
+                    const SizedBox(height: 6),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: progress > 0 ? progress : null,
+                        backgroundColor: AppColors.surfaceBorder,
+                        color: AppColors.primary,
+                        minHeight: 3,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+
+            // One-click download button
+            if (isDownloading)
+              const SizedBox(
+                width: 28,
+                height: 28,
+                child: Padding(
+                  padding: EdgeInsets.all(6),
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
+                ),
+              )
+            else
+              IconButton(
+                icon: const Icon(Icons.download_rounded,
+                    color: AppColors.primary, size: 20),
+                tooltip: 'Download track to this playlist',
+                onPressed: () => _downloadSingleMissingSong(
+                  folder: folder,
+                  entry: entry,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPlaylistSyncBar(LibraryFolder current) {
+    final hasUrl =
+        current.playlistUrl != null && current.playlistUrl!.isNotEmpty;
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                hasUrl ? Icons.link_rounded : Icons.link_off_rounded,
+                size: 16,
+                color: hasUrl ? AppColors.primary : AppColors.textMuted,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  hasUrl
+                      ? current.playlistUrl!
+                      : 'No playlist link attached yet',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color:
+                        hasUrl ? AppColors.textSecondary : AppColors.textMuted,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (hasUrl) ...[
+                IconButton(
+                  icon: const Icon(Icons.copy_rounded,
+                      size: 16, color: AppColors.textSecondary),
+                  tooltip: 'Copy Playlist Link',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 28, minHeight: 28),
+                  onPressed: () => _copyPlaylistLink(current.playlistUrl!),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.open_in_new_rounded,
+                      size: 16, color: AppColors.textSecondary),
+                  tooltip: 'Open in Browser',
+                  padding: EdgeInsets.zero,
+                  constraints:
+                      const BoxConstraints(minWidth: 28, minHeight: 28),
+                  onPressed: () => _openPlaylistInBrowser(current.playlistUrl!),
+                ),
+              ],
+              IconButton(
+                icon: Icon(
+                    hasUrl ? Icons.edit_outlined : Icons.add_link_rounded,
+                    size: 16,
+                    color: AppColors.textSecondary),
+                tooltip: hasUrl ? 'Edit Playlist Link' : 'Attach Playlist Link',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                onPressed: () => _attachOrEditPlaylistUrl(current),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              if (_isSyncingPlaylist) ...[
+                const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Text(
+                  'Checking playlist online...',
+                  style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w600),
+                ),
+              ] else ...[
+                FilledButton.tonalIcon(
+                  onPressed: () => _syncPlaylistMissingSongs(current),
+                  icon: const Icon(Icons.sync_rounded, size: 14),
+                  label: const Text('Check for Missing Songs',
+                      style: TextStyle(fontSize: 12)),
+                  style: FilledButton.styleFrom(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+              const Spacer(),
+              if (_missingEntries.isNotEmpty)
+                FilledButton.icon(
+                  onPressed: _isDownloadingAllMissing
+                      ? null
+                      : () => _downloadAllMissingSongs(current),
+                  icon: _isDownloadingAllMissing
+                      ? const SizedBox(
+                          width: 12,
+                          height: 12,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Icon(Icons.download_rounded, size: 14),
+                  label: Text(
+                    _isDownloadingAllMissing
+                        ? 'Downloading...'
+                        : 'Download All (${_missingEntries.length})',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildEmptyState() {

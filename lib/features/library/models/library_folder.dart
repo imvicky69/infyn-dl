@@ -12,12 +12,28 @@ class LibraryFolder {
   final String name;
   final LibraryFolderType folderType;
   final List<DownloadItem> items;
+  final String? playlistUrl;
 
   const LibraryFolder({
     required this.name,
     required this.folderType,
     required this.items,
+    this.playlistUrl,
   });
+
+  LibraryFolder copyWith({
+    String? name,
+    LibraryFolderType? folderType,
+    List<DownloadItem>? items,
+    String? playlistUrl,
+  }) {
+    return LibraryFolder(
+      name: name ?? this.name,
+      folderType: folderType ?? this.folderType,
+      items: items ?? this.items,
+      playlistUrl: playlistUrl ?? this.playlistUrl,
+    );
+  }
 
   bool get isUnorganized => folderType == LibraryFolderType.unorganized;
   bool get isVideos => folderType == LibraryFolderType.videos;

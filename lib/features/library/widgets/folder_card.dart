@@ -12,6 +12,9 @@ class FolderCard extends StatefulWidget {
     this.onOpenInExplorer,
     this.onRename,
     this.onDelete,
+    this.onSyncPlaylist,
+    this.onCopyPlaylistLink,
+    this.onEditPlaylistLink,
   });
 
   final LibraryFolder folder;
@@ -20,6 +23,9 @@ class FolderCard extends StatefulWidget {
   final VoidCallback? onOpenInExplorer;
   final VoidCallback? onRename;
   final VoidCallback? onDelete;
+  final VoidCallback? onSyncPlaylist;
+  final VoidCallback? onCopyPlaylistLink;
+  final VoidCallback? onEditPlaylistLink;
 
   @override
   State<FolderCard> createState() => _FolderCardState();
@@ -205,10 +211,21 @@ class _FolderCardState extends State<FolderCard> {
                         side: const BorderSide(color: AppColors.surfaceBorder),
                       ),
                       onSelected: (val) {
-                        if (val == 'open') widget.onTap();
-                        if (val == 'explorer') widget.onOpenInExplorer?.call();
-                        if (val == 'rename') widget.onRename?.call();
-                        if (val == 'delete') widget.onDelete?.call();
+                        if (val == 'open') {
+                          widget.onTap();
+                        } else if (val == 'sync') {
+                          widget.onSyncPlaylist?.call();
+                        } else if (val == 'copy_link') {
+                          widget.onCopyPlaylistLink?.call();
+                        } else if (val == 'edit_link') {
+                          widget.onEditPlaylistLink?.call();
+                        } else if (val == 'explorer') {
+                          widget.onOpenInExplorer?.call();
+                        } else if (val == 'rename') {
+                          widget.onRename?.call();
+                        } else if (val == 'delete') {
+                          widget.onDelete?.call();
+                        }
                       },
                       itemBuilder: (context) => [
                         const PopupMenuItem(
@@ -223,6 +240,54 @@ class _FolderCardState extends State<FolderCard> {
                             ],
                           ),
                         ),
+                        if (folder.isPlaylist && widget.onSyncPlaylist != null)
+                          const PopupMenuItem(
+                            value: 'sync',
+                            child: Row(
+                              children: [
+                                Icon(Icons.sync_rounded,
+                                    size: 16, color: AppColors.primary),
+                                SizedBox(width: 8),
+                                Text('Check & Download Missing',
+                                    style: TextStyle(fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        if (folder.isPlaylist &&
+                            folder.playlistUrl != null &&
+                            folder.playlistUrl!.isNotEmpty &&
+                            widget.onCopyPlaylistLink != null)
+                          const PopupMenuItem(
+                            value: 'copy_link',
+                            child: Row(
+                              children: [
+                                Icon(Icons.copy_rounded,
+                                    size: 16, color: AppColors.textSecondary),
+                                SizedBox(width: 8),
+                                Text('Copy Playlist Link',
+                                    style: TextStyle(fontSize: 13)),
+                              ],
+                            ),
+                          ),
+                        if (folder.isPlaylist &&
+                            widget.onEditPlaylistLink != null)
+                          PopupMenuItem(
+                            value: 'edit_link',
+                            child: Row(
+                              children: [
+                                const Icon(Icons.link_rounded,
+                                    size: 16, color: AppColors.textSecondary),
+                                const SizedBox(width: 8),
+                                Text(
+                                  folder.playlistUrl != null &&
+                                          folder.playlistUrl!.isNotEmpty
+                                      ? 'Edit Playlist Link'
+                                      : 'Attach Playlist Link',
+                                  style: const TextStyle(fontSize: 13),
+                                ),
+                              ],
+                            ),
+                          ),
                         if (widget.onOpenInExplorer != null)
                           const PopupMenuItem(
                             value: 'explorer',
