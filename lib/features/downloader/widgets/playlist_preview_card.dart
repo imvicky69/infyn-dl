@@ -270,7 +270,7 @@ class _PlaylistPreviewCardState extends State<PlaylistPreviewCard> {
                               child: Checkbox(
                                 value: isSelected,
                                 activeColor: AppColors.primary,
-                                checkColor: Colors.white,
+                                checkColor: AppColors.onPrimary,
                                 shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(4)),
                                 side: BorderSide(

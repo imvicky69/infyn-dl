@@ -117,12 +117,12 @@ class _FolderCardState extends State<FolderCard> {
                                     color: AppColors.primary,
                                     borderRadius: BorderRadius.circular(6),
                                   ),
-                                  child: const Text(
+                                  child: Text(
                                     'Drop to Move',
                                     style: TextStyle(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w700,
-                                      color: Colors.white,
+                                      color: AppColors.onPrimary,
                                     ),
                                   ),
                                 ),

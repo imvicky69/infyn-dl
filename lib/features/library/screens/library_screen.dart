@@ -1157,10 +1157,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.textPrimary : AppColors.surface,
+          color: isSelected ? AppColors.primary : AppColors.surface,
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? AppColors.textPrimary : AppColors.surfaceBorder,
+            color: isSelected ? AppColors.primary : AppColors.surfaceBorder,
           ),
         ),
         child: Row(
@@ -1171,7 +1171,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+                color: isSelected ? AppColors.onPrimary : AppColors.textSecondary,
               ),
             ),
             const SizedBox(width: 5),
@@ -1180,7 +1180,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
-                color: isSelected ? Colors.white70 : AppColors.textMuted,
+                color: isSelected
+                    ? AppColors.onPrimary.withValues(alpha: 0.7)
+                    : AppColors.textMuted,
               ),
             ),
           ],
@@ -2010,12 +2012,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       ? null
                       : () => _downloadAllMissingSongs(current),
                   icon: _isDownloadingAllMissing
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 12,
                           height: 12,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            color: AppColors.onPrimary,
                           ),
                         )
                       : const Icon(Icons.download_rounded, size: 14),
@@ -2027,6 +2029,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     minimumSize: Size.zero,
@@ -2083,7 +2086,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 onPressed: widget.onNavigateToDownloader,
                 style: FilledButton.styleFrom(
                   backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppColors.onPrimary,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                   shape: RoundedRectangleBorder(

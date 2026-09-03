@@ -55,19 +55,20 @@ class _UrlInputFieldState extends State<UrlInputField> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.textPrimary,
+            backgroundColor: AppColors.surfaceElevated,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: AppColors.surfaceBorder),
             ),
-            content: const Row(
+            content: Row(
               children: [
-                Icon(Icons.check_circle_rounded,
+                const Icon(Icons.check_circle_rounded,
                     color: AppColors.success, size: 18),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Text(
                   'Link pasted from clipboard',
                   style: TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.w600),
+                      color: AppColors.textPrimary, fontWeight: FontWeight.w600),
                 ),
               ],
             ),
@@ -81,18 +82,19 @@ class _UrlInputFieldState extends State<UrlInputField> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             behavior: SnackBarBehavior.floating,
-            backgroundColor: AppColors.textPrimary,
+            backgroundColor: AppColors.surfaceElevated,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: AppColors.surfaceBorder),
             ),
             content: Row(
               children: [
                 Icon(Icons.info_outline_rounded,
                     color: AppColors.textMuted, size: 18),
-                SizedBox(width: 10),
+                const SizedBox(width: 10),
                 Text(
                   'Clipboard is empty or contains no text',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppColors.textPrimary),
                 ),
               ],
             ),

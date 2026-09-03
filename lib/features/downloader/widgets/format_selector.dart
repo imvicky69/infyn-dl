@@ -153,10 +153,10 @@ class FormatSelector extends StatelessWidget {
                     ),
                   ),
                   child: isSelected
-                      ? const Icon(
+                      ? Icon(
                           Icons.check_rounded,
                           size: 12,
-                          color: Colors.white,
+                          color: AppColors.onPrimary,
                         )
                       : null,
                 ),

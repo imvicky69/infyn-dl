@@ -330,7 +330,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         onPressed: _pickDirectory,
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.primary,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppColors.onPrimary,
                           shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(10)),
                           padding: const EdgeInsets.symmetric(vertical: 10),
@@ -520,7 +520,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                         fontSize: 12,
                                         fontWeight: FontWeight.w700,
                                         color: isSelected
-                                            ? Colors.white
+                                            ? AppColors.onPrimary
                                             : AppColors.textPrimary,
                                       ),
                                     ),
@@ -594,7 +594,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.onPrimary,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         shape: RoundedRectangleBorder(
@@ -637,7 +637,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.onPrimary,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 12, vertical: 8),
                         shape: RoundedRectangleBorder(
