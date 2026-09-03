@@ -50,6 +50,14 @@ object AndroidDownloadManager {
                 isInitialized = true
                 initError = null
                 Log.d(TAG, "YoutubeDL and FFmpeg successfully initialized on Android")
+
+                // Automatically check for latest yt-dlp binary update in background
+                try {
+                    val status = YoutubeDL.getInstance().updateYoutubeDL(context.applicationContext, YoutubeDL.UpdateChannel._STABLE)
+                    Log.d(TAG, "yt-dlp auto-update check result: $status")
+                } catch (e: Throwable) {
+                    Log.w(TAG, "Optional background yt-dlp update check: ${e.message}")
+                }
             } catch (t: Throwable) {
                 isInitialized = false
                 initError = "${t.javaClass.simpleName}: ${t.localizedMessage ?: t.message}"
@@ -96,6 +104,9 @@ object AndroidDownloadManager {
                 val request = YoutubeDLRequest(url).apply {
                     addOption("--dump-single-json")
                     addOption("--no-playlist")
+                    addOption("--no-update")
+                    addOption("--no-check-certificates")
+                    addOption("--extractor-args", "youtube:player_client=android,ios,web")
                 }
                 val response = YoutubeDL.getInstance().execute(request)
                 val json = response.out
@@ -132,7 +143,9 @@ object AndroidDownloadManager {
                 val request = YoutubeDLRequest(normalizedUrl).apply {
                     addOption("--flat-playlist")
                     addOption("--dump-single-json")
-                    addOption("--extractor-args", "youtube:player_client=android,web")
+                    addOption("--no-update")
+                    addOption("--no-check-certificates")
+                    addOption("--extractor-args", "youtube:player_client=android,ios,web")
                     addOption("--yes-playlist")
                 }
                 val response = YoutubeDL.getInstance().execute(request)
@@ -191,6 +204,9 @@ object AndroidDownloadManager {
                 addOption("-o", outputTemplate)
                 addOption("--no-playlist")
                 addOption("--newline")
+                addOption("--no-update")
+                addOption("--no-check-certificates")
+                addOption("--extractor-args", "youtube:player_client=android,ios,web")
                 addOption("-N", "4")
 
                 if (isAudio) {
