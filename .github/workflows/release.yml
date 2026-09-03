@@ -54,52 +54,33 @@ jobs:
           flutter analyze
           flutter test
 
-      - name: Build Android Universal APK
+      - name: Build Universal Android APK
         run: flutter build apk --release
 
-      - name: Build Android Per-ABI Split APKs
-        run: flutter build apk --release --split-per-abi
+      - name: Build ARM64 Android APK
+        run: flutter build apk --release --target-platform android-arm64
 
-      - name: Build Android App Bundle (AAB)
-        run: flutter build appbundle --release
-
-      - name: Package & Prepare Android Release Artifacts
+      - name: Package Android Artifacts
         shell: bash
         run: |
           RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
-          # Fallback if triggered without a tag
           TAG="${RAW_TAG:-v1.0.0}"
           
           mkdir -p staging-android
           
-          # Universal APK
+          # 1. Universal APK (All Android devices)
           if [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
-            cp "build/app/outputs/flutter-apk/app-release.apk" "staging-android/Infyn-DL-${TAG}-android-universal.apk"
+            cp "build/app/outputs/flutter-apk/app-release.apk" "staging-android/Infyn-DL-${TAG}-android.apk"
           fi
           
-          # Split APKs (arm64-v8a, armeabi-v7a, x86_64)
+          # 2. ARM64 APK (Modern smartphones & tablets)
           if [ -f "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" ]; then
-            cp "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" "staging-android/Infyn-DL-${TAG}-android-arm64-v8a.apk"
-          fi
-          if [ -f "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" ]; then
-            cp "build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk" "staging-android/Infyn-DL-${TAG}-android-armeabi-v7a.apk"
-          fi
-          if [ -f "build/app/outputs/flutter-apk/app-x86_64-release.apk" ]; then
-            cp "build/app/outputs/flutter-apk/app-x86_64-release.apk" "staging-android/Infyn-DL-${TAG}-android-x86_64.apk"
+            cp "build/app/outputs/flutter-apk/app-arm64-v8a-release.apk" "staging-android/Infyn-DL-${TAG}-android-arm64.apk"
+          elif [ -f "build/app/outputs/flutter-apk/app-release.apk" ]; then
+            cp "build/app/outputs/flutter-apk/app-release.apk" "staging-android/Infyn-DL-${TAG}-android-arm64.apk"
           fi
           
-          # Android App Bundle (AAB)
-          if [ -f "build/app/outputs/bundle/release/app-release.aab" ]; then
-            cp "build/app/outputs/bundle/release/app-release.aab" "staging-android/Infyn-DL-${TAG}-android.aab"
-          fi
-          
-          cd staging-android
-          for file in *; do
-            if [ -f "$file" ]; then
-              sha256sum "$file" > "${file}.sha256"
-            fi
-          done
-          ls -la
+          ls -lh staging-android
 
       - name: Upload Android Artifacts
         uses: actions/upload-artifact@v4
@@ -171,9 +152,6 @@ jobs:
           Compress-Archive -Path "$releaseDir\*" -DestinationPath $zipPath -CompressionLevel Optimal -Force
           Write-Host "Created Windows portable archive: $zipPath"
 
-          $zipHash = (Get-FileHash -Path $zipPath -Algorithm SHA256).Hash.ToLower()
-          "$zipHash  $zipName" | Out-File -FilePath "$zipPath.sha256" -Encoding ASCII
-
           # 3. Compile Windows Setup Installer EXE using Inno Setup
           Write-Host "Compiling Windows Setup Installer EXE with Inno Setup..."
           if (!(Get-Command iscc.exe -ErrorAction SilentlyContinue)) {
@@ -191,16 +169,6 @@ jobs:
           $fullStagingDir = (Resolve-Path "staging-windows").Path
 
           & iscc.exe /DMyAppVersion="$rawTag" /DSourceDir="$fullReleaseDir" /DOutputDir="$fullStagingDir" /DOutputBaseFilename="$installerBaseName" "$issFile"
-
-          $exeName = "$installerBaseName.exe"
-          $exePath = Join-Path "staging-windows" $exeName
-          if (Test-Path $exePath) {
-            Write-Host "Created Windows Installer: $exePath"
-            $exeHash = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToLower()
-            "$exeHash  $exeName" | Out-File -FilePath "$exePath.sha256" -Encoding ASCII
-          } else {
-            Write-Warning "Inno Setup output $exePath was not found, portable zip will be used."
-          }
 
           Get-ChildItem staging-windows
 
@@ -239,71 +207,74 @@ jobs:
         shell: bash
         run: |
           cd dist
-          echo "### SHA-256 Checksums" > checksums.txt
+          echo "### 🔒 SHA-256 Checksums" > checksums.txt
           echo '```' >> checksums.txt
           for f in *; do
-            if [ -f "$f" ] && [[ "$f" != *.sha256 ]] && [[ "$f" != "checksums.txt" ]]; then
+            if [ -f "$f" ] && [[ "$f" != "checksums.txt" ]]; then
               sha256sum "$f" >> checksums.txt
             fi
           done
           echo '```' >> checksums.txt
           cat checksums.txt
 
-      - name: Determine Prerelease Status
-        id: release_info
+      - name: Publish or Update GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          RAW_TAG="${{ github.event.inputs.tag_name || github.ref_name }}"
+          TAG="${RAW_TAG:-v1.0.0}"
+          
+          IS_PRERELEASE="false"
           if [[ "$TAG" == *"alpha"* ]] || [[ "$TAG" == *"beta"* ]] || [[ "$TAG" == *"rc"* ]]; then
-            echo "is_prerelease=true" >> $GITHUB_OUTPUT
-          else
-            echo "is_prerelease=false" >> $GITHUB_OUTPUT
+            IS_PRERELEASE="true"
           fi
 
-      - name: Create or Update GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.release_info.outputs.tag }}
-          name: Infyn DL ${{ steps.release_info.outputs.tag }}
-          draft: false
-          prerelease: ${{ steps.release_info.outputs.is_prerelease == 'true' }}
-          generate_release_notes: true
-          files: |
-            dist/*
-          body: |
-            ## 🚀 Infyn DL Release ${{ steps.release_info.outputs.tag }}
+          cat << 'EOF' > release_body.md
+          ## 🚀 Infyn DL TAG_PLACEHOLDER
 
-            Universal, local-first media & music downloader for **Windows** and **Android**.
+          Universal, local-first media & music downloader for **Windows** and **Android**.
 
-            ---
+          ---
 
-            ### 📦 Download Packages
+          ### 📦 Download Packages
 
-            | Platform | Package | Architecture | Description |
-            | :--- | :--- | :--- | :--- |
-            | 🪟 **Windows** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-windows-setup.exe` | x64 (64-bit) | **Recommended**: Single-file setup installer with Desktop & Start Menu shortcuts. |
-            | 🪟 **Windows** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-windows-portable.zip` | x64 (64-bit) | **Portable**: No installation required. Extract and run `media_downloader.exe`. |
-            | 📱 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-universal.apk` | Universal | All-in-one APK for all Android devices (Phones, Tablets, Android TV). |
-            | 📱 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-arm64-v8a.apk` | ARM64 | Optimized APK for modern 64-bit ARM smartphones & tablets. |
-            | 📱 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-armeabi-v7a.apk` | ARMv7 | Optimized APK for older 32-bit ARM Android devices. |
-            | 📱 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-x86_64.apk` | x86_64 | Optimized APK for Android Emulators and x86_64 Chromebooks / Tablets. |
-            | 📦 **Android** | `Infyn-DL-${{ steps.release_info.outputs.tag }}-android.aab` | Multi | Android App Bundle (Google Play compatible). |
+          | Platform | Package | Description |
+          | :--- | :--- | :--- |
+          | 🪟 **Windows** | `Infyn-DL-TAG_PLACEHOLDER-windows-setup.exe` | **Recommended**: Single-file setup installer with Desktop & Start Menu shortcuts. |
+          | 🪟 **Windows** | `Infyn-DL-TAG_PLACEHOLDER-windows-portable.zip` | **Portable**: Extract anywhere and run `media_downloader.exe`. No setup needed. |
+          | 📱 **Android** | `Infyn-DL-TAG_PLACEHOLDER-android.apk` | **Universal APK**: Works on all Android phones, tablets, and TVs (Android 7.0+). |
+          | 📱 **Android** | `Infyn-DL-TAG_PLACEHOLDER-android-arm64.apk` | **ARM64 APK**: Optimized, lightweight build for modern 64-bit Android smartphones. |
 
-            ---
+          ---
 
-            ### 🛠️ Quick Installation Guide
+          ### 🛠️ Installation Guide
 
-            #### Windows:
-            - **Option 1 (Installer)**: Download and run `Infyn-DL-${{ steps.release_info.outputs.tag }}-windows-setup.exe`.
-            - **Option 2 (Portable)**: Download `Infyn-DL-${{ steps.release_info.outputs.tag }}-windows-portable.zip`, extract anywhere, and launch `media_downloader.exe`.
+          #### Windows:
+          - **Option 1 (Installer)**: Download and run `Infyn-DL-TAG_PLACEHOLDER-windows-setup.exe`.
+          - **Option 2 (Portable)**: Download and extract `Infyn-DL-TAG_PLACEHOLDER-windows-portable.zip`, then run `media_downloader.exe`.
 
-            #### Android:
-            1. Download `Infyn-DL-${{ steps.release_info.outputs.tag }}-android-universal.apk` (or matching CPU architecture).
-            2. Open the APK on your device and tap **Install** (Enable *"Install unknown apps"* if prompted).
-            3. Launch **Infyn DL** and grant storage permissions when prompted.
+          #### Android:
+          1. Download `Infyn-DL-TAG_PLACEHOLDER-android.apk` (or ARM64 APK).
+          2. Tap the downloaded file to install on your phone.
+          3. Open **Infyn DL** and grant storage permissions when prompted.
 
-            ---
+          ---
 
-            ### 🔒 Integrity & Verification
-            All packages include `.sha256` integrity files. See `checksums.txt` attached to this release for official hashes.
+EOF
+          sed -i "s/TAG_PLACEHOLDER/$TAG/g" release_body.md
+          cat dist/checksums.txt >> release_body.md
+
+          # Create or update GitHub Release using GitHub CLI
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "Release $TAG exists. Updating release notes and uploading assets with clobber..."
+            gh release edit "$TAG" --title "Infyn DL $TAG" --notes-file release_body.md $( [ "$IS_PRERELEASE" = "true" ] && echo "--prerelease" )
+            gh release upload "$TAG" dist/* --clobber
+          else
+            echo "Creating new release $TAG..."
+            gh release create "$TAG" dist/* \
+              --title "Infyn DL $TAG" \
+              --notes-file release_body.md \
+              $( [ "$IS_PRERELEASE" = "true" ] && echo "--prerelease" ) \
+              --clobber
+          fi

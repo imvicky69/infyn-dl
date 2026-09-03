@@ -31,11 +31,10 @@ Pre-compiled, ready-to-run releases for **Windows** and **Android** are availabl
 
 | Platform | Download Asset | Instructions |
 | :--- | :--- | :--- |
-| 🪟 **Windows** (Setup Installer) | [`Infyn-DL-*-windows-setup.exe`](https://github.com/imvicky69/infyn-dl/releases/latest) | **Recommended**: Single-file setup wizard. Installs to system with Desktop & Start Menu shortcuts. |
+| 🪟 **Windows** (Setup Installer) | [`Infyn-DL-*-windows-setup.exe`](https://github.com/imvicky69/infyn-dl/releases/latest) | **Recommended**: Single-file setup wizard with Desktop & Start Menu shortcuts. |
 | 🪟 **Windows** (Portable ZIP) | [`Infyn-DL-*-windows-portable.zip`](https://github.com/imvicky69/infyn-dl/releases/latest) | Portable bundle. Extract and run `media_downloader.exe`. No installation required. |
-| 📱 **Android** (Universal) | [`Infyn-DL-*-android-universal.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Compatible with all Android phones, tablets, and TVs (Android 7.0+). |
-| 📱 **Android** (ARM64) | [`Infyn-DL-*-android-arm64-v8a.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Optimized, smaller package for modern 64-bit Android smartphones. |
-| 📱 **Android** (x86_64) | [`Infyn-DL-*-android-x86_64.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Optimized for Android emulators and Chromebooks. |
+| 📱 **Android** (Universal APK) | [`Infyn-DL-*-android.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Compatible with all Android phones, tablets, and TVs (Android 7.0+). |
+| 📱 **Android** (ARM64 APK) | [`Infyn-DL-*-android-arm64.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Optimized, lightweight package for modern 64-bit Android smartphones. |
 
 ---
 
