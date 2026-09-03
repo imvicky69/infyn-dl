@@ -142,7 +142,8 @@ class MiniPlayer extends StatelessWidget {
                       ),
                       // Skip next button
                       IconButton(
-                        onPressed: player.hasNext ? () => player.skipToNext() : null,
+                        onPressed:
+                            player.hasNext ? () => player.skipToNext() : null,
                         icon: Icon(
                           Icons.skip_next_rounded,
                           color: player.hasNext

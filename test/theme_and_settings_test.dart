@@ -3,6 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:media_downloader/core/theme/app_theme.dart';
+import 'package:media_downloader/features/downloader/models/download_format.dart';
+import 'package:media_downloader/features/downloader/models/download_progress.dart';
+import 'package:media_downloader/features/downloader/models/playlist_metadata.dart';
+import 'package:media_downloader/features/downloader/models/media_quality.dart';
+import 'package:media_downloader/features/downloader/models/video_metadata.dart';
+import 'package:media_downloader/features/downloader/services/downloader_service.dart';
 import 'package:media_downloader/features/home/screens/main_shell_screen.dart';
 import 'package:media_downloader/features/settings/screens/settings_screen.dart';
 import 'package:media_downloader/features/settings/services/settings_service.dart';
@@ -84,14 +90,21 @@ void main() {
   group('SettingsScreen Appearance & Web Tools Suite Tests', () {
     testWidgets('Renders Theme Mode toggle and Infyn Web Tools Suite section',
         (tester) async {
+      tester.view.physicalSize = const Size(1280, 1600);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
       await SettingsService.instance.init();
 
       await tester.pumpWidget(
-        const MaterialApp(
-          home: SettingsScreen(),
+        MaterialApp(
+          home: SettingsScreen(
+            downloaderService: _MockDownloaderService(),
+          ),
         ),
       );
       await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
 
       // Verify Appearance section
       expect(find.text('APPEARANCE'), findsOneWidget);
@@ -111,4 +124,35 @@ void main() {
       expect(find.text('Compress PDF'), findsOneWidget);
     });
   });
+}
+
+class _MockDownloaderService extends DownloaderService {
+  @override
+  Future<Map<String, String?>> getBackendInfo() async => {
+        'ytDlpPath': '/mock/yt-dlp',
+        'ffmpegPath': '/mock/ffmpeg',
+        'ffmpegDir': '/mock',
+      };
+
+  @override
+  Stream<DownloadProgress> download({
+    required String url,
+    required DownloadFormat format,
+    VideoQuality videoQuality = VideoQuality.best,
+    AudioQuality audioQuality = AudioQuality.k320,
+    String? destinationDirectory,
+  }) =>
+      const Stream.empty();
+
+  @override
+  Future<VideoMetadata?> fetchMetadata(String url) async => null;
+
+  @override
+  Future<PlaylistMetadata?> fetchPlaylistMetadata(String url) async => null;
+
+  @override
+  Future<bool> isAvailable() async => true;
+
+  @override
+  Future<void> cancel() async {}
 }

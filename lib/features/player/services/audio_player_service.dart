@@ -50,7 +50,8 @@ class AudioPlayerService extends ChangeNotifier {
   PlayerLoopMode get loopMode => _loopMode;
   bool get hasPrevious => _currentIndex > 0 || _position.inSeconds > 3;
   bool get hasNext =>
-      _queue.isNotEmpty && (_currentIndex < _queue.length - 1 || _loopMode == PlayerLoopMode.all);
+      _queue.isNotEmpty &&
+      (_currentIndex < _queue.length - 1 || _loopMode == PlayerLoopMode.all);
 
   void _initPlayer() {
     _playerStateSubscription = _player.playerStateStream.listen((state) {
@@ -154,8 +155,11 @@ class AudioPlayerService extends ChangeNotifier {
 
   Future<void> seek(Duration targetPosition) async {
     final clamped = Duration(
-      milliseconds: targetPosition.inMilliseconds
-          .clamp(0, _duration.inMilliseconds > 0 ? _duration.inMilliseconds : targetPosition.inMilliseconds),
+      milliseconds: targetPosition.inMilliseconds.clamp(
+          0,
+          _duration.inMilliseconds > 0
+              ? _duration.inMilliseconds
+              : targetPosition.inMilliseconds),
     );
     _position = clamped;
     notifyListeners();

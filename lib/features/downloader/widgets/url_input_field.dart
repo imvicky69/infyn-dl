@@ -68,7 +68,8 @@ class _UrlInputFieldState extends State<UrlInputField> {
                 Text(
                   'Link pasted from clipboard',
                   style: TextStyle(
-                      color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w600),
                 ),
               ],
             ),

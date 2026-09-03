@@ -163,8 +163,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                       _buildTabChip(
                         title: 'Playlists',
                         icon: Icons.queue_music_rounded,
-                        isSelected:
-                            _viewMode == MusicLibraryViewMode.playlists,
+                        isSelected: _viewMode == MusicLibraryViewMode.playlists,
                         onTap: () => setState(
                             () => _viewMode = MusicLibraryViewMode.playlists),
                       ),
@@ -311,7 +310,8 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
         return LayoutBuilder(
           builder: (context, constraints) {
             // Adaptive columns: 2 columns on mobile, 3-5 on desktop
-            final crossAxisCount = (constraints.maxWidth / 220).clamp(2, 6).toInt();
+            final crossAxisCount =
+                (constraints.maxWidth / 220).clamp(2, 6).toInt();
 
             return GridView.builder(
               padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),

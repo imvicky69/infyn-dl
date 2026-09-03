@@ -73,7 +73,9 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen> {
                   Container(
                     padding: const EdgeInsets.all(3),
                     decoration: BoxDecoration(
-                      color: isDark ? const Color(0xFF1F1F23) : const Color(0xFFE4E4E7),
+                      color: isDark
+                          ? const Color(0xFF1F1F23)
+                          : const Color(0xFFE4E4E7),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -83,7 +85,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 16, vertical: 6),
                           decoration: BoxDecoration(
-                            color: isDark ? const Color(0xFF27272A) : Colors.white,
+                            color:
+                                isDark ? const Color(0xFF27272A) : Colors.white,
                             borderRadius: BorderRadius.circular(18),
                             boxShadow: [
                               BoxShadow(
@@ -182,7 +185,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen> {
 
                   // Subheader
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     child: Row(
                       children: [
                         Expanded(
@@ -221,7 +225,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen> {
                   Expanded(
                     child: _selectedTab == 0
                         ? _buildUpNextQueue(player, isDark)
-                        : _buildPlaceholderTab(_selectedTab == 1 ? 'Lyrics' : 'Related'),
+                        : _buildPlaceholderTab(
+                            _selectedTab == 1 ? 'Lyrics' : 'Related'),
                   ),
                 ],
               ),
@@ -280,9 +285,7 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen> {
 
         return Material(
           color: isCurrent
-              ? (isDark
-                  ? const Color(0xFF1F1F23)
-                  : const Color(0xFFF4F4F5))
+              ? (isDark ? const Color(0xFF1F1F23) : const Color(0xFFF4F4F5))
               : Colors.transparent,
           child: InkWell(
             onTap: () => player.playTrack(item, queue: queue),
@@ -377,7 +380,8 @@ class _DesktopPlayerScreenState extends State<DesktopPlayerScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.info_outline_rounded, size: 36, color: AppColors.textMuted),
+          Icon(Icons.info_outline_rounded,
+              size: 36, color: AppColors.textMuted),
           const SizedBox(height: 12),
           Text(
             '$title will be available in future updates',

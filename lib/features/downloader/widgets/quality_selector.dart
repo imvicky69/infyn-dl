@@ -148,7 +148,8 @@ class QualitySelector extends StatelessWidget {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                color: isSelected ? AppColors.onPrimary : AppColors.textSecondary,
+                color:
+                    isSelected ? AppColors.onPrimary : AppColors.textSecondary,
               ),
             ),
           ),

@@ -61,8 +61,8 @@ class DownloadButton extends StatelessWidget {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
-                          valueColor:
-                              AlwaysStoppedAnimation<Color>(AppColors.onPrimary),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                              AppColors.onPrimary),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -90,8 +90,9 @@ class DownloadButton extends StatelessWidget {
                         ),
                         child: Icon(
                           Icons.arrow_downward_rounded,
-                          color:
-                              isEnabled ? AppColors.onPrimary : AppColors.textMuted,
+                          color: isEnabled
+                              ? AppColors.onPrimary
+                              : AppColors.textMuted,
                           size: 18,
                         ),
                       ),
@@ -101,8 +102,9 @@ class DownloadButton extends StatelessWidget {
                             ? 'Download$formatLabel$qualitySuffix'
                             : 'Select at least 1 track',
                         style: TextStyle(
-                          color:
-                              isEnabled ? AppColors.onPrimary : AppColors.textMuted,
+                          color: isEnabled
+                              ? AppColors.onPrimary
+                              : AppColors.textMuted,
                           fontSize: 15,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.3,

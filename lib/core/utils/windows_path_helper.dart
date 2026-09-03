@@ -19,7 +19,8 @@ class WindowsPathHelper {
     try {
       final kernel32 = DynamicLibrary.open('kernel32.dll');
       final getShortPathNameW = kernel32.lookupFunction<
-          _GetShortPathNameWNative, _GetShortPathNameWDart>('GetShortPathNameW');
+          _GetShortPathNameWNative,
+          _GetShortPathNameWDart>('GetShortPathNameW');
 
       final longPathPtr = filePath.toNativeUtf16();
       final buffer = calloc<Uint16>(1024).cast<Utf16>();
@@ -43,12 +44,14 @@ class WindowsPathHelper {
     try {
       final source = File(filePath);
       if (source.existsSync()) {
-        final ext = p.extension(filePath).isNotEmpty ? p.extension(filePath) : '.mp3';
+        final ext =
+            p.extension(filePath).isNotEmpty ? p.extension(filePath) : '.mp3';
         final tempFile = File(p.join(
           Directory.systemTemp.path,
           'infyn_play_${filePath.hashCode.abs()}$ext',
         ));
-        if (!tempFile.existsSync() || tempFile.lengthSync() != source.lengthSync()) {
+        if (!tempFile.existsSync() ||
+            tempFile.lengthSync() != source.lengthSync()) {
           source.copySync(tempFile.path);
         }
         return tempFile.path;

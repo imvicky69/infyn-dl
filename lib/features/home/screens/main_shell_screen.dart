@@ -54,7 +54,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
     final isDark = theme.brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF09090B) : const Color(0xFFFAFAFA),
+      backgroundColor:
+          isDark ? const Color(0xFF09090B) : const Color(0xFFFAFAFA),
       body: Row(
         children: [
           // Left Navigation Sidebar
@@ -66,7 +67,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
               duration: const Duration(milliseconds: 200),
               child: _isDesktopPlayerOpen
                   ? DesktopPlayerScreen(
-                      onClose: () => setState(() => _isDesktopPlayerOpen = false),
+                      onClose: () =>
+                          setState(() => _isDesktopPlayerOpen = false),
                     )
                   : IndexedStack(
                       key: const ValueKey('screens_stack'),
@@ -74,8 +76,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       children: [
                         DownloaderScreen(
                           downloaderService: widget.downloaderService,
-                          onOpenSettings: () => setState(() => _currentIndex = 3),
-                          onOpenLibrary: () => setState(() => _currentIndex = 1),
+                          onOpenSettings: () =>
+                              setState(() => _currentIndex = 3),
+                          onOpenLibrary: () =>
+                              setState(() => _currentIndex = 1),
                         ),
                         MusicLibraryScreen(
                           onNavigateToDownloader: () =>
@@ -218,7 +222,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
               final isSelected = _isDesktopPlayerOpen;
 
               return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
                 child: InkWell(
                   onTap: () {
                     setState(() {
@@ -227,7 +232,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   },
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AppColors.primary.withValues(alpha: 0.15)
@@ -249,7 +255,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            isSelected ? 'Close Now Playing' : 'Now Playing View',
+                            isSelected
+                                ? 'Close Now Playing'
+                                : 'Now Playing View',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -312,7 +320,9 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   style: TextStyle(
                     fontSize: 13,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -343,13 +353,11 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 onOpenLibrary: () => setState(() => _currentIndex = 1),
               ),
               MusicLibraryScreen(
-                onNavigateToDownloader: () =>
-                    setState(() => _currentIndex = 0),
+                onNavigateToDownloader: () => setState(() => _currentIndex = 0),
               ),
               LibraryScreen(
                 downloaderService: widget.downloaderService,
-                onNavigateToDownloader: () =>
-                    setState(() => _currentIndex = 0),
+                onNavigateToDownloader: () => setState(() => _currentIndex = 0),
               ),
               SettingsScreen(
                 downloaderService: widget.downloaderService,

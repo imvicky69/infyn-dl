@@ -40,22 +40,27 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
         final durationMs = player.duration.inMilliseconds.toDouble();
         final currentMs = _draggedPositionMs ??
-            player.position.inMilliseconds.toDouble().clamp(0.0, durationMs > 0 ? durationMs : 0.0);
+            player.position.inMilliseconds
+                .toDouble()
+                .clamp(0.0, durationMs > 0 ? durationMs : 0.0);
         final maxMs = durationMs > 0 ? durationMs : 1.0;
 
         return Scaffold(
-          backgroundColor: isDark ? const Color(0xFF09090B) : const Color(0xFFFAFAFA),
+          backgroundColor:
+              isDark ? const Color(0xFF09090B) : const Color(0xFFFAFAFA),
           body: SafeArea(
             child: Column(
               children: [
                 // Top Navigation Bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   child: Row(
                     children: [
                       IconButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded,
+                            size: 30),
                         color: AppColors.textPrimary,
                         tooltip: 'Collapse',
                       ),
@@ -64,16 +69,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       Container(
                         padding: const EdgeInsets.all(3),
                         decoration: BoxDecoration(
-                          color: isDark ? const Color(0xFF1F1F23) : const Color(0xFFE4E4E7),
+                          color: isDark
+                              ? const Color(0xFF1F1F23)
+                              : const Color(0xFFE4E4E7),
                           borderRadius: BorderRadius.circular(20),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 6),
                               decoration: BoxDecoration(
-                                color: isDark ? const Color(0xFF27272A) : Colors.white,
+                                color: isDark
+                                    ? const Color(0xFF27272A)
+                                    : Colors.white,
                                 borderRadius: BorderRadius.circular(18),
                                 boxShadow: [
                                   BoxShadow(
@@ -93,7 +103,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 6),
                               child: Text(
                                 'Video',
                                 style: TextStyle(
@@ -124,7 +135,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 32),
                   child: LayoutBuilder(
                     builder: (context, constraints) {
-                      final size = (constraints.maxWidth * 0.88).clamp(240.0, 360.0);
+                      final size =
+                          (constraints.maxWidth * 0.88).clamp(240.0, 360.0);
                       return Center(
                         child: Container(
                           width: size,
@@ -133,7 +145,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             borderRadius: BorderRadius.circular(16),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: isDark ? 0.5 : 0.15),
+                                color: Colors.black
+                                    .withValues(alpha: isDark ? 0.5 : 0.15),
                                 blurRadius: 30,
                                 offset: const Offset(0, 10),
                               ),
@@ -208,13 +221,15 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                             enabledThumbRadius: 6,
                             elevation: 1,
                           ),
-                          overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
+                          overlayShape:
+                              const RoundSliderOverlayShape(overlayRadius: 14),
                           activeTrackColor: AppColors.primary,
                           inactiveTrackColor: isDark
                               ? const Color(0xFF27272A)
                               : const Color(0xFFE4E4E7),
                           thumbColor: AppColors.primary,
-                          overlayColor: AppColors.primary.withValues(alpha: 0.15),
+                          overlayColor:
+                              AppColors.primary.withValues(alpha: 0.15),
                         ),
                         child: Slider(
                           value: currentMs.clamp(0.0, maxMs),
@@ -320,7 +335,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       ),
                       // Skip Next
                       IconButton(
-                        onPressed: player.hasNext ? () => player.skipToNext() : null,
+                        onPressed:
+                            player.hasNext ? () => player.skipToNext() : null,
                         icon: Icon(
                           Icons.skip_next_rounded,
                           color: player.hasNext
@@ -435,7 +451,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                 child: Row(
                   children: [
                     Text(
@@ -469,7 +486,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                     return ListTile(
                       dense: true,
                       leading: isCurrent
-                          ? Icon(Icons.equalizer_rounded, color: AppColors.primary, size: 20)
+                          ? Icon(Icons.equalizer_rounded,
+                              color: AppColors.primary, size: 20)
                           : Text(
                               '${index + 1}',
                               style: TextStyle(
@@ -484,8 +502,11 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
-                          color: isCurrent ? AppColors.primary : AppColors.textPrimary,
+                          fontWeight:
+                              isCurrent ? FontWeight.w700 : FontWeight.w500,
+                          color: isCurrent
+                              ? AppColors.primary
+                              : AppColors.textPrimary,
                         ),
                       ),
                       subtitle: Text(

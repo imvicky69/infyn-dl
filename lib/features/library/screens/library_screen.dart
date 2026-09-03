@@ -295,7 +295,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
       if (await FileResolver.safeDirExists(targetDir)) {
         await FileOpener.open(targetDir);
-      } else if (await FileResolver.safeDirExists(p.join(baseDir, folder.name))) {
+      } else if (await FileResolver.safeDirExists(
+          p.join(baseDir, folder.name))) {
         await FileOpener.open(p.join(baseDir, folder.name));
       } else {
         await FileOpener.open(baseDir);
@@ -1200,7 +1201,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               style: TextStyle(
                 fontSize: 12,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? AppColors.onPrimary : AppColors.textSecondary,
+                color:
+                    isSelected ? AppColors.onPrimary : AppColors.textSecondary,
               ),
             ),
             const SizedBox(width: 5),

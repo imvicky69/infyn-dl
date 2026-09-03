@@ -238,9 +238,9 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                         OutlinedButton.icon(
                           onPressed: widget.playlist.tracks.isNotEmpty
                               ? () {
-                                  final shuffled = List<Track>.from(
-                                      widget.playlist.tracks)
-                                    ..shuffle();
+                                  final shuffled =
+                                      List<Track>.from(widget.playlist.tracks)
+                                        ..shuffle();
                                   AudioPlayerService.instance.playTrack(
                                     shuffled.first,
                                     queue: shuffled,

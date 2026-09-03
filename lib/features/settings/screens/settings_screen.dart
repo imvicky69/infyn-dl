@@ -44,20 +44,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _loadSettings() async {
-    await SettingsService.instance.init();
-    final dir = await SettingsService.instance.resolveDownloadDirectory();
-    final backend = await _downloaderService.getBackendInfo();
+    try {
+      await SettingsService.instance.init();
+      final dir = await SettingsService.instance.resolveDownloadDirectory();
+      final backend = await _downloaderService.getBackendInfo();
 
-    if (mounted) {
-      setState(() {
-        _currentDownloadDir = dir;
-        _autoSkip = SettingsService.instance.autoSkipDuplicates;
-        _playlistSubfolder = SettingsService.instance.playlistSubfolder;
-        _concurrentDownloads = SettingsService.instance.concurrentDownloads;
-        _backendInfo = backend;
-        _themeMode = SettingsService.instance.themeMode;
-        _isLoadingBackend = false;
-      });
+      if (mounted) {
+        setState(() {
+          _currentDownloadDir = dir;
+          _autoSkip = SettingsService.instance.autoSkipDuplicates;
+          _playlistSubfolder = SettingsService.instance.playlistSubfolder;
+          _concurrentDownloads = SettingsService.instance.concurrentDownloads;
+          _backendInfo = backend;
+          _themeMode = SettingsService.instance.themeMode;
+          _isLoadingBackend = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('SettingsScreen._loadSettings error: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingBackend = false;
+        });
+      }
     }
   }
 

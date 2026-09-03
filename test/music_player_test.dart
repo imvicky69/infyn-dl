@@ -80,14 +80,16 @@ void main() {
     });
 
     test('Scans mock directory and discovers audio files', () async {
-      final tempDir = await Directory.systemTemp.createTemp('music_scanner_test_');
+      final tempDir =
+          await Directory.systemTemp.createTemp('music_scanner_test_');
 
       try {
         // Create sample audio files
         final file1 = File('${tempDir.path}/Coldplay - Yellow.mp3');
         await file1.writeAsString('mock audio content');
 
-        final file2 = File('${tempDir.path}/Hozier - Take Me To Church (Official Video).flac');
+        final file2 = File(
+            '${tempDir.path}/Hozier - Take Me To Church (Official Video).flac');
         await file2.writeAsString('mock audio content');
 
         final file3 = File('${tempDir.path}/document.txt');

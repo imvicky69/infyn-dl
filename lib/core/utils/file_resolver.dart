@@ -108,7 +108,8 @@ class FileResolver {
           final normTarget = normalize(playlistName);
           if (normTarget.isNotEmpty) {
             try {
-              final subEntities = await baseDirObj.list(followLinks: false).toList();
+              final subEntities =
+                  await baseDirObj.list(followLinks: false).toList();
               for (final entity in subEntities) {
                 if (entity is Directory) {
                   final folderBase = p.basename(entity.path);
