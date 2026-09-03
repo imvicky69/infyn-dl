@@ -97,5 +97,5 @@ void main() {
 
       expect(updates.any((u) => u.status == DownloadStatus.cancelled), isTrue);
     }, timeout: const Timeout(Duration(minutes: 1)));
-  });
+  }, skip: !Platform.isWindows ? 'Requires Windows platform' : null);
 }
