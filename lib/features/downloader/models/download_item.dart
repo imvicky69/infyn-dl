@@ -69,4 +69,58 @@ class DownloadItem {
     }
     return '${size.toStringAsFixed(1)} ${suffixes[suffixIndex]}';
   }
+
+  /// Returns the stored thumbnail URL, or automatically resolves YouTube thumbnail art from [url].
+  String? get effectiveThumbnailUrl {
+    if (thumbnailUrl != null && thumbnailUrl!.isNotEmpty) {
+      return thumbnailUrl;
+    }
+    return extractYoutubeThumbnail(url);
+  }
+
+  /// Helper to extract standard YouTube thumbnail image URL from common video URLs.
+  static String? extractYoutubeThumbnail(String url) {
+    if (url.isEmpty) return null;
+    final clean = url.trim();
+    final regExp = RegExp(
+      r'(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})',
+      caseSensitive: false,
+    );
+    final match = regExp.firstMatch(clean);
+    if (match != null && match.groupCount >= 1) {
+      final videoId = match.group(1);
+      return 'https://img.youtube.com/vi/$videoId/mqdefault.jpg';
+    }
+    if (RegExp(r'^[\w-]{11}$').hasMatch(clean)) {
+      return 'https://img.youtube.com/vi/$clean/mqdefault.jpg';
+    }
+    return null;
+  }
+
+  DownloadItem copyWith({
+    String? id,
+    String? title,
+    String? url,
+    String? filePath,
+    DownloadFormat? format,
+    String? quality,
+    String? thumbnailUrl,
+    int? fileSizeBytes,
+    DateTime? timestamp,
+    String? playlistName,
+    bool clearPlaylist = false,
+  }) {
+    return DownloadItem(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      url: url ?? this.url,
+      filePath: filePath ?? this.filePath,
+      format: format ?? this.format,
+      quality: quality ?? this.quality,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      fileSizeBytes: fileSizeBytes ?? this.fileSizeBytes,
+      timestamp: timestamp ?? this.timestamp,
+      playlistName: clearPlaylist ? null : (playlistName ?? this.playlistName),
+    );
+  }
 }

@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:path/path.dart' as p;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/file_opener.dart';
 import '../../settings/services/settings_service.dart';
@@ -273,7 +272,10 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   }
 
   Future<void> _startSingleDownload(String url) async {
-    final destDir = await SettingsService.instance.resolveDownloadDirectory();
+    final destDir =
+        await SettingsService.instance.resolveDownloadDirectoryForFormat(
+      format: _selectedFormat,
+    );
 
     setState(() {
       _errorMessage = null;
@@ -327,14 +329,13 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
 
   Future<void> _startBatchPlaylistDownload(String playlistUrl) async {
     final playlist = _playlistMetadata!;
-    final baseDir = await SettingsService.instance.resolveDownloadDirectory();
     final autoSkip = SettingsService.instance.autoSkipDuplicates;
-    final useSubfolder = SettingsService.instance.playlistSubfolder;
     final concurrency = SettingsService.instance.concurrentDownloads;
-
-    final targetFolder = useSubfolder
-        ? p.join(baseDir, _sanitizeFolderName(playlist.title))
-        : baseDir;
+    final targetFolder =
+        await SettingsService.instance.resolveDownloadDirectoryForFormat(
+      format: _selectedFormat,
+      playlistName: playlist.title,
+    );
 
     final targetDir = Directory(targetFolder);
     if (!await targetDir.exists()) {
@@ -432,6 +433,9 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                 quality: _selectedFormat == DownloadFormat.mp4
                     ? _selectedVideoQuality.shortLabel
                     : _selectedAudioQuality.shortLabel,
+                thumbnailUrl: entry.id.isNotEmpty
+                    ? 'https://img.youtube.com/vi/${entry.id}/mqdefault.jpg'
+                    : null,
                 playlistName: playlist.title,
                 timestamp: DateTime.now(),
               );
@@ -508,10 +512,6 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         duration: const Duration(seconds: 3),
       ),
     );
-  }
-
-  String _sanitizeFolderName(String name) {
-    return name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '').trim();
   }
 
   @override

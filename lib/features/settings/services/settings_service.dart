@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../downloader/models/download_format.dart';
 
 /// Centralized configuration and user preferences service.
 class SettingsService {
@@ -89,5 +90,26 @@ class SettingsService {
     final fallback = p.join(appDocs.path, 'infyn-dl');
     await Directory(fallback).create(recursive: true);
     return fallback;
+  }
+
+  /// Resolves the effective download directory for a specific format and optional playlist.
+  /// Video files (mp4) are stored in a dedicated 'Videos' subdirectory.
+  Future<String> resolveDownloadDirectoryForFormat({
+    required DownloadFormat format,
+    String? playlistName,
+  }) async {
+    final baseDir = await resolveDownloadDirectory();
+    final isVideo = format == DownloadFormat.mp4;
+    final parentDir = isVideo ? p.join(baseDir, 'Videos') : baseDir;
+
+    if (playlistName != null &&
+        playlistName.trim().isNotEmpty &&
+        playlistSubfolder) {
+      final sanitized =
+          playlistName.replaceAll(RegExp(r'[\\/:*?"<>|]'), '').trim();
+      return p.join(parentDir, sanitized);
+    }
+
+    return parentDir;
   }
 }

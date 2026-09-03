@@ -356,12 +356,12 @@ class WindowsDownloaderService implements DownloaderService {
         }
 
         final stdoutFuture = process.stdout
-            .transform(systemEncoding.decoder)
+            .transform(const Utf8Decoder(allowMalformed: true))
             .transform(const LineSplitter())
             .forEach(handleLine);
 
         final stderrFuture = process.stderr
-            .transform(systemEncoding.decoder)
+            .transform(const Utf8Decoder(allowMalformed: true))
             .transform(const LineSplitter())
             .forEach((line) {
           stderrBuffer.writeln(line);
@@ -375,8 +375,36 @@ class WindowsDownloaderService implements DownloaderService {
         if (_isCancelled) {
           controller.add(DownloadProgress.cancelled(title: detectedTitle));
         } else if (exitCode == 0) {
+          String finalOutput = detectedDestinationPath ?? destDir;
+          try {
+            final f = File(finalOutput);
+            if (!await f.exists()) {
+              final dir = Directory(destDir);
+              if (await dir.exists()) {
+                final ext = format == DownloadFormat.mp3 ? '.mp3' : '.mp4';
+                final entities = await dir.list().toList();
+                entities.sort((a, b) {
+                  try {
+                    return b.statSync().modified.compareTo(a.statSync().modified);
+                  } catch (_) {
+                    return 0;
+                  }
+                });
+                for (final e in entities) {
+                  if (e is File) {
+                    final eExt = p.extension(e.path).toLowerCase();
+                    if (eExt == ext || (format == DownloadFormat.mp4 && (eExt == '.mkv' || eExt == '.webm'))) {
+                      finalOutput = e.path;
+                      break;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (_) {}
+
           controller.add(DownloadProgress.completed(
-            outputFilePath: detectedDestinationPath ?? destDir,
+            outputFilePath: finalOutput,
             title: detectedTitle,
           ));
         } else {

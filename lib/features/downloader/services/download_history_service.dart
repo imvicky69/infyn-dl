@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import '../models/download_format.dart';
 import '../models/download_item.dart';
+import '../../settings/services/settings_service.dart';
 
 /// Persistent cache & history manager for media downloads.
 class DownloadHistoryService {
@@ -160,6 +161,151 @@ class DownloadHistoryService {
     }
 
     return false;
+  }
+
+  /// Silently updates the cached filePath for a download item without triggering full reloads.
+  Future<void> updateItemFilePath(String id, String newFilePath) async {
+    if (!_isInitialized) await init();
+    final index = _cachedItems.indexWhere((item) => item.id == id);
+    if (index != -1) {
+      _cachedItems[index] = _cachedItems[index].copyWith(filePath: newFilePath);
+      await _persistToDisk();
+    }
+  }
+
+  /// Moves one or more download items to a destination playlist folder, or null for Unorganized.
+  /// Also moves physical files on disk if present.
+  Future<void> moveItemsToPlaylist({
+    required List<String> itemIds,
+    required String? targetPlaylistName,
+  }) async {
+    if (!_isInitialized) await init();
+    final cleanTarget =
+        (targetPlaylistName != null && targetPlaylistName.trim().isNotEmpty)
+            ? targetPlaylistName.trim()
+            : null;
+
+    final idSet = itemIds.toSet();
+    for (var i = 0; i < _cachedItems.length; i++) {
+      final item = _cachedItems[i];
+      if (idSet.contains(item.id)) {
+        var updatedFilePath = item.filePath;
+
+        // Try moving physical file if it exists
+        if (item.filePath.isNotEmpty) {
+          try {
+            final oldFile = File(item.filePath);
+            if (await oldFile.exists()) {
+              final targetDirStr = await SettingsService.instance
+                  .resolveDownloadDirectoryForFormat(
+                format: item.format,
+                playlistName: cleanTarget,
+              );
+              final targetDir = Directory(targetDirStr);
+              if (!await targetDir.exists()) {
+                await targetDir.create(recursive: true);
+              }
+
+              final fileName = p.basename(item.filePath);
+              var destPath = p.join(targetDir.path, fileName);
+
+              if (p.canonicalize(destPath) != p.canonicalize(item.filePath)) {
+                var counter = 1;
+                final baseName = p.basenameWithoutExtension(fileName);
+                final ext = p.extension(fileName);
+                while (await File(destPath).exists()) {
+                  destPath = p.join(targetDir.path, '$baseName ($counter)$ext');
+                  counter++;
+                }
+
+                try {
+                  await oldFile.rename(destPath);
+                  updatedFilePath = destPath;
+                } catch (_) {
+                  await oldFile.copy(destPath);
+                  await oldFile.delete();
+                  updatedFilePath = destPath;
+                }
+              }
+            }
+          } catch (e) {
+            debugPrint('Error moving physical file on disk: $e');
+          }
+        }
+
+        _cachedItems[i] = item.copyWith(
+          playlistName: cleanTarget,
+          clearPlaylist: cleanTarget == null,
+          filePath: updatedFilePath,
+        );
+      }
+    }
+    await _persistToDisk();
+  }
+
+  /// Renames an existing playlist across all history items and moves its physical directory on disk if present.
+  Future<void> renamePlaylist({
+    required String oldName,
+    required String newName,
+  }) async {
+    if (!_isInitialized) await init();
+    final cleanOld = oldName.trim();
+    final cleanNew = newName.trim();
+    if (cleanOld.isEmpty || cleanNew.isEmpty || cleanOld == cleanNew) return;
+
+    // Try renaming directories on disk
+    try {
+      final baseDir = await SettingsService.instance.resolveDownloadDirectory();
+      for (final parent in [baseDir, p.join(baseDir, 'Videos')]) {
+        final oldFolder =
+            Directory(p.join(parent, _sanitizeFilename(cleanOld)));
+        final newFolder =
+            Directory(p.join(parent, _sanitizeFilename(cleanNew)));
+        if (await oldFolder.exists() && !await newFolder.exists()) {
+          await oldFolder.rename(newFolder.path);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error renaming playlist folder on disk: $e');
+    }
+
+    for (var i = 0; i < _cachedItems.length; i++) {
+      final item = _cachedItems[i];
+      if (item.playlistName?.trim() == cleanOld) {
+        var updatedFilePath = item.filePath;
+        if (item.filePath.isNotEmpty) {
+          final oldSanitized = _sanitizeFilename(cleanOld);
+          final newSanitized = _sanitizeFilename(cleanNew);
+          if (item.filePath.contains(oldSanitized)) {
+            updatedFilePath =
+                item.filePath.replaceAll(oldSanitized, newSanitized);
+          }
+        }
+        _cachedItems[i] = item.copyWith(
+          playlistName: cleanNew,
+          filePath: updatedFilePath,
+        );
+      }
+    }
+    await _persistToDisk();
+  }
+
+  /// Deletes a playlist and all its items from history, optionally deleting files on disk.
+  Future<void> deletePlaylist({
+    required String playlistName,
+    bool deletePhysicalFiles = false,
+  }) async {
+    if (!_isInitialized) await init();
+    final cleanName = playlistName.trim();
+
+    final toRemove = _cachedItems
+        .where((item) => item.playlistName?.trim() == cleanName)
+        .map((e) => e.id)
+        .toList();
+
+    for (final id in toRemove) {
+      await removeDownload(id, deletePhysicalFile: deletePhysicalFiles);
+    }
   }
 
   static String _sanitizeFilename(String input) {
