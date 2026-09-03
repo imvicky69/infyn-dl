@@ -4,6 +4,7 @@ import '../../downloader/screens/downloader_screen.dart';
 import '../../downloader/services/downloader_service.dart';
 import '../../library/screens/library_screen.dart';
 import '../../settings/screens/settings_screen.dart';
+import '../../tools/screens/tools_screen.dart';
 
 /// Top-level shell screen providing modern bottom tab navigation.
 class MainShellScreen extends StatefulWidget {
@@ -32,12 +33,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
         children: [
           DownloaderScreen(
             downloaderService: widget.downloaderService,
-            onOpenSettings: () => setState(() => _currentIndex = 2),
+            onOpenSettings: () => setState(() => _currentIndex = 3),
             onOpenLibrary: () => setState(() => _currentIndex = 1),
           ),
           LibraryScreen(
             onNavigateToDownloader: () => setState(() => _currentIndex = 0),
           ),
+          const ToolsScreen(),
           SettingsScreen(
             downloaderService: widget.downloaderService,
           ),
@@ -52,7 +54,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
@@ -70,6 +72,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ),
                 _buildNavItem(
                   index: 2,
+                  icon: Icons.handyman_outlined,
+                  selectedIcon: Icons.handyman_rounded,
+                  label: 'Tools',
+                ),
+                _buildNavItem(
+                  index: 3,
                   icon: Icons.tune_outlined,
                   selectedIcon: Icons.tune_rounded,
                   label: 'Settings',
