@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../downloader/screens/downloader_screen.dart';
 import '../../library/models/track.dart';
-import '../../player/services/audio_player_service.dart';
 import '../services/ytm_search_service.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
@@ -54,22 +54,18 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  void _playTrack(Track track) {
-    AudioPlayerService.instance.playTrack(track, queue: _songResults);
-  }
-
-  Future<void> _playPlaylist(yt.SearchPlaylist playlist) async {
-    setState(() => _isLoading = true);
-    final tracks = await YtmSearchService.instance.getPlaylistTracks(playlist.id.value);
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (tracks.isNotEmpty) {
-        AudioPlayerService.instance.playTrack(tracks.first, queue: tracks);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Playing playlist: ${playlist.title}')),
-        );
-      }
-    }
+  Future<void> _openDownloader(String url, {required bool isPlaylist}) async {
+    if (url.trim().isEmpty) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => DownloaderScreen(initialUrl: url),
+      ),
+    );
+    if (!mounted) return;
+    final itemLabel = isPlaylist ? 'playlist' : 'song';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Opened downloader for selected $itemLabel')),
+    );
   }
 
   @override
@@ -124,11 +120,11 @@ class _SearchScreenState extends State<SearchScreen> {
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.search_rounded,
+                            Icon(Icons.download_rounded,
                                 size: 64, color: AppColors.surfaceBorder),
                             const SizedBox(height: 16),
                             Text(
-                              'Search for songs or playlists',
+                              'Search for songs or playlists to download',
                               style: TextStyle(color: AppColors.textSecondary),
                             ),
                           ],
@@ -209,11 +205,8 @@ class _SearchScreenState extends State<SearchScreen> {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
-      trailing: Text(
-        track.formattedDuration,
-        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
-      ),
-      onTap: () => _playTrack(track),
+      trailing: Icon(Icons.download_rounded, color: AppColors.primary),
+      onTap: () => _openDownloader(track.webUrl ?? '', isPlaylist: false),
     );
   }
 
@@ -245,8 +238,11 @@ class _SearchScreenState extends State<SearchScreen> {
         '${playlist.videoCount} tracks',
         style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
-      trailing: Icon(Icons.play_circle_fill_rounded, color: AppColors.primary),
-      onTap: () => _playPlaylist(playlist),
+      trailing: Icon(Icons.download_for_offline_rounded, color: AppColors.primary),
+      onTap: () => _openDownloader(
+        'https://www.youtube.com/playlist?list=${playlist.id.value}',
+        isPlaylist: true,
+      ),
     );
   }
 

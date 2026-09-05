@@ -32,11 +32,13 @@ class DownloaderScreen extends StatefulWidget {
     this.downloaderService,
     this.onOpenSettings,
     this.onOpenLibrary,
+    this.initialUrl,
   });
 
   final DownloaderService? downloaderService;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenLibrary;
+  final String? initialUrl;
 
   @override
   State<DownloaderScreen> createState() => _DownloaderScreenState();
@@ -79,6 +81,13 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     _downloaderService =
         widget.downloaderService ?? AndroidDownloaderService();
     _loadInitialData();
+    final initialUrl = widget.initialUrl?.trim();
+    if (initialUrl != null && initialUrl.isNotEmpty) {
+      _urlController.text = initialUrl;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _handleUrlChanged(initialUrl);
+      });
+    }
   }
 
   Future<void> _loadInitialData() async {
