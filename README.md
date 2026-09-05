@@ -38,6 +38,15 @@ Pre-compiled, ready-to-run releases for **Windows** and **Android** are availabl
 
 ---
 
+## 🚀 What's New in v1.0.2
+
+- **Lightning Fast Audio Downloads (Native M4A)**: We've completely bypassed heavy local media transcoding. Downloads now stream the original high-quality `M4A` audio natively, meaning downloads are near-instantaneous and drastically save on your device's battery and CPU usage.
+- **Background Audio & Lock Screen Controls**: The app now integrates directly with Android's MediaSession API. When you play a song, a beautiful notification will appear on your lock screen and notification shade. You can pause, play, skip, or go back without opening the app, and Android will no longer kill your music when the app is minimized!
+- **Playlists Support**: The Search tab now features intuitive filter chips (`[Songs]` and `[Playlists]`). Tapping a playlist instantly fetches all its tracks, begins playback, and automatically lines them up in your "Up Next" queue.
+- **Real-time Download Progress**: The download button in the Now Playing screen now transforms into a real-time circular progress indicator, so you always know exactly how much of your track has been downloaded.
+
+---
+
 ## ✨ Key Features
 
 ### 🎬 High-Resolution Video & Audio
