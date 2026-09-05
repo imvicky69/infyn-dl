@@ -32,6 +32,39 @@ class YtmSearchService {
     }
   }
 
+  /// Searches for playlists
+  Future<List<yt.SearchPlaylist>> searchPlaylists(String query) async {
+    if (query.trim().isEmpty) return [];
+    try {
+      final results = await _yt.search.searchContent(query, filter: yt.TypeFilters.playlist);
+      return results.whereType<yt.SearchPlaylist>().toList();
+    } catch (e) {
+      debugPrint('YtmSearchService playlist search error: $e');
+      return [];
+    }
+  }
+
+  /// Gets tracks for a playlist
+  Future<List<Track>> getPlaylistTracks(String playlistId) async {
+    try {
+      final playlist = await _yt.playlists.get(playlistId);
+      final videos = await _yt.playlists.getVideos(playlist.id).toList();
+      return videos.map((video) {
+        return Track(
+          id: video.id.value,
+          title: video.title,
+          artist: video.author,
+          webUrl: video.url,
+          duration: video.duration,
+          artworkPath: video.thumbnails.highResUrl,
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('YtmSearchService playlist details error: $e');
+      return [];
+    }
+  }
+
   void dispose() {
     _yt.close();
   }

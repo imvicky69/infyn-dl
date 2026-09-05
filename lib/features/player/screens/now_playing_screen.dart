@@ -16,6 +16,8 @@ class NowPlayingScreen extends StatefulWidget {
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
   double? _draggedPositionMs;
+  bool _isDownloading = false;
+  double _downloadProgress = 0.0;
 
   String _formatDuration(Duration d) {
     final minutes = d.inMinutes;
@@ -228,19 +230,55 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       ),
                       if (!track.isLocal && track.webUrl != null) ...[
                         const SizedBox(width: 4),
-                        IconButton(
-                          onPressed: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Starting download for "${track.title}"...')),
-                            );
-                            AndroidDownloaderService().download(
-                              url: track.webUrl!,
-                              format: DownloadFormat.mp3,
-                            ).listen((_) {});
-                          },
-                          icon: Icon(Icons.download_rounded, color: AppColors.textSecondary, size: 24),
-                          tooltip: 'Download',
-                        ),
+                        _isDownloading
+                            ? SizedBox(
+                                width: 32,
+                                height: 32,
+                                child: Stack(
+                                  alignment: Alignment.center,
+                                  children: [
+                                    CircularProgressIndicator(
+                                      value: _downloadProgress > 0 ? _downloadProgress : null,
+                                      strokeWidth: 2.5,
+                                      color: AppColors.primary,
+                                      backgroundColor: AppColors.surfaceBorder,
+                                    ),
+                                    Icon(Icons.download_rounded, size: 16, color: AppColors.primary),
+                                  ],
+                                ),
+                              )
+                            : IconButton(
+                                onPressed: () {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Downloading "${track.title}"...')),
+                                  );
+                                  setState(() {
+                                    _isDownloading = true;
+                                    _downloadProgress = 0.0;
+                                  });
+                                  AndroidDownloaderService().download(
+                                    url: track.webUrl!,
+                                    format: DownloadFormat.mp3,
+                                  ).listen((progress) {
+                                    if (mounted) {
+                                      setState(() {
+                                        _downloadProgress = progress.progress / 100.0;
+                                      });
+                                      if (progress.status == 'completed' || progress.status == 'failed') {
+                                        setState(() {
+                                          _isDownloading = false;
+                                        });
+                                      }
+                                    }
+                                  }, onError: (e) {
+                                    if (mounted) {
+                                      setState(() => _isDownloading = false);
+                                    }
+                                  });
+                                },
+                                icon: Icon(Icons.download_rounded, color: AppColors.textSecondary, size: 24),
+                                tooltip: 'Download',
+                              ),
                       ],
                     ],
                   ),

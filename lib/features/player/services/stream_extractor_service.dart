@@ -34,10 +34,13 @@ class StreamExtractorService {
     try {
       final manifest = await _yt.videos.streamsClient.getManifest(webUrl);
       
-      // Get the best audio-only stream (m4a/webm)
+      // Get the best audio-only stream (m4a preferred for better ExoPlayer compatibility)
       final audioStreams = manifest.audioOnly;
       if (audioStreams.isNotEmpty) {
-        final bestAudio = audioStreams.withHighestBitrate();
+        final m4aStreams = audioStreams.where((s) => s.audioCodec.contains('mp4') || s.container.name == 'mp4' || s.url.toString().contains('mime=audio%2Fmp4'));
+        final bestAudio = m4aStreams.isNotEmpty 
+            ? m4aStreams.withHighestBitrate() 
+            : audioStreams.withHighestBitrate();
         final bestUrl = bestAudio.url.toString();
         
         // Cache it

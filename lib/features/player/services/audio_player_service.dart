@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
@@ -222,15 +223,39 @@ class AudioPlayerService extends ChangeNotifier {
       _duration = track.duration ?? Duration.zero;
       notifyListeners();
 
+      try {
       if (track.isLocal) {
-        await _player?.setFilePath(track.filePath!);
+        await _player?.setAudioSource(
+          AudioSource.uri(
+            Uri.parse(track.filePath!),
+            tag: MediaItem(
+              id: track.id,
+              title: track.title,
+              artist: track.artist,
+              artUri: track.artworkPath != null ? Uri.parse(track.artworkPath!) : null,
+            ),
+          ),
+        );
       } else {
         _isBuffering = true;
         notifyListeners();
         
         final streamUrl = await StreamExtractorService.instance.getStreamUrl(track);
         if (streamUrl != null) {
-          await _player?.setUrl(streamUrl);
+          await _player?.setAudioSource(
+            AudioSource.uri(
+              Uri.parse(streamUrl),
+              tag: MediaItem(
+                id: track.id,
+                title: track.title,
+                artist: track.artist,
+                artUri: track.artworkPath != null ? Uri.parse(track.artworkPath!) : null,
+              ),
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+              },
+            ),
+          );
         } else {
           // Extraction failed
           _isBuffering = false;
@@ -239,14 +264,19 @@ class AudioPlayerService extends ChangeNotifier {
         }
       }
 
-      final loadedDuration = _player?.duration;
-      if (loadedDuration != null) {
-        _duration = loadedDuration;
-        _currentTrack = _currentTrack?.copyWith(duration: loadedDuration);
-      }
+        final loadedDuration = _player?.duration;
+        if (loadedDuration != null) {
+          _duration = loadedDuration;
+          _currentTrack = _currentTrack?.copyWith(duration: loadedDuration);
+        }
 
-      await _player?.play();
-      await _persistState();
+        await _player?.play();
+        await _persistState();
+      } catch (e) {
+        debugPrint('Error playing track: $e');
+        _isBuffering = false;
+        notifyListeners();
+      }
     } catch (e) {
       debugPrint('Error playing track "${track.title}": $e');
     }

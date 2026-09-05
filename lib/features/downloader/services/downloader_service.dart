@@ -20,7 +20,7 @@ abstract class DownloaderService {
     required String url,
     required DownloadFormat format,
     VideoQuality videoQuality = VideoQuality.best,
-    AudioQuality audioQuality = AudioQuality.k320,
+    AudioQuality audioQuality = AudioQuality.k192,
     String? destinationDirectory,
   });
 

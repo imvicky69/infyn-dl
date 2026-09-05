@@ -49,7 +49,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
 
   DownloadFormat _selectedFormat = DownloadFormat.mp4;
   VideoQuality _selectedVideoQuality = VideoQuality.best;
-  AudioQuality _selectedAudioQuality = AudioQuality.k320;
+  AudioQuality _selectedAudioQuality = AudioQuality.k192;
   DownloadProgress _downloadProgress = DownloadProgress.idle();
 
   String? _errorMessage;

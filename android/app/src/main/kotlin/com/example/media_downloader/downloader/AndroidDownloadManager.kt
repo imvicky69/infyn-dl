@@ -250,13 +250,11 @@ object AndroidDownloadManager {
                 addOption("--file-access-retries", "5")
 
                 if (isAudio) {
-                    // Zero-transcode audio: download native m4a/opus stream and remux into
-                    // .m4a container — no FFmpeg re-encode, instant finish, maximum quality.
-                    // Fallback chain: m4a (AAC-LC native) → opus/webm → any best audio.
-                    addOption("-f", "bestaudio[ext=m4a]/bestaudio[ext=opus]/bestaudio")
-                    // Remux container only (bitstream copy) — accepts a single target format.
-                    // 'mp4' wraps m4a/aac without re-encoding on Android.
-                    addOption("--remux-video", "m4a")
+                    // Zero-transcode audio: download native m4a stream. 
+                    // To prevent FFmpeg crashes and long hangs on Opus, we specifically request m4a.
+                    addOption("-f", "bestaudio[ext=m4a]")
+                    addOption("--extract-audio")
+                    addOption("--audio-format", "m4a")
                     addOption("--no-keep-video")
                     // 16 parallel fragments for audio (small segments, parallel download)
                     addOption("-N", "16")
