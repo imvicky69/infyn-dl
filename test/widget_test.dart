@@ -9,6 +9,7 @@ import 'package:media_downloader/features/downloader/models/playlist_metadata.da
 import 'package:media_downloader/features/downloader/models/video_metadata.dart';
 import 'package:media_downloader/features/downloader/screens/downloader_screen.dart';
 import 'package:media_downloader/features/downloader/services/downloader_service.dart';
+import 'package:media_downloader/features/downloader/widgets/batch_progress_card.dart';
 
 class FakeDownloaderService implements DownloaderService {
   final StreamController<DownloadProgress> _controller =
@@ -171,7 +172,7 @@ void main() {
     // Video details, format selector, and download button appear
     expect(find.text('Sample Test Media'), findsOneWidget);
     expect(find.text('MP4'), findsOneWidget);
-    expect(find.text('MP3'), findsOneWidget);
+    expect(find.text('M4A'), findsOneWidget);
     expect(find.byKey(const Key('download_action_button')), findsOneWidget);
   });
 
@@ -250,5 +251,73 @@ void main() {
 
     expect(fakeService.cancelled, isTrue);
     expect(find.text('Download Cancelled'), findsOneWidget);
+  });
+
+  group('BatchProgressCard Multi-Worker Tests', () {
+    testWidgets('Renders concurrent worker tracks properly',
+        (WidgetTester tester) async {
+      bool cancelled = false;
+
+      final workers = [
+        const ActiveWorkerItem(
+          workerId: 0,
+          title: 'Track One',
+          progress: DownloadProgress(
+            status: DownloadStatus.downloading,
+            progress: 0.45,
+            percentage: '45.0%',
+            speed: '2.5MB/s',
+            eta: '00:10',
+          ),
+        ),
+        const ActiveWorkerItem(
+          workerId: 1,
+          title: 'Track Two',
+          progress: DownloadProgress(
+            status: DownloadStatus.downloading,
+            progress: 0.80,
+            percentage: '80.0%',
+            speed: '3.1MB/s',
+            eta: '00:03',
+          ),
+        ),
+      ];
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: BatchProgressCard(
+              playlistTitle: 'Awesome 90s Hits',
+              currentIndex: 3,
+              totalItems: 10,
+              skippedCount: 1,
+              concurrency: 2,
+              activeWorkers: workers,
+              onCancel: () => cancelled = true,
+            ),
+          ),
+        ),
+      );
+
+      // Verify playlist title and overall status
+      expect(find.text('Awesome 90s Hits'), findsOneWidget);
+      expect(find.text('Processed 4 of 10 (40% overall)'), findsOneWidget);
+      expect(find.text('2x Parallel'), findsOneWidget);
+
+      // Verify both active workers rendered simultaneously
+      expect(find.text('Track One'), findsOneWidget);
+      expect(find.text('45.0%'), findsOneWidget);
+      expect(find.text('2.5MB/s'), findsOneWidget);
+      expect(find.text('#1'), findsOneWidget);
+
+      expect(find.text('Track Two'), findsOneWidget);
+      expect(find.text('80.0%'), findsOneWidget);
+      expect(find.text('3.1MB/s'), findsOneWidget);
+      expect(find.text('#2'), findsOneWidget);
+
+      // Verify cancel triggers callback
+      await tester.tap(find.text('Cancel Batch'));
+      expect(cancelled, isTrue);
+    });
   });
 }

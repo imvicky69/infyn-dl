@@ -121,18 +121,18 @@ To prevent Android's battery optimizer from terminating active downloads when th
 
 ## 7. High-Speed Downloading & Network Resilience
 
-To match Windows performance and prevent freezing or rate-limiting on Android:
+To achieve maximum throughput and prevent freezing or format errors on Android:
 
-1. **Chunk-Range Streaming (`--http-chunk-size 10M`)**:
-   Forces `yt-dlp` to request media in 10MB chunk ranges, bypassing YouTube's continuous stream rate limiter (which would otherwise throttle downloads to 40–80 KB/s).
-2. **Multi-Threaded Fragment Downloads (`-N 8`)**:
-   Downloads 8 stream fragments in parallel across separate TCP sockets to saturate available Wi-Fi and 5G/4G bandwidth.
+1. **Chunk-Range Streaming & Buffering (`--http-chunk-size 10M`, `--buffer-size 64K`)**:
+   Requests media in 10MB chunk ranges, bypassing YouTube's continuous stream rate limiter.
+2. **Multi-Threaded Fragment Downloads (`-N 6`)**:
+   Downloads 6 stream fragments concurrently to saturate available Wi-Fi and 5G/4G bandwidth without causing mobile memory or socket pressure.
 3. **Socket Timeouts & Anti-Hang Timeouts**:
-   `--socket-timeout 30`, `--retries 10`, `--fragment-retries 10`, and `--file-access-retries 5` prevent unhandled socket drops or network jitter from freezing the download job indefinitely.
+   `--socket-timeout 30`, `--retries 10`, `--fragment-retries 10`, and `--file-access-retries 5` prevent unhandled socket drops or network jitter from freezing the download job.
 4. **IPC & Event Throttling**:
-   Notification updates are throttled to 750ms and Flutter EventChannel updates to 120ms, preventing Android Binder saturation and main-thread UI jank.
-5. **DASH Player Client Selection**:
-   Extractor args use `youtube:player_client=android,web;player_skip=configs,webpage` to retrieve direct HTTPS DASH streams.
+   Atomic snapshot polling in `AndroidDownloadManager.kt` prevents Android Binder saturation and main-thread UI jank.
+5. **Direct Player Client Configuration**:
+   Extractor args use `youtube:player_client=android,web;player_skip=configs,webpage` to retrieve full formats without triggering PO-token/SABR format skipping warnings.
 
 ---
 

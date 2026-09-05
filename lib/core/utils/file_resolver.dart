@@ -21,15 +21,11 @@ class FileResolver {
         .replaceAll(RegExp(r'[^\p{L}\p{N}\p{M}]', unicode: true), '');
   }
 
-  /// Checks whether a given path string contains illegal filesystem characters on Windows.
+  /// Checks whether a given path string contains illegal filesystem characters.
   static bool hasIllegalCharacters(String path) {
-    if (!kIsWeb && Platform.isWindows) {
-      // Allow drive letter e.g. "C:\"
-      final checkPath =
-          path.length >= 3 && path[1] == ':' ? path.substring(2) : path;
-      return checkPath.contains(RegExp(r'[*?"<>|]'));
-    }
-    return false;
+    final checkPath =
+        path.length >= 3 && path[1] == ':' ? path.substring(2) : path;
+    return checkPath.contains(RegExp(r'[*?"<>|]'));
   }
 
   /// Safely checks if a directory exists on disk without throwing OS errno 123 for invalid names.
@@ -156,7 +152,9 @@ class FileResolver {
     }
 
     // 3. Match against files in candidate directories
-    final expectedExt = item.format == DownloadFormat.mp3 ? '.mp3' : '.mp4';
+    final expectedExt = item.format == DownloadFormat.mp3 ? '.m4a' : '.mp4';
+    // Also accept legacy .mp3 files from before the m4a migration
+    final legacyAudioExt = '.mp3';
     final targetNormTitle = normalize(item.title);
     final targetNormFile = item.filePath.isNotEmpty
         ? normalize(p.basenameWithoutExtension(item.filePath))
@@ -169,10 +167,12 @@ class FileResolver {
           if (entity is! File) continue;
 
           final ext = p.extension(entity.path).toLowerCase();
-          // Accept exact extension, or video alternatives like .mkv/.webm
+          // Accept exact extension, video alternatives (.mkv/.webm), or legacy audio (.mp3)
           final isExtMatch = (ext == expectedExt) ||
               (item.format == DownloadFormat.mp4 &&
-                  (ext == '.mkv' || ext == '.webm' || ext == '.mp4'));
+                  (ext == '.mkv' || ext == '.webm' || ext == '.mp4')) ||
+              (item.format == DownloadFormat.mp3 &&
+                  (ext == legacyAudioExt || ext == '.opus' || ext == '.ogg' || ext == '.aac'));
           if (!isExtMatch) continue;
 
           final entityName = p.basenameWithoutExtension(entity.path);

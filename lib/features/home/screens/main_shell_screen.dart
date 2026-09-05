@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../downloader/screens/downloader_screen.dart';
@@ -28,18 +27,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
   int _currentIndex = 0;
   bool _isDesktopPlayerOpen = false;
 
-  bool get _isDesktop =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.windows ||
-          defaultTargetPlatform == TargetPlatform.macOS ||
-          defaultTargetPlatform == TargetPlatform.linux);
-
   @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
-    final useDesktopLayout = _isDesktop || screenWidth >= 800;
+    final useWideLayout = screenWidth >= 800;
 
-    if (useDesktopLayout) {
+    if (useWideLayout) {
       return _buildDesktopLayout(context);
     } else {
       return _buildMobileLayout(context);

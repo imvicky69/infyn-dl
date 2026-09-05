@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
@@ -16,7 +15,6 @@ import '../../downloader/models/playlist_metadata.dart';
 import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/download_history_service.dart';
 import '../../downloader/services/downloader_service.dart';
-import '../../downloader/services/windows_downloader_service.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/library_folder.dart';
 import '../models/track.dart';
@@ -41,10 +39,8 @@ class LibraryScreen extends StatefulWidget {
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
-  late final DownloaderService _downloaderService = widget.downloaderService ??
-      (Platform.isWindows
-          ? WindowsDownloaderService()
-          : AndroidDownloaderService());
+  late final DownloaderService _downloaderService =
+      widget.downloaderService ?? AndroidDownloaderService();
 
   List<DownloadItem> _items = [];
   bool _isLoading = true;
@@ -53,11 +49,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  bool get _isDesktop =>
-      !kIsWeb &&
-      (defaultTargetPlatform == TargetPlatform.windows ||
-          defaultTargetPlatform == TargetPlatform.macOS ||
-          defaultTargetPlatform == TargetPlatform.linux);
+  bool get _isDesktop => false;
 
   LibraryFolder? _openedFolder;
   bool _isMultiSelectMode = false;

@@ -188,7 +188,10 @@ class DownloadHistoryService {
   }) async {
     if (!_isInitialized) await init();
 
-    final ext = format == DownloadFormat.mp3 ? 'mp3' : 'mp4';
+    // Audio files are now saved as .m4a (native stream, no re-encode).
+    // Also check .mp3 as legacy fallback for items downloaded before this change.
+    final audioExts = ['m4a', 'mp3', 'opus', 'ogg', 'aac'];
+    final ext = format == DownloadFormat.mp3 ? 'm4a' : 'mp4';
     final cleanTitle = _sanitizeFilename(title).toLowerCase();
 
     // 1. Check in cached history items
@@ -212,21 +215,26 @@ class DownloadHistoryService {
       try {
         final dir = Directory(targetDirectory);
         if (await dir.exists()) {
-          final expectedFile =
-              File(p.join(targetDirectory, '$cleanTitle.$ext'));
-          if (await expectedFile.exists()) {
-            return true;
+          // Check primary extension first
+          final expectedFile = File(p.join(targetDirectory, '$cleanTitle.$ext'));
+          if (await expectedFile.exists()) return true;
+
+          // For audio, also check legacy .mp3 and other audio containers
+          if (format == DownloadFormat.mp3) {
+            for (final altExt in audioExts) {
+              final altFile = File(p.join(targetDirectory, '$cleanTitle.$altExt'));
+              if (await altFile.exists()) return true;
+            }
           }
 
-          // Scan directory files for matching title
+          // Scan directory files for matching title (handles title-sanitization mismatches)
           final entities = await dir.list().toList();
+          final validExts = format == DownloadFormat.mp3 ? audioExts : ['mp4', 'mkv', 'webm'];
           for (final entity in entities) {
             if (entity is File) {
-              final fileName =
-                  p.basenameWithoutExtension(entity.path).toLowerCase();
-              final fileExt =
-                  p.extension(entity.path).replaceFirst('.', '').toLowerCase();
-              if (fileExt == ext &&
+              final fileName = p.basenameWithoutExtension(entity.path).toLowerCase();
+              final fileExt = p.extension(entity.path).replaceFirst('.', '').toLowerCase();
+              if (validExts.contains(fileExt) &&
                   (fileName == cleanTitle || fileName.contains(cleanTitle))) {
                 return true;
               }

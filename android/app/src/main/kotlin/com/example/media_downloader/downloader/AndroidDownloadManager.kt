@@ -60,6 +60,11 @@ object AndroidDownloadManager {
                 initError = null
                 Log.d(TAG, "YoutubeDL and FFmpeg successfully initialized on Android")
 
+                // Clean up any stale staging artifacts from prior sessions
+                try {
+                    File(context.cacheDir, "downloads_staging").deleteRecursively()
+                } catch (_: Exception) {}
+
                 // Automatically check for latest yt-dlp binary update in background
                 try {
                     val status = YoutubeDL.getInstance().updateYoutubeDL(context.applicationContext, YoutubeDL.UpdateChannel._STABLE)
@@ -130,7 +135,6 @@ object AndroidDownloadManager {
                     addOption("--no-check-certificates")
                     addOption("--socket-timeout", "15")
                     addOption("--retries", "3")
-                    addOption("--extractor-args", "youtube:player_client=android,web;player_skip=configs,webpage")
                 }
                 val response = YoutubeDL.getInstance().execute(request)
                 val json = response.out
@@ -171,7 +175,6 @@ object AndroidDownloadManager {
                     addOption("--no-check-certificates")
                     addOption("--socket-timeout", "15")
                     addOption("--retries", "3")
-                    addOption("--extractor-args", "youtube:player_client=android,web;player_skip=configs,webpage")
                     addOption("--yes-playlist")
                 }
                 val response = YoutubeDL.getInstance().execute(request)
@@ -209,7 +212,7 @@ object AndroidDownloadManager {
             }
 
             val isAudio = format.lowercase() == "mp3"
-            val stagingDir = File(context.cacheDir, "downloads_staging").apply {
+            val stagingDir = File(File(context.cacheDir, "downloads_staging"), downloadId).apply {
                 if (!exists()) mkdirs()
             }
 
@@ -233,16 +236,11 @@ object AndroidDownloadManager {
                 addOption("--no-update")
                 addOption("--no-check-certificates")
                 addOption("--no-mtime")
-                // ios player_client: YouTube does NOT throttle iOS streams (unlike the android client
-                // which is capped at ~200-500KB/s). ios also returns DASH fragmented streams,
-                // making -N parallel fragment downloading actually effective on Android.
-                addOption("--extractor-args", "youtube:player_client=ios,web")
 
-                // 8 parallel fragment streams — works correctly with DASH streams from ios client
+                // High-speed parallel fragment downloading and chunk buffering
                 addOption("-N", "8")
                 addOption("--http-chunk-size", "10M")
-                // Auto-detect & retry if YouTube throttles mid-download (re-fetches with fresh URLs)
-                addOption("--throttled-rate", "100K")
+                addOption("--buffer-size", "64K")
 
                 // Network reliability & anti-hang timeouts for mobile connections
                 addOption("--socket-timeout", "30")
@@ -252,10 +250,16 @@ object AndroidDownloadManager {
                 addOption("--file-access-retries", "5")
 
                 if (isAudio) {
-                    addOption("-x")
-                    addOption("--audio-format", "mp3")
-                    val qualityVal = audioQuality ?: "0"
-                    addOption("--audio-quality", qualityVal)
+                    // Zero-transcode audio: download native m4a/opus stream and remux into
+                    // .m4a container — no FFmpeg re-encode, instant finish, maximum quality.
+                    // Fallback chain: m4a (AAC-LC native) → opus/webm → any best audio.
+                    addOption("-f", "bestaudio[ext=m4a]/bestaudio[ext=opus]/bestaudio")
+                    // Remux container only (bitstream copy) — accepts a single target format.
+                    // 'mp4' wraps m4a/aac without re-encoding on Android.
+                    addOption("--remux-video", "m4a")
+                    addOption("--no-keep-video")
+                    // 16 parallel fragments for audio (small segments, parallel download)
+                    addOption("-N", "16")
                 } else {
                     addOption("-S", "res,size,br")
                     val formatString = when (videoQuality?.lowercase()) {
@@ -279,12 +283,14 @@ object AndroidDownloadManager {
             val speedRegex = Regex("""at\s+([0-9.]+[A-Za-z/]+)""")
             val sizeRegex = Regex("""of\s+~?([0-9.]+[A-Za-z]+)""")
 
-            // Timer-based dispatch coroutine: polls atomic state every 350ms.
-            // This fully decouples IPC (Notification + EventChannel) from the
-            // hot yt-dlp callback thread — eliminating GC pressure & main-thread flooding.
+            // Timer-based dispatch coroutine: polls atomic state every 250ms.
+            // Check snapshot immediately first (no leading delay) so the first
+            // progress event fires in <100ms instead of waiting a full 350ms cycle.
             val dispatchJob = scope.launch {
+                var firstCheck = true
                 while (isActive) {
-                    delay(350)
+                    if (!firstCheck) delay(250)
+                    firstCheck = false
                     val snap = latestSnapshot.getAndSet(null) ?: continue
                     val safeProgress = snap.progress.coerceAtLeast(0f)
                     val progressRatio = (safeProgress / 100.0).coerceIn(0.0, 1.0)
@@ -340,12 +346,27 @@ object AndroidDownloadManager {
                     )
                 )
 
-                // Locate generated file in staging directory
-                val stagingFiles = stagingDir.listFiles { file ->
-                    file.isFile && !file.name.endsWith(".part") && !file.name.endsWith(".ytdl") && !file.name.endsWith(".temp")
+                // Locate generated file in the job's dedicated staging directory
+                val finalStagingFile = if (isAudio) {
+                    // Prefer m4a (native YouTube AAC stream, no re-encode).
+                    // Fallback to opus/ogg (opus remuxed), then any other audio.
+                    // We no longer produce .mp3 — direct remux skips FFmpeg entirely.
+                    val audioExts = listOf("m4a", "opus", "ogg", "aac", "flac", "wav", "mp3")
+                    audioExts.firstNotNullOfOrNull { ext ->
+                        stagingDir.listFiles { file ->
+                            file.isFile &&
+                            !file.name.endsWith(".part") &&
+                            !file.name.endsWith(".ytdl") &&
+                            !file.name.endsWith(".temp") &&
+                            file.extension.equals(ext, ignoreCase = true)
+                        }?.maxByOrNull { it.lastModified() }
+                    }
+                } else {
+                    stagingDir.listFiles { file ->
+                        file.isFile && !file.name.endsWith(".part") && !file.name.endsWith(".ytdl") && !file.name.endsWith(".temp") &&
+                        file.extension.lowercase() in listOf("mp4", "mkv", "webm", "mov", "avi")
+                    }?.maxByOrNull { it.lastModified() }
                 }
-
-                val finalStagingFile = stagingFiles?.maxByOrNull { it.lastModified() }
 
                 if (finalStagingFile != null && finalStagingFile.exists()) {
                     val mimeType = MediaStorageHelper.getMimeType(finalStagingFile, isAudio)
@@ -368,8 +389,18 @@ object AndroidDownloadManager {
                         preferMusicDirectory = isMusicDir
                     )
 
+                    // Immediate cleanup of staging directory
+                    try {
+                        stagingDir.deleteRecursively()
+                    } catch (_: Exception) {}
+
                     val finalTitle = detectedTitle.get() ?: finalStagingFile.nameWithoutExtension
-                    DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
+                    val remainingJobs = (activeJobs.size - 1).coerceAtLeast(0)
+                    if (remainingJobs <= 0) {
+                        DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
+                    } else {
+                        DownloadForegroundService.showItemFinished(context, finalTitle, "$remainingJobs remaining download(s)...")
+                    }
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
@@ -384,7 +415,12 @@ object AndroidDownloadManager {
                 } else {
                     // Completed with stdout log
                     val finalTitle = detectedTitle.get() ?: "Media Download"
-                    DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
+                    val remainingJobs = (activeJobs.size - 1).coerceAtLeast(0)
+                    if (remainingJobs <= 0) {
+                        DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
+                    } else {
+                        DownloadForegroundService.showItemFinished(context, finalTitle, "$remainingJobs remaining download(s)...")
+                    }
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
@@ -408,14 +444,16 @@ object AndroidDownloadManager {
                     )
                 } else {
                     Log.e(TAG, "Download execution failed", e)
-                    val errorMsg = e.message ?: "Download failed on device"
+                    val rawMsg = e.message ?: "Download failed on device"
+                    val errorMsg = cleanErrorMessage(rawMsg)
                     DownloadForegroundService.showError(context, detectedTitle.get() ?: "Media Download", errorMsg)
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
                             "status" to "failed",
                             "error" to errorMsg,
-                            "title" to detectedTitle.get()
+                            "title" to detectedTitle.get(),
+                            "rawLog" to rawMsg
                         )
                     )
                 }
@@ -423,6 +461,9 @@ object AndroidDownloadManager {
                 dispatchJob.cancel() // Stop the dispatch coroutine before cleanup
                 activeProcessIds.remove(downloadId)
                 activeJobs.remove(downloadId)
+                try {
+                    stagingDir.deleteRecursively()
+                } catch (_: Exception) {}
                 if (activeJobs.isEmpty()) {
                     DownloadForegroundService.stop(context)
                 }
@@ -434,7 +475,7 @@ object AndroidDownloadManager {
     /**
      * Cancels an ongoing download process immediately.
      */
-    fun cancelDownload(downloadId: String) {
+    fun cancelDownload(context: Context? = null, downloadId: String) {
         try {
             YoutubeDL.getInstance().destroyProcessById(downloadId)
         } catch (e: Exception) {
@@ -444,12 +485,56 @@ object AndroidDownloadManager {
         activeJobs.remove(downloadId)
         activeProcessIds.remove(downloadId)
 
+        if (context != null && activeJobs.isEmpty()) {
+            DownloadForegroundService.stop(context)
+        }
+
         dispatchProgress(
             mapOf(
                 "id" to downloadId,
                 "status" to "cancelled"
             )
         )
+    }
+
+    /**
+     * Cancels all ongoing download jobs immediately.
+     */
+    fun cancelAll(context: Context? = null) {
+        for ((id, _) in activeProcessIds) {
+            try {
+                YoutubeDL.getInstance().destroyProcessById(id)
+            } catch (e: Exception) {
+                Log.w(TAG, "Error destroying process $id", e)
+            }
+        }
+        for ((_, job) in activeJobs) {
+            job.cancel()
+        }
+        activeJobs.clear()
+        activeProcessIds.clear()
+        if (context != null) {
+            DownloadForegroundService.stop(context)
+        }
+    }
+
+    private fun cleanErrorMessage(raw: String?): String {
+        if (raw.isNullOrBlank()) return "Download failed on device"
+        if (raw.contains("Private video", ignoreCase = true)) return "This video is private and cannot be downloaded."
+        if (raw.contains("Video unavailable", ignoreCase = true)) return "The requested YouTube video is unavailable."
+        if (raw.contains("Sign in to confirm your age", ignoreCase = true)) return "This video requires age confirmation."
+        if (raw.contains("Incomplete YouTube ID", ignoreCase = true) || raw.contains("not a valid URL", ignoreCase = true)) return "Invalid YouTube URL provided."
+        if (raw.contains("HTTP Error 403", ignoreCase = true)) return "Access forbidden (403). Please tap 'Check Update' in Settings."
+
+        val cleanLines = raw.lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() && !it.startsWith("WARNING", ignoreCase = true) && !it.startsWith("[debug]", ignoreCase = true) }
+
+        val errorLine = cleanLines.lastOrNull { it.startsWith("ERROR:", ignoreCase = true) }
+            ?: cleanLines.lastOrNull()
+            ?: raw
+
+        return errorLine.removePrefix("ERROR:").trim()
     }
 
     private fun dispatchProgress(data: Map<String, Any?>) {

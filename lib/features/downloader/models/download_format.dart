@@ -10,11 +10,11 @@ enum DownloadFormat {
     icon: Icons.movie_creation_outlined,
   ),
   mp3(
-    label: 'MP3',
-    title: 'MP3 Audio',
-    subtitle: 'Pristine 320kbps stream',
+    label: 'M4A',
+    title: 'M4A Audio',
+    subtitle: 'Native stream · No re-encode · Max quality',
     badge: 'AUDIO ONLY',
-    extension: 'mp3',
+    extension: 'm4a',
     icon: Icons.headphones_rounded,
   );
 

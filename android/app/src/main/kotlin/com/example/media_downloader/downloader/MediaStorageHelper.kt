@@ -19,20 +19,26 @@ object MediaStorageHelper {
      * Determines the appropriate MIME type from file extension and audio/video mode.
      */
     fun getMimeType(file: File, isAudio: Boolean): String {
+        if (isAudio) {
+            return when (file.extension.lowercase()) {
+                "mp3" -> "audio/mpeg"
+                "m4a" -> "audio/mp4"
+                "opus" -> "audio/opus"
+                "flac" -> "audio/flac"
+                "wav" -> "audio/wav"
+                "aac" -> "audio/aac"
+                "ogg" -> "audio/ogg"
+                "webm" -> "audio/webm"
+                else -> "audio/mpeg"
+            }
+        }
         return when (file.extension.lowercase()) {
-            "mp3" -> "audio/mpeg"
-            "m4a" -> "audio/mp4"
-            "opus" -> "audio/opus"
-            "flac" -> "audio/flac"
-            "wav" -> "audio/wav"
-            "aac" -> "audio/aac"
-            "ogg" -> "audio/ogg"
             "mp4" -> "video/mp4"
             "mkv" -> "video/x-matroska"
-            "webm" -> if (isAudio) "audio/webm" else "video/webm"
+            "webm" -> "video/webm"
             "avi" -> "video/x-msvideo"
             "mov" -> "video/quicktime"
-            else -> if (isAudio) "audio/mpeg" else "video/mp4"
+            else -> "video/mp4"
         }
     }
 
@@ -92,10 +98,11 @@ object MediaStorageHelper {
         }
 
         val relativePath = "$targetBaseDir/$folderName"
+        val effectiveMimeType = if (isAudio && !mimeType.startsWith("audio/")) "audio/mpeg" else mimeType
 
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
-            put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
+            put(MediaStore.MediaColumns.MIME_TYPE, effectiveMimeType)
             put(MediaStore.MediaColumns.IS_PENDING, 1)
             put(MediaStore.MediaColumns.RELATIVE_PATH, relativePath)
         }

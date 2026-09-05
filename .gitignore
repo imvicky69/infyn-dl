@@ -44,10 +44,6 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-# Windows bundled binary executables (>100MB blocked by GitHub)
-windows/bin/x64/*.exe
-!windows/bin/x64/.gitkeep
-
 # Release output packages
 release_v*/
 staging-*/

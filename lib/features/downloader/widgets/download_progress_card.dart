@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/file_opener.dart';
 import '../models/download_progress.dart';
 
 class DownloadProgressCard extends StatelessWidget {
@@ -20,13 +21,7 @@ class DownloadProgressCard extends StatelessWidget {
     try {
       final file = File(filePath);
       final dirPath = (await file.exists()) ? p.dirname(filePath) : filePath;
-      if (Platform.isWindows) {
-        if (await file.exists()) {
-          await Process.run('explorer.exe', ['/select,', filePath]);
-        } else {
-          await Process.run('explorer.exe', [dirPath]);
-        }
-      }
+      await FileOpener.open(dirPath);
     } catch (_) {
       // Ignore open errors
     }

@@ -16,7 +16,6 @@ import '../models/video_metadata.dart';
 import '../services/android_downloader_service.dart';
 import '../services/download_history_service.dart';
 import '../services/downloader_service.dart';
-import '../services/windows_downloader_service.dart';
 import '../widgets/batch_progress_card.dart';
 import '../widgets/download_button.dart';
 import '../widgets/download_progress_card.dart';
@@ -25,6 +24,7 @@ import '../widgets/playlist_preview_card.dart';
 import '../widgets/quality_selector.dart';
 import '../widgets/url_input_field.dart';
 import '../widgets/video_preview_card.dart';
+import '../widgets/ytm_search_sheet.dart';
 
 class DownloaderScreen extends StatefulWidget {
   const DownloaderScreen({
@@ -67,6 +67,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   int _batchSkippedCount = 0;
   String _batchCurrentTitle = '';
   DownloadProgress _batchItemProgress = DownloadProgress.idle();
+  final Map<int, ActiveWorkerItem> _activeWorkers = {};
   bool _isBatchCancelled = false;
 
   String _currentDownloadDir = 'Loading folder...';
@@ -75,10 +76,8 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   @override
   void initState() {
     super.initState();
-    _downloaderService = widget.downloaderService ??
-        (!kIsWeb && defaultTargetPlatform == TargetPlatform.android
-            ? AndroidDownloaderService()
-            : WindowsDownloaderService());
+    _downloaderService =
+        widget.downloaderService ?? AndroidDownloaderService();
     _loadInitialData();
   }
 
@@ -388,6 +387,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
       _batchSkippedCount = 0;
       _batchCurrentTitle = '';
       _batchItemProgress = DownloadProgress.idle();
+      _activeWorkers.clear();
     });
 
     final total = targetIndices.length;
@@ -416,7 +416,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
             if (mounted) {
               setState(() {
                 _batchSkippedCount++;
-                _batchCurrentIndex = completedCount + _batchSkippedCount;
+                _batchCurrentIndex = completedCount;
               });
             }
             continue;
@@ -427,6 +427,11 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
 
         if (mounted) {
           setState(() {
+            _activeWorkers[workerId] = ActiveWorkerItem(
+              workerId: workerId,
+              title: entry.title,
+              progress: DownloadProgress.preparing(),
+            );
             _batchCurrentTitle = entry.title;
             _batchItemProgress = DownloadProgress.preparing();
           });
@@ -447,13 +452,18 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
           (progress) async {
             if (!mounted) return;
             setState(() {
+              _activeWorkers[workerId] = ActiveWorkerItem(
+                workerId: workerId,
+                title: entry.title,
+                progress: progress,
+              );
               _batchItemProgress = progress;
               _batchCurrentTitle = entry.title;
             });
 
             if (progress.isCompleted) {
               final downloadItem = DownloadItem(
-                id: '${DateTime.now().millisecondsSinceEpoch}_$originalIndex',
+                id: '${DateTime.now().microsecondsSinceEpoch}_$originalIndex',
                 title: entry.title,
                 url: entry.url,
                 filePath: progress.outputFilePath ?? '',
@@ -461,9 +471,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                 quality: _selectedFormat == DownloadFormat.mp4
                     ? _selectedVideoQuality.shortLabel
                     : _selectedAudioQuality.shortLabel,
-                thumbnailUrl: entry.id.isNotEmpty
-                    ? 'https://img.youtube.com/vi/${entry.id}/mqdefault.jpg'
-                    : null,
+                thumbnailUrl: entry.bestThumbnailUrl,
                 playlistName: playlist.title,
                 playlistUrl: playlist.webpageUrl ?? playlistUrl,
                 timestamp: DateTime.now(),
@@ -473,18 +481,29 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
               if (mounted) {
                 completedCount++;
                 setState(() {
-                  _batchCurrentIndex = completedCount + _batchSkippedCount;
+                  _batchCurrentIndex = completedCount;
+                  _activeWorkers.remove(workerId);
                 });
               }
 
               itemSub?.cancel();
               if (!completer.isCompleted) completer.complete();
             } else if (progress.isFailed || progress.isCancelled) {
+              if (mounted) {
+                setState(() {
+                  _activeWorkers.remove(workerId);
+                });
+              }
               itemSub?.cancel();
               if (!completer.isCompleted) completer.complete();
             }
           },
           onError: (_) {
+            if (mounted) {
+              setState(() {
+                _activeWorkers.remove(workerId);
+              });
+            }
             itemSub?.cancel();
             if (!completer.isCompleted) completer.complete();
           },
@@ -508,6 +527,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     if (mounted) {
       setState(() {
         _isBatchDownloading = false;
+        _activeWorkers.clear();
       });
       _loadInitialData();
       _showSnackbar(
@@ -527,6 +547,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
     setState(() {
       _downloadProgress = DownloadProgress.cancelled();
       _isBatchDownloading = false;
+      _activeWorkers.clear();
     });
   }
 
@@ -575,6 +596,76 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                     onSubmitted: (_) =>
                         _fetchDetails(_urlController.text.trim()),
                     errorText: _errorMessage,
+                  ),
+                  const SizedBox(height: 10),
+
+                  // 2b. Search YouTube Music button
+                  GestureDetector(
+                    onTap: () => YtmSearchSheet.show(
+                      context,
+                      (selectedUrl) {
+                        _urlController.text = selectedUrl;
+                        _handleUrlChanged(selectedUrl);
+                      },
+                    ),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 11),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceElevated,
+                        borderRadius: BorderRadius.circular(14),
+                        border:
+                            Border.all(color: AppColors.surfaceBorder),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.search_rounded,
+                            size: 17,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Search YouTube Music',
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 7, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFF0000)
+                                  .withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(
+                                  Icons.music_note_rounded,
+                                  size: 11,
+                                  color: Color(0xFFFF0000),
+                                ),
+                                const SizedBox(width: 3),
+                                Text(
+                                  'YT Music',
+                                  style: TextStyle(
+                                    color: const Color(0xFFFF0000),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
 
                   // 3. Loading State Card
@@ -664,6 +755,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                       skippedCount: _batchSkippedCount,
                       currentItemTitle: _batchCurrentTitle,
                       itemProgress: _batchItemProgress,
+                      activeWorkers: _activeWorkers.values.toList(),
                       concurrency: SettingsService.instance.concurrentDownloads,
                       onCancel: _handleCancel,
                     ),

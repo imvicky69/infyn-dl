@@ -11,13 +11,138 @@ import 'downloader_service.dart';
 
 /// Android-native implementation of [DownloaderService] using local `yt-dlp`
 /// and `ffmpeg` via Platform Channels (`MethodChannel` and `EventChannel`).
+///
+/// KEY DESIGN: A **single persistent** EventChannel subscription is kept alive
+/// for the lifetime of this service instance. All per-download [StreamController]s
+/// are stored in [_controllers] keyed by download ID. Native events are routed
+/// to the correct controller — this is mandatory because each new call to
+/// [EventChannel.receiveBroadcastStream] replaces the Kotlin-side EventSink,
+/// causing all previously-started downloads to stop receiving progress events.
 class AndroidDownloaderService implements DownloaderService {
   static const MethodChannel _methodChannel =
       MethodChannel('com.example.media_downloader/downloader_methods');
   static const EventChannel _eventChannel =
       EventChannel('com.example.media_downloader/downloader_events');
 
-  String? _activeDownloadId;
+  static int _idCounter = 0;
+
+  /// Active download controllers keyed by downloadId.
+  final Map<String, StreamController<DownloadProgress>> _controllers = {};
+
+  /// Single persistent subscription to the native EventChannel.
+  /// Kept alive as long as any download is active.
+  StreamSubscription? _globalSubscription;
+
+  /// Ensures the global event subscription is alive. Called before each download.
+  void _ensureGlobalSubscription() {
+    if (_globalSubscription != null) return;
+    _globalSubscription = _eventChannel.receiveBroadcastStream().listen(
+      _routeNativeEvent,
+      onError: (err) {
+        // On global error, fail all active downloads
+        final ids = List<String>.from(_controllers.keys);
+        for (final id in ids) {
+          final ctrl = _controllers.remove(id);
+          if (ctrl != null && !ctrl.isClosed) {
+            ctrl.add(DownloadProgress.failed(err.toString()));
+            ctrl.close();
+          }
+        }
+        _globalSubscription = null;
+      },
+      onDone: () {
+        _globalSubscription = null;
+      },
+    );
+  }
+
+  /// Routes a raw native event map to the matching per-download controller.
+  void _routeNativeEvent(dynamic rawEvent) {
+    if (rawEvent is! Map) return;
+    final event = rawEvent.cast<String, dynamic>();
+    final id = event['id'] as String?;
+    if (id == null) return;
+
+    final ctrl = _controllers[id];
+    if (ctrl == null || ctrl.isClosed) return;
+
+    final statusStr = event['status'] as String? ?? 'preparing';
+    final progressRatio = (event['progress'] as num?)?.toDouble() ?? 0.0;
+    final percentage = event['percentage'] as String? ??
+        '${(progressRatio * 100).toInt()}%';
+    final speed = event['speed'] as String?;
+    final eta = event['eta'] as String?;
+    final totalSize = event['totalSize'] as String?;
+    final title = event['title'] as String?;
+    final path = event['path'] as String?;
+    final error = event['error'] as String?;
+    final rawLog = event['rawLog'] as String?;
+
+    switch (statusStr) {
+      case 'preparing':
+        ctrl.add(DownloadProgress.preparing());
+        break;
+
+      case 'downloading':
+        ctrl.add(DownloadProgress(
+          status: DownloadStatus.downloading,
+          progress: progressRatio,
+          percentage: percentage,
+          speed: speed,
+          eta: eta,
+          totalSize: totalSize,
+          title: title,
+          rawLog: rawLog ?? '',
+        ));
+        break;
+
+      case 'processing':
+        ctrl.add(DownloadProgress(
+          status: DownloadStatus.processing,
+          progress: 0.99,
+          percentage: '99%',
+          title: title,
+          rawLog: rawLog ?? '',
+        ));
+        break;
+
+      case 'completed':
+        _controllers.remove(id);
+        ctrl.add(DownloadProgress.completed(
+          outputFilePath: path ?? '',
+          title: title,
+        ));
+        ctrl.close();
+        _pruneSubscriptionIfIdle();
+        break;
+
+      case 'failed':
+        _controllers.remove(id);
+        ctrl.add(DownloadProgress.failed(
+          error ?? 'Download failed on device',
+          title: title,
+        ));
+        ctrl.close();
+        _pruneSubscriptionIfIdle();
+        break;
+
+      case 'cancelled':
+        _controllers.remove(id);
+        ctrl.add(DownloadProgress.cancelled(title: title));
+        ctrl.close();
+        _pruneSubscriptionIfIdle();
+        break;
+    }
+  }
+
+  /// Cancels the global subscription when no more downloads are active,
+  /// freeing the native EventSink.
+  void _pruneSubscriptionIfIdle() {
+    if (_controllers.isEmpty) {
+      _globalSubscription?.cancel();
+      _globalSubscription = null;
+    }
+  }
 
   Future<bool> hasNotificationPermission() async {
     try {
@@ -141,111 +266,28 @@ class AndroidDownloaderService implements DownloaderService {
     AudioQuality audioQuality = AudioQuality.k320,
     String? destinationDirectory,
   }) {
-    final controller = StreamController<DownloadProgress>();
-    final downloadId = DateTime.now().millisecondsSinceEpoch.toString();
-    _activeDownloadId = downloadId;
+    final downloadId =
+        '${DateTime.now().microsecondsSinceEpoch}_${_idCounter++}';
 
     var cleanUrl = url.trim();
     if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
       cleanUrl = 'https://$cleanUrl';
     }
 
+    final controller = StreamController<DownloadProgress>();
+    _controllers[downloadId] = controller;
+
+    // Ensure we have one persistent event pipe BEFORE starting the download,
+    // so no events are missed between start and the first listen.
+    _ensureGlobalSubscription();
+
+    // Emit preparing immediately so the UI shows activity right away
     controller.add(DownloadProgress.preparing());
 
-    StreamSubscription? subscription;
-
-    subscription = _eventChannel.receiveBroadcastStream().listen(
-      (rawEvent) {
-        if (rawEvent is! Map) return;
-        final event = rawEvent.cast<String, dynamic>();
-
-        final id = event['id'] as String?;
-        if (id != downloadId) return;
-
-        final statusStr = event['status'] as String? ?? 'preparing';
-        final progressRatio = (event['progress'] as num?)?.toDouble() ?? 0.0;
-        final percentage = event['percentage'] as String? ??
-            '${(progressRatio * 100).toInt()}%';
-        final speed = event['speed'] as String?;
-        final eta = event['eta'] as String?;
-        final totalSize = event['totalSize'] as String?;
-        final title = event['title'] as String?;
-        final path = event['path'] as String?;
-        final error = event['error'] as String?;
-        final rawLog = event['rawLog'] as String?;
-
-        switch (statusStr) {
-          case 'preparing':
-            controller.add(DownloadProgress.preparing());
-            break;
-
-          case 'downloading':
-            controller.add(
-              DownloadProgress(
-                status: DownloadStatus.downloading,
-                progress: progressRatio,
-                percentage: percentage,
-                speed: speed,
-                eta: eta,
-                totalSize: totalSize,
-                title: title,
-                rawLog: rawLog ?? '',
-              ),
-            );
-            break;
-
-          case 'processing':
-            controller.add(
-              DownloadProgress(
-                status: DownloadStatus.processing,
-                progress: 0.99,
-                percentage: '99%',
-                title: title,
-                rawLog: rawLog ?? '',
-              ),
-            );
-            break;
-
-          case 'completed':
-            controller.add(
-              DownloadProgress.completed(
-                outputFilePath: path ?? '',
-                title: title,
-              ),
-            );
-            subscription?.cancel();
-            controller.close();
-            break;
-
-          case 'failed':
-            controller.add(
-              DownloadProgress.failed(
-                error ?? 'Download failed on device',
-                title: title,
-              ),
-            );
-            subscription?.cancel();
-            controller.close();
-            break;
-
-          case 'cancelled':
-            controller.add(DownloadProgress.cancelled(title: title));
-            subscription?.cancel();
-            controller.close();
-            break;
-        }
-      },
-      onError: (err) {
-        controller.add(DownloadProgress.failed(err.toString()));
-        controller.close();
-      },
-    );
-
     controller.onCancel = () {
-      subscription?.cancel();
-      if (_activeDownloadId == downloadId) {
-        cancel();
-      }
+      _controllers.remove(downloadId);
+      _cancelSpecific(downloadId);
+      _pruneSubscriptionIfIdle();
     };
 
     // Trigger start on native Kotlin side
@@ -258,8 +300,10 @@ class AndroidDownloaderService implements DownloaderService {
       'destinationDirectory': destinationDirectory,
     }).catchError((err) {
       if (!controller.isClosed) {
+        _controllers.remove(downloadId);
         controller.add(DownloadProgress.failed(err.toString()));
         controller.close();
+        _pruneSubscriptionIfIdle();
       }
       return null;
     });
@@ -267,13 +311,35 @@ class AndroidDownloaderService implements DownloaderService {
     return controller.stream;
   }
 
+  Future<void> _cancelSpecific(String downloadId) async {
+    try {
+      await _methodChannel
+          .invokeMethod<bool>('cancelDownload', {'id': downloadId});
+    } catch (_) {}
+  }
+
   @override
   Future<void> cancel() async {
-    final id = _activeDownloadId;
-    if (id != null) {
-      try {
-        await _methodChannel.invokeMethod<bool>('cancelDownload', {'id': id});
-      } catch (_) {}
+    final ids = List<String>.from(_controllers.keys);
+    for (final id in ids) {
+      final ctrl = _controllers.remove(id);
+      if (ctrl != null && !ctrl.isClosed) {
+        ctrl.add(DownloadProgress.cancelled());
+        ctrl.close();
+      }
+    }
+    _globalSubscription?.cancel();
+    _globalSubscription = null;
+
+    try {
+      await _methodChannel.invokeMethod<bool>('cancelAll');
+    } catch (_) {
+      for (final id in ids) {
+        try {
+          await _methodChannel
+              .invokeMethod<bool>('cancelDownload', {'id': id});
+        } catch (_) {}
+      }
     }
   }
 }

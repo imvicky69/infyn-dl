@@ -2,6 +2,19 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../models/download_progress.dart';
 
+/// Model representing individual active worker telemetry in a batch download.
+class ActiveWorkerItem {
+  final int workerId;
+  final String title;
+  final DownloadProgress progress;
+
+  const ActiveWorkerItem({
+    required this.workerId,
+    required this.title,
+    required this.progress,
+  });
+}
+
 /// Progress card for batch playlist downloads with multi-worker acceleration telemetry.
 class BatchProgressCard extends StatelessWidget {
   const BatchProgressCard({
@@ -10,8 +23,9 @@ class BatchProgressCard extends StatelessWidget {
     required this.currentIndex,
     required this.totalItems,
     required this.skippedCount,
-    required this.currentItemTitle,
-    required this.itemProgress,
+    this.currentItemTitle = '',
+    this.itemProgress,
+    this.activeWorkers = const [],
     required this.onCancel,
     this.concurrency = 3,
   });
@@ -21,7 +35,8 @@ class BatchProgressCard extends StatelessWidget {
   final int totalItems;
   final int skippedCount;
   final String currentItemTitle;
-  final DownloadProgress itemProgress;
+  final DownloadProgress? itemProgress;
+  final List<ActiveWorkerItem> activeWorkers;
   final VoidCallback onCancel;
   final int concurrency;
 
@@ -136,74 +151,38 @@ class BatchProgressCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
 
-          // Current active item
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.surfaceElevated,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.surfaceBorder),
+          // Active Items Section
+          if (activeWorkers.length > 1) ...[
+            Text(
+              'ACTIVE DOWNLOADS (${activeWorkers.length})',
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                color: AppColors.textMuted,
+              ),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  currentItemTitle.isNotEmpty
+            const SizedBox(height: 8),
+            ...activeWorkers.map((worker) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: _buildWorkerCard(
+                    title: worker.title,
+                    progress: worker.progress,
+                    workerId: worker.workerId,
+                  ),
+                )),
+          ] else ...[
+            _buildWorkerCard(
+              title: activeWorkers.isNotEmpty
+                  ? activeWorkers.first.title
+                  : (currentItemTitle.isNotEmpty
                       ? currentItemTitle
-                      : 'Downloading tracks in parallel...',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textPrimary,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(3),
-                  child: LinearProgressIndicator(
-                    value: itemProgress.progress,
-                    minHeight: 4,
-                    backgroundColor: AppColors.surface,
-                    color: AppColors.primary,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      itemProgress.percentage,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    if (itemProgress.speed != null &&
-                        itemProgress.speed!.isNotEmpty)
-                      Text(
-                        itemProgress.speed!,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                    if (itemProgress.eta != null &&
-                        itemProgress.eta!.isNotEmpty)
-                      Text(
-                        'ETA: ${itemProgress.eta}',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                  ],
-                ),
-              ],
+                      : 'Downloading tracks in parallel...'),
+              progress: activeWorkers.isNotEmpty
+                  ? activeWorkers.first.progress
+                  : (itemProgress ?? DownloadProgress.idle()),
             ),
-          ),
+          ],
 
           // Skipped badge if any
           if (skippedCount > 0) ...[
@@ -246,6 +225,101 @@ class BatchProgressCard extends StatelessWidget {
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWorkerCard({
+    required String title,
+    required DownloadProgress progress,
+    int? workerId,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.surfaceBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              if (workerId != null) ...[
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    '#${workerId + 1}',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+              ],
+              Expanded(
+                child: Text(
+                  title.isNotEmpty ? title : 'Connecting to stream...',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(3),
+            child: LinearProgressIndicator(
+              value: progress.progress > 0 ? progress.progress : null,
+              minHeight: 4,
+              backgroundColor: AppColors.surface,
+              color: AppColors.primary,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                progress.percentage.isNotEmpty ? progress.percentage : '0%',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              if (progress.speed != null && progress.speed!.isNotEmpty)
+                Text(
+                  progress.speed!,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              if (progress.eta != null && progress.eta!.isNotEmpty)
+                Text(
+                  'ETA: ${progress.eta}',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+            ],
           ),
         ],
       ),

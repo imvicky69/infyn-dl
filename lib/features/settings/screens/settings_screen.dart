@@ -6,7 +6,6 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/downloader_service.dart';
-import '../../downloader/services/windows_downloader_service.dart';
 import '../services/settings_service.dart';
 
 /// Screen allowing configuration of download destination directory and app preferences.
@@ -36,10 +35,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _downloaderService = widget.downloaderService ??
-        (!kIsWeb && defaultTargetPlatform == TargetPlatform.android
-            ? AndroidDownloaderService()
-            : WindowsDownloaderService());
+    _downloaderService =
+        widget.downloaderService ?? AndroidDownloaderService();
     _loadSettings();
   }
 
@@ -708,9 +705,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       Divider(height: 16, color: AppColors.surfaceBorder),
                       _buildDiagnosticRow(
                         'Architecture',
-                        defaultTargetPlatform == TargetPlatform.android
-                            ? 'Android Scoped Storage & C++ JNI'
-                            : 'Windows x64 Native Process',
+                        'Android Scoped Storage & C++ JNI',
                         Icons.verified_rounded,
                         AppColors.primary,
                       ),

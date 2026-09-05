@@ -223,8 +223,12 @@ class DownloaderPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
             "cancelDownload" -> {
                 val id = call.argument<String>("id")
                 if (id != null) {
-                    AndroidDownloadManager.cancelDownload(id)
+                    AndroidDownloadManager.cancelDownload(ctx, id)
                 }
+                result.success(true)
+            }
+            "cancelAll" -> {
+                AndroidDownloadManager.cancelAll(ctx)
                 result.success(true)
             }
             "updateEngine" -> {

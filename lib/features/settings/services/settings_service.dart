@@ -95,14 +95,7 @@ class SettingsService {
       }
     }
 
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-      final userProfile = Platform.environment['USERPROFILE'];
-      if (userProfile != null && userProfile.isNotEmpty) {
-        final winDir = p.join(userProfile, 'Downloads', 'infyn-dl');
-        await Directory(winDir).create(recursive: true);
-        return winDir;
-      }
-    } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
       // Android public Downloads folder
       const androidPath = '/storage/emulated/0/Download/infyn-dl';
       return androidPath;

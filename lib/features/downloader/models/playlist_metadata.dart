@@ -5,6 +5,7 @@ class PlaylistEntry {
   final int duration;
   final String url;
   final String? uploader;
+  final String? thumbnailUrl;
 
   const PlaylistEntry({
     required this.id,
@@ -12,6 +13,7 @@ class PlaylistEntry {
     required this.duration,
     required this.url,
     this.uploader,
+    this.thumbnailUrl,
   });
 
   String get formattedDuration {
@@ -19,6 +21,16 @@ class PlaylistEntry {
     final minutes = duration ~/ 60;
     final seconds = duration % 60;
     return '$minutes:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  /// Returns the best available thumbnail URL for this entry.
+  /// Priority: stored thumbnailUrl → maxresdefault → hqdefault from YouTube.
+  String? get bestThumbnailUrl {
+    if (thumbnailUrl != null && thumbnailUrl!.isNotEmpty) return thumbnailUrl;
+    if (id.isNotEmpty) {
+      return 'https://i.ytimg.com/vi/$id/maxresdefault.jpg';
+    }
+    return null;
   }
 
   factory PlaylistEntry.fromJson(Map<String, dynamic> json) {
@@ -30,12 +42,30 @@ class PlaylistEntry {
             : 'https://www.youtube.com/watch?v=$rawUrl')
         : 'https://www.youtube.com/watch?v=$entryId';
 
+    // Best thumbnail: prefer explicit thumbnail field, then best from thumbnails array
+    String? thumbUrl = json['thumbnail'] as String?;
+    if ((thumbUrl == null || thumbUrl.isEmpty) && json['thumbnails'] is List) {
+      final thumbs = (json['thumbnails'] as List).whereType<Map<String, dynamic>>().toList();
+      // Pick highest resolution (prefer maxresdefault or largest width)
+      thumbs.sort((a, b) {
+        final wa = (a['width'] as num?)?.toInt() ?? 0;
+        final wb = (b['width'] as num?)?.toInt() ?? 0;
+        return wb.compareTo(wa);
+      });
+      thumbUrl = thumbs.isNotEmpty ? thumbs.first['url'] as String? : null;
+    }
+    // Fall back to standard YouTube hqdefault if no thumbnail in metadata
+    if ((thumbUrl == null || thumbUrl.isEmpty) && entryId.isNotEmpty) {
+      thumbUrl = 'https://i.ytimg.com/vi/$entryId/hqdefault.jpg';
+    }
+
     return PlaylistEntry(
       id: entryId,
       title: json['title'] as String? ?? 'Untitled Track',
       duration: (json['duration'] as num?)?.toInt() ?? 0,
       url: resolvedUrl,
       uploader: json['uploader'] as String? ?? json['channel'] as String?,
+      thumbnailUrl: thumbUrl,
     );
   }
 }

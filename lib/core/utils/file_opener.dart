@@ -26,15 +26,6 @@ class FileOpener {
       }
     }
 
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-      try {
-        await Process.run('cmd.exe', ['/c', 'start', '', filePath]);
-        return true;
-      } catch (e) {
-        debugPrint('Windows open file error: $e');
-        return false;
-      }
-    }
 
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
       try {

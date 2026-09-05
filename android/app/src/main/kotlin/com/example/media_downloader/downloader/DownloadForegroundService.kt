@@ -26,6 +26,7 @@ class DownloadForegroundService : Service() {
         const val ACTION_START = "com.example.media_downloader.START"
         const val ACTION_UPDATE = "com.example.media_downloader.UPDATE"
         const val ACTION_COMPLETE = "com.example.media_downloader.COMPLETE"
+        const val ACTION_ITEM_FINISHED = "com.example.media_downloader.ITEM_FINISHED"
         const val ACTION_ERROR = "com.example.media_downloader.ERROR"
         const val ACTION_STOP = "com.example.media_downloader.STOP"
         const val ACTION_CANCEL_DOWNLOAD = "com.example.media_downloader.CANCEL_DOWNLOAD"
@@ -77,6 +78,19 @@ class DownloadForegroundService : Service() {
                 context.startService(intent)
             } catch (e: Throwable) {
                 Log.w(TAG, "Could not show completion: ${e.message}")
+            }
+        }
+
+        fun showItemFinished(context: Context, title: String, statusText: String) {
+            try {
+                val intent = Intent(context, DownloadForegroundService::class.java).apply {
+                    action = ACTION_ITEM_FINISHED
+                    putExtra(EXTRA_TITLE, title)
+                    putExtra(EXTRA_STATUS_TEXT, statusText)
+                }
+                context.startService(intent)
+            } catch (e: Throwable) {
+                Log.w(TAG, "Could not show item finished: ${e.message}")
             }
         }
 
@@ -156,10 +170,16 @@ class DownloadForegroundService : Service() {
                 stopForegroundCompat()
                 stopSelf()
             }
+            ACTION_ITEM_FINISHED -> {
+                val title = intent.getStringExtra(EXTRA_TITLE) ?: "Item Downloaded"
+                val statusText = intent.getStringExtra(EXTRA_STATUS_TEXT) ?: "Downloads in progress..."
+                showTerminalNotification(title, "Saved to Downloads/infyn-dl", false)
+                val notification = buildOngoingNotification(currentTitle, 0, statusText, true)
+                val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                manager.notify(NOTIFICATION_ID, notification)
+            }
             ACTION_CANCEL_DOWNLOAD -> {
-                currentDownloadId?.let { id ->
-                    AndroidDownloadManager.cancelDownload(id)
-                }
+                AndroidDownloadManager.cancelAll()
                 releaseWakeLock()
                 stopForegroundCompat()
                 stopSelf()
@@ -320,9 +340,11 @@ class DownloadForegroundService : Service() {
         )
 
         val icon = if (isError) android.R.drawable.stat_notify_error else android.R.drawable.stat_sys_download_done
+        val cleanSummary = if (message.length > 80) message.take(77) + "..." else message
         val notification = NotificationCompat.Builder(this, CHANNEL_COMPLETE_ID)
             .setContentTitle(title)
-            .setContentText(message)
+            .setContentText(cleanSummary)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(message))
             .setSmallIcon(icon)
             .setAutoCancel(true)
             .setContentIntent(openPendingIntent)

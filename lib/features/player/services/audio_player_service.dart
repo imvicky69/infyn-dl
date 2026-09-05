@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
-import '../../../core/utils/windows_path_helper.dart';
 import '../../library/models/track.dart';
 
 enum PlayerLoopMode { off, all, one }
@@ -123,8 +122,7 @@ class AudioPlayerService extends ChangeNotifier {
       _duration = track.duration ?? Duration.zero;
       notifyListeners();
 
-      final playablePath = WindowsPathHelper.getPlayablePath(track.filePath);
-      await _player?.setFilePath(playablePath);
+      await _player?.setFilePath(track.filePath);
 
       final loadedDuration = _player?.duration;
       if (loadedDuration != null) {
