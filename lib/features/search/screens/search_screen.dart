@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../downloader/models/download_format.dart';
+import '../../downloader/models/download_progress.dart';
+import '../../downloader/services/android_downloader_service.dart';
 import '../../library/models/track.dart';
-import '../../player/services/audio_player_service.dart';
 import '../services/ytm_search_service.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
@@ -20,9 +22,14 @@ class _SearchScreenState extends State<SearchScreen> {
   List<yt.SearchPlaylist> _playlistResults = [];
   bool _isLoading = false;
   SearchFilter _currentFilter = SearchFilter.songs;
+  int _searchRequestId = 0;
+  final Map<String, double> _activeDownloads = {};
 
   Future<void> _performSearch(String query) async {
-    if (query.trim().isEmpty) {
+    final trimmedQuery = query.trim();
+    final requestId = ++_searchRequestId;
+
+    if (trimmedQuery.isEmpty) {
       setState(() {
         _songResults = [];
         _playlistResults = [];
@@ -35,41 +42,124 @@ class _SearchScreenState extends State<SearchScreen> {
       _isLoading = true;
     });
 
-    if (_currentFilter == SearchFilter.songs) {
-      final results = await YtmSearchService.instance.searchTracks(query);
-      if (mounted) {
-        setState(() {
-          _songResults = results;
-          _isLoading = false;
-        });
+    try {
+      if (_currentFilter == SearchFilter.songs) {
+        final results = await YtmSearchService.instance.searchTracks(trimmedQuery);
+        if (mounted && requestId == _searchRequestId) {
+          setState(() {
+            _songResults = results;
+            _isLoading = false;
+          });
+        }
+      } else {
+        final results =
+            await YtmSearchService.instance.searchPlaylists(trimmedQuery);
+        if (mounted && requestId == _searchRequestId) {
+          setState(() {
+            _playlistResults = results;
+            _isLoading = false;
+          });
+        }
       }
-    } else {
-      final results = await YtmSearchService.instance.searchPlaylists(query);
-      if (mounted) {
+    } catch (_) {
+      if (mounted && requestId == _searchRequestId) {
         setState(() {
-          _playlistResults = results;
           _isLoading = false;
         });
+        _showSnackBar('Search failed. Please try again.', isError: true);
       }
     }
   }
 
-  void _playTrack(Track track) {
-    AudioPlayerService.instance.playTrack(track, queue: _songResults);
+  Future<void> _downloadTrack(Track track) async {
+    final trackUrl = track.webUrl;
+    if (trackUrl == null || trackUrl.trim().isEmpty) {
+      _showSnackBar('Missing track URL.', isError: true);
+      return;
+    }
+
+    final downloadKey = 'song:${track.id}';
+    if (_activeDownloads.containsKey(downloadKey)) return;
+
+    setState(() => _activeDownloads[downloadKey] = 0.0);
+    _showSnackBar('Downloading "${track.title}"...');
+
+    final downloader = AndroidDownloaderService();
+    try {
+      await for (final DownloadProgress progress in downloader.download(
+        url: trackUrl,
+        format: DownloadFormat.mp3,
+      )) {
+        if (!mounted) return;
+
+        setState(() => _activeDownloads[downloadKey] = progress.progress);
+        if (progress.isCompleted) {
+          setState(() => _activeDownloads.remove(downloadKey));
+          _showSnackBar('Downloaded "${track.title}"');
+          return;
+        }
+        if (progress.isFailed || progress.isCancelled) {
+          setState(() => _activeDownloads.remove(downloadKey));
+          _showSnackBar(
+            progress.errorMessage ?? 'Download failed for "${track.title}"',
+            isError: true,
+          );
+          return;
+        }
+      }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _activeDownloads.remove(downloadKey));
+      _showSnackBar('Download failed for "${track.title}"', isError: true);
+    }
   }
 
-  Future<void> _playPlaylist(yt.SearchPlaylist playlist) async {
-    setState(() => _isLoading = true);
-    final tracks = await YtmSearchService.instance.getPlaylistTracks(playlist.id.value);
-    if (mounted) {
-      setState(() => _isLoading = false);
-      if (tracks.isNotEmpty) {
-        AudioPlayerService.instance.playTrack(tracks.first, queue: tracks);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Playing playlist: ${playlist.title}')),
-        );
+  Future<void> _downloadPlaylist(yt.SearchPlaylist playlist) async {
+    final playlistUrl = playlist.url;
+    final downloadKey = 'playlist:${playlist.id.value}';
+    if (_activeDownloads.containsKey(downloadKey)) return;
+
+    setState(() => _activeDownloads[downloadKey] = 0.0);
+    _showSnackBar('Downloading playlist "${playlist.title}"...');
+
+    final downloader = AndroidDownloaderService();
+    try {
+      await for (final DownloadProgress progress in downloader.download(
+        url: playlistUrl,
+        format: DownloadFormat.mp3,
+      )) {
+        if (!mounted) return;
+
+        setState(() => _activeDownloads[downloadKey] = progress.progress);
+        if (progress.isCompleted) {
+          setState(() => _activeDownloads.remove(downloadKey));
+          _showSnackBar('Playlist downloaded: "${playlist.title}"');
+          return;
+        }
+        if (progress.isFailed || progress.isCancelled) {
+          setState(() => _activeDownloads.remove(downloadKey));
+          _showSnackBar(
+            progress.errorMessage ?? 'Playlist download failed',
+            isError: true,
+          );
+          return;
+        }
       }
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _activeDownloads.remove(downloadKey));
+      _showSnackBar('Playlist download failed', isError: true);
     }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isError ? Colors.red.shade700 : null,
+      ),
+    );
   }
 
   @override
@@ -209,11 +299,12 @@ class _SearchScreenState extends State<SearchScreen> {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
-      trailing: Text(
-        track.formattedDuration,
-        style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+      trailing: _buildDownloadAction(
+        key: 'song:${track.id}',
+        duration: track.formattedDuration,
+        tooltip: 'Download song',
       ),
-      onTap: () => _playTrack(track),
+      onTap: () => _downloadTrack(track),
     );
   }
 
@@ -245,8 +336,51 @@ class _SearchScreenState extends State<SearchScreen> {
         '${playlist.videoCount} tracks',
         style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
       ),
-      trailing: Icon(Icons.play_circle_fill_rounded, color: AppColors.primary),
-      onTap: () => _playPlaylist(playlist),
+      trailing: _buildDownloadAction(
+        key: 'playlist:${playlist.id.value}',
+        tooltip: 'Download playlist',
+      ),
+      onTap: () => _downloadPlaylist(playlist),
+    );
+  }
+
+  Widget _buildDownloadAction({
+    required String key,
+    required String tooltip,
+    String? duration,
+  }) {
+    final isDownloading = _activeDownloads.containsKey(key);
+    final progress = _activeDownloads[key] ?? 0.0;
+    final iconWidget = isDownloading
+        ? SizedBox(
+            width: 26,
+            height: 26,
+            child: CircularProgressIndicator(
+              value: progress > 0 ? progress.clamp(0.0, 1.0) : null,
+              strokeWidth: 2.4,
+              color: AppColors.primary,
+            ),
+          )
+        : Icon(
+            Icons.download_rounded,
+            color: AppColors.primary,
+            semanticLabel: tooltip,
+          );
+
+    if (duration == null) {
+      return iconWidget;
+    }
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          duration,
+          style: TextStyle(color: AppColors.textMuted, fontSize: 12),
+        ),
+        const SizedBox(width: 8),
+        iconWidget,
+      ],
     );
   }
 
