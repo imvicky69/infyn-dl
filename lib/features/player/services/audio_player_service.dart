@@ -2,11 +2,15 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../library/models/track.dart';
+import '../../library/services/music_scanner_service.dart';
+import 'stream_extractor_service.dart';
 
 enum PlayerLoopMode { off, all, one }
 
 /// Central audio playback controller using just_audio.
+/// Persists last state (track, queue, position, shuffle, loop) across restarts.
 class AudioPlayerService extends ChangeNotifier {
   static AudioPlayerService? _instance;
   static AudioPlayerService get instance =>
@@ -35,6 +39,9 @@ class AudioPlayerService extends ChangeNotifier {
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
   StreamSubscription<double>? _volumeSubscription;
+
+  // Persistence debounce timer
+  Timer? _persistDebounce;
 
   // Getters
   Track? get currentTrack => _currentTrack;
@@ -75,6 +82,7 @@ class AudioPlayerService extends ChangeNotifier {
       _positionSubscription = player.positionStream.listen((pos) {
         _position = pos;
         notifyListeners();
+        _scheduleStatePersist();
       });
 
       _durationSubscription = player.durationStream.listen((dur) {
@@ -91,10 +99,102 @@ class AudioPlayerService extends ChangeNotifier {
         _volume = vol.clamp(0.0, 1.0);
         notifyListeners();
       });
+
+      // Restore last state after player is ready
+      _restoreLastState();
     } catch (e) {
       debugPrint('AudioPlayerService initialization error: $e');
     }
   }
+
+  // ── State persistence ────────────────────────────────────────────────────────
+
+  static const String _kLastTrackId = 'player_last_track_id';
+  static const String _kLastQueueIds = 'player_last_queue_ids';
+  static const String _kLastPosition = 'player_last_position_ms';
+  static const String _kLastShuffle = 'player_last_shuffle';
+  static const String _kLastLoop = 'player_last_loop';
+  static const String _kLastIndex = 'player_last_index';
+
+  void _scheduleStatePersist() {
+    _persistDebounce?.cancel();
+    _persistDebounce = Timer(const Duration(seconds: 3), _persistState);
+  }
+
+  Future<void> _persistState() async {
+    if (_currentTrack == null) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_kLastTrackId, _currentTrack!.id);
+      await prefs.setStringList(
+          _kLastQueueIds, _queue.map((t) => t.id).toList());
+      await prefs.setInt(_kLastPosition, _position.inMilliseconds);
+      await prefs.setBool(_kLastShuffle, _isShuffle);
+      await prefs.setInt(_kLastLoop, _loopMode.index);
+      await prefs.setInt(_kLastIndex, _currentIndex);
+    } catch (e) {
+      debugPrint('AudioPlayerService._persistState error: $e');
+    }
+  }
+
+  Future<void> _restoreLastState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final lastTrackId = prefs.getString(_kLastTrackId);
+      if (lastTrackId == null) return;
+
+      final queueIds = prefs.getStringList(_kLastQueueIds) ?? [];
+      final positionMs = prefs.getInt(_kLastPosition) ?? 0;
+      final shuffle = prefs.getBool(_kLastShuffle) ?? false;
+      final loopIndex = prefs.getInt(_kLastLoop) ?? 0;
+      final savedIndex = prefs.getInt(_kLastIndex) ?? 0;
+
+      // Wait for scanner to populate tracks
+      await Future.delayed(const Duration(milliseconds: 300));
+      final allTracks = MusicScannerService.instance.tracksNotifier.value;
+
+      // Build track lookup by ID
+      final byId = {for (final t in allTracks) t.id: t};
+
+      final restoredQueue = queueIds
+          .map((p) => byId[p])
+          .whereType<Track>()
+          .toList();
+
+      if (restoredQueue.isEmpty) return;
+
+      final restoredTrack = byId[lastTrackId];
+      if (restoredTrack == null) return;
+
+      _isShuffle = shuffle;
+      _loopMode = PlayerLoopMode.values[loopIndex.clamp(0, PlayerLoopMode.values.length - 1)];
+      _originalQueue = List<Track>.from(restoredQueue);
+      _queue = List<Track>.from(restoredQueue);
+      _currentIndex = savedIndex.clamp(0, _queue.length - 1);
+      _currentTrack = restoredTrack;
+      _position = Duration(milliseconds: positionMs);
+      _duration = restoredTrack.duration ?? Duration.zero;
+
+      // Load audio but do NOT auto-play
+      if (restoredTrack.isLocal) {
+        await _player?.setFilePath(restoredTrack.filePath!);
+      } else {
+        final streamUrl = await StreamExtractorService.instance.getStreamUrl(restoredTrack);
+        if (streamUrl != null) {
+          await _player?.setUrl(streamUrl);
+        }
+      }
+      if (positionMs > 0) {
+        await _player?.seek(Duration(milliseconds: positionMs));
+      }
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('AudioPlayerService._restoreLastState error: $e');
+    }
+  }
+
+  // ── Playback ─────────────────────────────────────────────────────────────────
 
   /// Plays a track and optionally updates the playback queue.
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
@@ -122,7 +222,22 @@ class AudioPlayerService extends ChangeNotifier {
       _duration = track.duration ?? Duration.zero;
       notifyListeners();
 
-      await _player?.setFilePath(track.filePath);
+      if (track.isLocal) {
+        await _player?.setFilePath(track.filePath!);
+      } else {
+        _isBuffering = true;
+        notifyListeners();
+        
+        final streamUrl = await StreamExtractorService.instance.getStreamUrl(track);
+        if (streamUrl != null) {
+          await _player?.setUrl(streamUrl);
+        } else {
+          // Extraction failed
+          _isBuffering = false;
+          notifyListeners();
+          return;
+        }
+      }
 
       final loadedDuration = _player?.duration;
       if (loadedDuration != null) {
@@ -131,9 +246,39 @@ class AudioPlayerService extends ChangeNotifier {
       }
 
       await _player?.play();
+      await _persistState();
     } catch (e) {
       debugPrint('Error playing track "${track.title}": $e');
     }
+  }
+
+  /// Reorders a track in the queue. Called by ReorderableListView drag.
+  void reorderQueue(int oldIndex, int newIndex) {
+    if (oldIndex == newIndex) return;
+    if (newIndex > oldIndex) newIndex--;
+
+    final track = _queue.removeAt(oldIndex);
+    _queue.insert(newIndex, track);
+
+    // Update current index to follow the currently playing track
+    if (_currentTrack != null) {
+      _currentIndex = _queue.indexOf(_currentTrack!);
+    }
+
+    notifyListeners();
+    _persistState();
+  }
+
+  /// Removes a track from the queue (cannot remove currently playing track).
+  void removeFromQueue(int index) {
+    if (index == _currentIndex) return; // can't remove current
+    if (index < 0 || index >= _queue.length) return;
+    _queue.removeAt(index);
+    if (index < _currentIndex) {
+      _currentIndex--;
+    }
+    notifyListeners();
+    _persistState();
   }
 
   /// Toggles play/pause.
@@ -156,6 +301,7 @@ class AudioPlayerService extends ChangeNotifier {
 
   Future<void> pause() async {
     await _player?.pause();
+    await _persistState();
   }
 
   Future<void> seek(Duration targetPosition) async {
@@ -193,7 +339,7 @@ class AudioPlayerService extends ChangeNotifier {
     }
   }
 
-  /// Skips to previous track in queue or restarts current track if > 3s.
+  /// Skips to previous track in queue or restarts current track if >3s.
   Future<void> skipToPrevious() async {
     if (_queue.isEmpty) return;
 
@@ -234,6 +380,7 @@ class AudioPlayerService extends ChangeNotifier {
       }
     }
     notifyListeners();
+    _persistState();
   }
 
   List<Track> _createShuffledQueue(List<Track> list, Track current) {
@@ -256,6 +403,7 @@ class AudioPlayerService extends ChangeNotifier {
         break;
     }
     notifyListeners();
+    _persistState();
   }
 
   void toggleRepeatMode() => toggleLoopMode();
@@ -280,6 +428,7 @@ class AudioPlayerService extends ChangeNotifier {
 
   @override
   void dispose() {
+    _persistDebounce?.cancel();
     _playerStateSubscription?.cancel();
     _positionSubscription?.cancel();
     _durationSubscription?.cancel();

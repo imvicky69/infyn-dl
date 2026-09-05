@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../downloader/screens/downloader_screen.dart';
 import '../../downloader/services/downloader_service.dart';
-import '../../library/screens/library_screen.dart';
+import '../../library/screens/library_shell_screen.dart';
 import '../../library/screens/music_library_screen.dart';
 import '../../player/screens/desktop_player_screen.dart';
 import '../../player/services/audio_player_service.dart';
 import '../../player/widgets/desktop_player_bar.dart';
 import '../../player/widgets/mini_player.dart';
+import '../../search/screens/search_screen.dart';
 import '../../settings/screens/settings_screen.dart';
 
-/// Top-level shell screen providing responsive navigation and persistent player integration.
+/// Top-level shell screen — music-first, 3 tabs: Music | Library | Settings.
 class MainShellScreen extends StatefulWidget {
   const MainShellScreen({
     super.key,
@@ -24,7 +24,7 @@ class MainShellScreen extends StatefulWidget {
 }
 
 class _MainShellScreenState extends State<MainShellScreen> {
-  int _currentIndex = 0;
+  int _currentIndex = 0; // 0=Music, 1=Search, 2=Library, 3=Settings
   bool _isDesktopPlayerOpen = false;
 
   @override
@@ -40,21 +40,17 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   // ==========================================
-  // DESKTOP / WINDOWS LAYOUT (YouTube Music)
+  // DESKTOP LAYOUT
   // ==========================================
   Widget _buildDesktopLayout(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor:
           isDark ? const Color(0xFF09090B) : const Color(0xFFFAFAFA),
       body: Row(
         children: [
-          // Left Navigation Sidebar
           _buildDesktopSidebar(context, isDark),
-
-          // Main Content View
           Expanded(
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
@@ -67,21 +63,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       key: const ValueKey('screens_stack'),
                       index: _currentIndex,
                       children: [
-                        DownloaderScreen(
-                          downloaderService: widget.downloaderService,
-                          onOpenSettings: () =>
-                              setState(() => _currentIndex = 3),
-                          onOpenLibrary: () =>
-                              setState(() => _currentIndex = 1),
-                        ),
                         MusicLibraryScreen(
                           onNavigateToDownloader: () =>
-                              setState(() => _currentIndex = 0),
+                              setState(() => _currentIndex = 2),
                         ),
-                        LibraryScreen(
+                        const SearchScreen(),
+                        LibraryShellScreen(
                           downloaderService: widget.downloaderService,
-                          onNavigateToDownloader: () =>
-                              setState(() => _currentIndex = 0),
                         ),
                         SettingsScreen(
                           downloaderService: widget.downloaderService,
@@ -97,13 +85,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
         builder: (context, _) {
           final hasTrack = AudioPlayerService.instance.currentTrack != null;
           if (!hasTrack) return const SizedBox.shrink();
-
           return DesktopPlayerBar(
             isPlayerScreenOpen: _isDesktopPlayerOpen,
             onTogglePlayerScreen: () {
-              setState(() {
-                _isDesktopPlayerOpen = !_isDesktopPlayerOpen;
-              });
+              setState(() => _isDesktopPlayerOpen = !_isDesktopPlayerOpen);
             },
           );
         },
@@ -113,20 +98,16 @@ class _MainShellScreenState extends State<MainShellScreen> {
 
   Widget _buildDesktopSidebar(BuildContext context, bool isDark) {
     return Container(
-      width: 230,
+      width: 220,
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF141416) : const Color(0xFFFFFFFF),
         border: Border(
-          right: BorderSide(
-            color: AppColors.surfaceBorder,
-            width: 1,
-          ),
+          right: BorderSide(color: AppColors.surfaceBorder),
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Top Brand Header
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
             child: Row(
@@ -137,120 +118,93 @@ class _MainShellScreenState extends State<MainShellScreen> {
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: Icon(
-                    Icons.music_note_rounded,
-                    color: AppColors.onPrimary,
-                    size: 20,
-                  ),
+                  child: Icon(Icons.music_note_rounded,
+                      color: AppColors.onPrimary, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        'Infyn DL',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      Text(
-                        'Music & Downloader',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
+                      Text('Infyn DL',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.5,
+                          )),
+                      Text('Music Player',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: AppColors.textSecondary,
+                          )),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-
           const SizedBox(height: 8),
-
-          // Navigation Links
           _buildSidebarNavItem(
             index: 0,
-            icon: Icons.download_outlined,
-            selectedIcon: Icons.download_rounded,
-            label: 'Downloader',
-          ),
-          _buildSidebarNavItem(
-            index: 1,
             icon: Icons.music_note_outlined,
             selectedIcon: Icons.music_note_rounded,
             label: 'Music',
           ),
           _buildSidebarNavItem(
+            index: 1,
+            icon: Icons.search_outlined,
+            selectedIcon: Icons.search_rounded,
+            label: 'Search',
+          ),
+          _buildSidebarNavItem(
             index: 2,
-            icon: Icons.folder_copy_outlined,
-            selectedIcon: Icons.folder_copy_rounded,
+            icon: Icons.folder_outlined,
+            selectedIcon: Icons.folder_rounded,
             label: 'Library',
           ),
           _buildSidebarNavItem(
             index: 3,
-            icon: Icons.tune_outlined,
-            selectedIcon: Icons.tune_rounded,
+            icon: Icons.settings_outlined,
+            selectedIcon: Icons.settings_rounded,
             label: 'Settings',
           ),
-
           const Spacer(),
-
-          // Now Playing Shortcut if active
+          // Now Playing shortcut
           ListenableBuilder(
             listenable: AudioPlayerService.instance,
             builder: (context, _) {
               final track = AudioPlayerService.instance.currentTrack;
               if (track == null) return const SizedBox.shrink();
-
-              final isSelected = _isDesktopPlayerOpen;
-
               return Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
                 child: InkWell(
-                  onTap: () {
-                    setState(() {
-                      _isDesktopPlayerOpen = !_isDesktopPlayerOpen;
-                    });
-                  },
+                  onTap: () => setState(
+                      () => _isDesktopPlayerOpen = !_isDesktopPlayerOpen),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 10),
                     decoration: BoxDecoration(
-                      color: isSelected
+                      color: _isDesktopPlayerOpen
                           ? AppColors.primary.withValues(alpha: 0.15)
                           : AppColors.primaryContainer,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected
-                            ? AppColors.primary
-                            : AppColors.surfaceBorder,
-                      ),
+                          color: _isDesktopPlayerOpen
+                              ? AppColors.primary
+                              : AppColors.surfaceBorder),
                     ),
                     child: Row(
                       children: [
-                        Icon(
-                          Icons.play_circle_fill_rounded,
-                          color: AppColors.primary,
-                          size: 20,
-                        ),
+                        Icon(Icons.play_circle_fill_rounded,
+                            color: AppColors.primary, size: 20),
                         const SizedBox(width: 10),
                         Expanded(
                           child: Text(
-                            isSelected
+                            _isDesktopPlayerOpen
                                 ? 'Close Now Playing'
-                                : 'Now Playing View',
+                                : 'Now Playing',
                             style: TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w700,
@@ -281,12 +235,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       child: InkWell(
-        onTap: () {
-          setState(() {
-            _currentIndex = index;
-            _isDesktopPlayerOpen = false;
-          });
-        },
+        onTap: () => setState(() {
+          _currentIndex = index;
+          _isDesktopPlayerOpen = false;
+        }),
         borderRadius: BorderRadius.circular(12),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
@@ -308,11 +260,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
               Expanded(
                 child: Text(
                   label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight:
+                        isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
                         ? AppColors.primary
                         : AppColors.textSecondary,
@@ -327,11 +278,10 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }
 
   // ==========================================
-  // MOBILE / PHONE LAYOUT (YouTube Music)
+  // MOBILE LAYOUT — Music first, 4 tabs
   // ==========================================
   Widget _buildMobileLayout(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       body: Stack(
@@ -340,25 +290,24 @@ class _MainShellScreenState extends State<MainShellScreen> {
           IndexedStack(
             index: _currentIndex,
             children: [
-              DownloaderScreen(
-                downloaderService: widget.downloaderService,
-                onOpenSettings: () => setState(() => _currentIndex = 3),
-                onOpenLibrary: () => setState(() => _currentIndex = 1),
-              ),
+              // 0 — Music
               MusicLibraryScreen(
-                onNavigateToDownloader: () => setState(() => _currentIndex = 0),
+                onNavigateToDownloader: () => setState(() => _currentIndex = 2),
               ),
-              LibraryScreen(
+              // 1 — Search
+              const SearchScreen(),
+              // 2 — Library
+              LibraryShellScreen(
                 downloaderService: widget.downloaderService,
-                onNavigateToDownloader: () => setState(() => _currentIndex = 0),
               ),
+              // 3 — Settings
               SettingsScreen(
                 downloaderService: widget.downloaderService,
               ),
             ],
           ),
 
-          // Persistent Mini-Player floating above bottom navigation bar
+          // Persistent mini-player above bottom nav
           const Positioned(
             left: 0,
             right: 0,
@@ -382,26 +331,26 @@ class _MainShellScreenState extends State<MainShellScreen> {
               children: [
                 _buildMobileNavItem(
                   index: 0,
-                  icon: Icons.download_outlined,
-                  selectedIcon: Icons.download_rounded,
-                  label: 'Downloader',
-                ),
-                _buildMobileNavItem(
-                  index: 1,
                   icon: Icons.music_note_outlined,
                   selectedIcon: Icons.music_note_rounded,
                   label: 'Music',
                 ),
                 _buildMobileNavItem(
+                  index: 1,
+                  icon: Icons.search_outlined,
+                  selectedIcon: Icons.search_rounded,
+                  label: 'Search',
+                ),
+                _buildMobileNavItem(
                   index: 2,
-                  icon: Icons.folder_copy_outlined,
-                  selectedIcon: Icons.folder_copy_rounded,
+                  icon: Icons.folder_outlined,
+                  selectedIcon: Icons.folder_rounded,
                   label: 'Library',
                 ),
                 _buildMobileNavItem(
                   index: 3,
-                  icon: Icons.tune_outlined,
-                  selectedIcon: Icons.tune_rounded,
+                  icon: Icons.settings_outlined,
+                  selectedIcon: Icons.settings_rounded,
                   label: 'Settings',
                 ),
               ],
@@ -424,13 +373,13 @@ class _MainShellScreenState extends State<MainShellScreen> {
       onTap: () => setState(() => _currentIndex = index),
       borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
               decoration: BoxDecoration(
                 color: isSelected
                     ? AppColors.primary.withValues(alpha: 0.12)
@@ -439,7 +388,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
               ),
               child: Icon(
                 isSelected ? selectedIcon : icon,
-                size: 20,
+                size: 22,
                 color: isSelected ? AppColors.primary : AppColors.textSecondary,
               ),
             ),

@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../player/services/audio_player_service.dart';
+import '../../player/services/liked_songs_service.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
@@ -298,33 +299,74 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
           return p.name.toLowerCase().contains(_searchQuery.toLowerCase());
         }).toList();
 
-        if (filteredPlaylists.isEmpty) {
+        if (filteredPlaylists.isEmpty && _searchQuery.isNotEmpty) {
           return _buildEmptyState(
             isDark: isDark,
-            message: _searchQuery.isNotEmpty
-                ? 'No playlists matching "$_searchQuery"'
-                : 'No playlists found in $_downloadDirectory',
+            message: 'No playlists matching "$_searchQuery"',
           );
         }
 
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            // Adaptive columns: 2 columns on mobile, 3-5 on desktop
-            final crossAxisCount =
-                (constraints.maxWidth / 220).clamp(2, 6).toInt();
+        return ValueListenableBuilder<List<Track>>(
+          valueListenable: MusicScannerService.instance.tracksNotifier,
+          builder: (context, allTracks, _) {
+            return ListenableBuilder(
+              listenable: LikedSongsService.instance,
+              builder: (context, _) {
+                final likedIds = LikedSongsService.instance.likedIds;
+                final likedTracks = allTracks
+                    .where((t) => likedIds.contains(t.id))
+                    .toList();
 
-            return GridView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                crossAxisSpacing: 14,
-                mainAxisSpacing: 14,
-                childAspectRatio: 0.85,
-              ),
-              itemCount: filteredPlaylists.length,
-              itemBuilder: (context, index) {
-                final playlist = filteredPlaylists[index];
-                return _buildPlaylistCard(playlist, isDark);
+                return LayoutBuilder(
+                  builder: (context, constraints) {
+                    final crossAxisCount =
+                        (constraints.maxWidth / 220).clamp(2, 6).toInt();
+
+                    return CustomScrollView(
+                      slivers: [
+                        // ── Liked Songs pinned card ────────────────────────
+                        if (_searchQuery.isEmpty)
+                          SliverToBoxAdapter(
+                            child: Padding(
+                              padding:
+                                  const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                              child: _buildLikedSongsCard(
+                                  isDark, likedTracks, allTracks),
+                            ),
+                          ),
+
+                        // ── Playlist grid ─────────────────────────────────
+                        if (filteredPlaylists.isEmpty && _searchQuery.isEmpty)
+                          SliverToBoxAdapter(
+                            child: _buildEmptyState(
+                              isDark: isDark,
+                              message:
+                                  'No playlists found in $_downloadDirectory',
+                            ),
+                          )
+                        else
+                          SliverPadding(
+                            padding:
+                                const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                            sliver: SliverGrid(
+                              gridDelegate:
+                                  SliverGridDelegateWithFixedCrossAxisCount(
+                                crossAxisCount: crossAxisCount,
+                                crossAxisSpacing: 14,
+                                mainAxisSpacing: 14,
+                                childAspectRatio: 0.85,
+                              ),
+                              delegate: SliverChildBuilderDelegate(
+                                (context, index) => _buildPlaylistCard(
+                                    filteredPlaylists[index], isDark),
+                                childCount: filteredPlaylists.length,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
+                );
               },
             );
           },
@@ -332,6 +374,104 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
       },
     );
   }
+
+  Widget _buildLikedSongsCard(
+      bool isDark, List<Track> likedTracks, List<Track> allTracks) {
+    return InkWell(
+      onTap: likedTracks.isNotEmpty
+          ? () {
+              AudioPlayerService.instance.playTrack(
+                likedTracks.first,
+                queue: likedTracks,
+              );
+            }
+          : null,
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        height: 72,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: isDark
+                ? [const Color(0xFF3B0764), const Color(0xFF1E1B4B)]
+                : [const Color(0xFFF3E8FF), const Color(0xFFEDE9FE)],
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+          ),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isDark
+                ? const Color(0xFF7C3AED).withValues(alpha: 0.4)
+                : const Color(0xFFA78BFA).withValues(alpha: 0.5),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: const Color(0xFF7C3AED).withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.favorite_rounded,
+                color: Color(0xFF7C3AED),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    'Liked Songs',
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      color: isDark
+                          ? const Color(0xFFDDD6FE)
+                          : const Color(0xFF4C1D95),
+                      letterSpacing: -0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    likedTracks.isEmpty
+                        ? 'No liked songs yet'
+                        : '${likedTracks.length} song${likedTracks.length == 1 ? '' : 's'}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? const Color(0xFFC4B5FD)
+                          : const Color(0xFF6D28D9),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (likedTracks.isNotEmpty)
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF7C3AED),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
 
   Widget _buildPlaylistCard(MusicPlaylist playlist, bool isDark) {
     return InkWell(

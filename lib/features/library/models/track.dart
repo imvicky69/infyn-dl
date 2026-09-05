@@ -1,9 +1,10 @@
-/// Represents a playable local audio track.
+/// Represents a playable audio track (local or remote).
 class Track {
   final String id;
   final String title;
   final String artist;
-  final String filePath;
+  final String? filePath;
+  final String? webUrl;
   final Duration? duration;
   final String? album;
   final String? artworkPath;
@@ -12,11 +13,14 @@ class Track {
     required this.id,
     required this.title,
     required this.artist,
-    required this.filePath,
+    this.filePath,
+    this.webUrl,
     this.duration,
     this.album,
     this.artworkPath,
   });
+
+  bool get isLocal => filePath != null && filePath!.trim().isNotEmpty;
 
   /// Formatted duration string, e.g. "3:45" or "1:02:15"
   String get formattedDuration {
@@ -39,6 +43,7 @@ class Track {
     String? title,
     String? artist,
     String? filePath,
+    String? webUrl,
     Duration? duration,
     String? album,
     String? artworkPath,
@@ -48,6 +53,7 @@ class Track {
       title: title ?? this.title,
       artist: artist ?? this.artist,
       filePath: filePath ?? this.filePath,
+      webUrl: webUrl ?? this.webUrl,
       duration: duration ?? this.duration,
       album: album ?? this.album,
       artworkPath: artworkPath ?? this.artworkPath,
@@ -60,8 +66,9 @@ class Track {
       other is Track &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          filePath == other.filePath;
+          filePath == other.filePath &&
+          webUrl == other.webUrl;
 
   @override
-  int get hashCode => id.hashCode ^ filePath.hashCode;
+  int get hashCode => id.hashCode ^ (filePath?.hashCode ?? 0) ^ (webUrl?.hashCode ?? 0);
 }

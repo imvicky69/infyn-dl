@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../screens/now_playing_screen.dart';
 import '../services/audio_player_service.dart';
+import '../services/liked_songs_service.dart';
 
 /// Persistent floating mini-player shown when a track is active.
 class MiniPlayer extends StatelessWidget {
@@ -123,6 +124,33 @@ class MiniPlayer extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(width: 8),
+                      // Heart button
+                      ListenableBuilder(
+                        listenable: LikedSongsService.instance,
+                        builder: (context, _) {
+                          final liked = LikedSongsService.instance
+                              .isLiked(track.id);
+                          return IconButton(
+                            onPressed: () => LikedSongsService.instance
+                                .toggleLike(track.id),
+                            icon: Icon(
+                              liked
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              color: liked
+                                  ? const Color(0xFFEF4444)
+                                  : AppColors.textMuted,
+                              size: 20,
+                            ),
+                            splashRadius: 18,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(
+                              minWidth: 36,
+                              minHeight: 36,
+                            ),
+                          );
+                        },
+                      ),
                       // Play/Pause button
                       IconButton(
                         onPressed: () => player.togglePlayPause(),

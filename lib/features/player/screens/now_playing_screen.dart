@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../downloader/models/download_format.dart';
+import '../../downloader/services/android_downloader_service.dart';
 import '../services/audio_player_service.dart';
+import '../services/liked_songs_service.dart';
 
 /// Full-screen mobile Now Playing screen styled after YouTube Music mobile.
 class NowPlayingScreen extends StatefulWidget {
@@ -197,12 +200,48 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         ),
                       ),
                       const SizedBox(width: 8),
-                      IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.thumb_up_alt_outlined, size: 22),
-                        color: AppColors.textSecondary,
-                        tooltip: 'Like',
+                      // Heart / Like button
+                      ListenableBuilder(
+                        listenable: LikedSongsService.instance,
+                        builder: (context, _) {
+                          final liked = LikedSongsService.instance
+                              .isLiked(track.id);
+                          return IconButton(
+                            onPressed: () => LikedSongsService.instance
+                                .toggleLike(track.id),
+                            icon: AnimatedSwitcher(
+                              duration: const Duration(milliseconds: 200),
+                              child: Icon(
+                                liked
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                key: ValueKey(liked),
+                                size: 24,
+                                color: liked
+                                    ? const Color(0xFFEF4444)
+                                    : AppColors.textSecondary,
+                              ),
+                            ),
+                            tooltip: liked ? 'Unlike' : 'Like',
+                          );
+                        },
                       ),
+                      if (!track.isLocal && track.webUrl != null) ...[
+                        const SizedBox(width: 4),
+                        IconButton(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('Starting download for "${track.title}"...')),
+                            );
+                            AndroidDownloaderService().download(
+                              url: track.webUrl!,
+                              format: DownloadFormat.mp3,
+                            ).listen((_) {});
+                          },
+                          icon: Icon(Icons.download_rounded, color: AppColors.textSecondary, size: 24),
+                          tooltip: 'Download',
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -433,108 +472,205 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       isScrollControlled: true,
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
-        return Container(
-          height: MediaQuery.of(ctx).size.height * 0.65,
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF141416) : const Color(0xFFFFFFFF),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 10, bottom: 6),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: AppColors.surfaceBorder,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+        return StatefulBuilder(
+          builder: (ctx, setModalState) {
+            return Container(
+              height: MediaQuery.of(ctx).size.height * 0.72,
+              decoration: BoxDecoration(
+                color: isDark
+                    ? const Color(0xFF141416)
+                    : const Color(0xFFFFFFFF),
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(24)),
               ),
-              Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                child: Row(
-                  children: [
-                    Text(
-                      'Up Next Queue',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
+              child: Column(
+                children: [
+                  // Drag handle
+                  Container(
+                    margin: const EdgeInsets.only(top: 10, bottom: 6),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceBorder,
+                      borderRadius: BorderRadius.circular(2),
                     ),
-                    const Spacer(),
-                    Text(
-                      '${player.queue.length} tracks',
-                      style: TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: player.queue.length,
-                  padding: const EdgeInsets.symmetric(vertical: 6),
-                  itemBuilder: (context, index) {
-                    final item = player.queue[index];
-                    final isCurrent = index == player.currentIndex;
-
-                    return ListTile(
-                      dense: true,
-                      leading: isCurrent
-                          ? Icon(Icons.equalizer_rounded,
-                              color: AppColors.primary, size: 20)
-                          : Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w500,
-                              ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 8),
+                    child: Row(
+                      children: [
+                        Text(
+                          'Up Next',
+                          style: TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                            letterSpacing: -0.3,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppColors.surfaceElevated,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            '${player.queue.length} tracks',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
                             ),
-                      title: Text(
-                        item.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight:
-                              isCurrent ? FontWeight.w700 : FontWeight.w500,
-                          color: isCurrent
-                              ? AppColors.primary
-                              : AppColors.textPrimary,
+                          ),
                         ),
-                      ),
-                      subtitle: Text(
-                        item.artist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
+                        const Spacer(),
+                        Text(
+                          'Hold to reorder',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                          ),
                         ),
-                      ),
-                      trailing: Text(
-                        item.formattedDuration,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textSecondary,
-                        ),
-                      ),
-                      onTap: () {
-                        player.playTrack(item, queue: player.queue);
-                        Navigator.pop(ctx);
+                      ],
+                    ),
+                  ),
+                  Divider(height: 1, color: AppColors.surfaceBorder),
+                  Expanded(
+                    child: ListenableBuilder(
+                      listenable: player,
+                      builder: (context, _) {
+                        final queue = player.queue.toList();
+                        return ReorderableListView.builder(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          itemCount: queue.length,
+                          onReorderItem: (oldIndex, newIndex) {
+                            player.reorderQueue(oldIndex, newIndex);
+                          },
+                          proxyDecorator: (child, index, animation) {
+                            return Material(
+                              elevation: 8,
+                              borderRadius: BorderRadius.circular(12),
+                              color: isDark
+                                  ? const Color(0xFF27272A)
+                                  : Colors.white,
+                              child: child,
+                            );
+                          },
+                          itemBuilder: (context, index) {
+                            final item = queue[index];
+                            final isCurrent = index == player.currentIndex;
+
+                            return Dismissible(
+                              key: ValueKey('${item.filePath}_$index'),
+                              direction: isCurrent
+                                  ? DismissDirection.none
+                                  : DismissDirection.endToStart,
+                              background: Container(
+                                alignment: Alignment.centerRight,
+                                padding: const EdgeInsets.only(right: 20),
+                                color: const Color(0xFFEF4444),
+                                child: const Icon(
+                                  Icons.delete_outline_rounded,
+                                  color: Colors.white,
+                                  size: 22,
+                                ),
+                              ),
+                              onDismissed: (_) {
+                                player.removeFromQueue(index);
+                              },
+                              child: ListTile(
+                                key: ValueKey('tile_${item.filePath}_$index'),
+                                dense: true,
+                                leading: isCurrent
+                                    ? Container(
+                                        width: 36,
+                                        height: 36,
+                                        decoration: BoxDecoration(
+                                          color: AppColors.primary
+                                              .withValues(alpha: 0.12),
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                        ),
+                                        child: Icon(
+                                          Icons.equalizer_rounded,
+                                          color: AppColors.primary,
+                                          size: 18,
+                                        ),
+                                      )
+                                    : Container(
+                                        width: 36,
+                                        height: 36,
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          '${index + 1}',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color: AppColors.textMuted,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                title: Text(
+                                  item.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: isCurrent
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                    color: isCurrent
+                                        ? AppColors.primary
+                                        : AppColors.textPrimary,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  item.artist,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      item.formattedDuration,
+                                      style: TextStyle(
+                                        fontSize: 11,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    // Drag handle
+                                    Icon(
+                                      Icons.drag_handle_rounded,
+                                      size: 18,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ],
+                                ),
+                                onTap: () {
+                                  player.playTrack(item,
+                                      queue: player.queue);
+                                  Navigator.pop(ctx);
+                                },
+                              ),
+                            );
+                          },
+                        );
                       },
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );
