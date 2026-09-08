@@ -2,7 +2,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../downloader/models/download_format.dart';
+import '../../downloader/models/download_item.dart';
+import '../../downloader/models/download_progress.dart';
 import '../../downloader/services/android_downloader_service.dart';
+import '../../downloader/services/download_history_service.dart';
+import '../../library/services/music_scanner_service.dart';
 import '../services/audio_player_service.dart';
 import '../services/liked_songs_service.dart';
 
@@ -259,12 +263,30 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                   AndroidDownloaderService().download(
                                     url: track.webUrl!,
                                     format: DownloadFormat.mp3,
-                                  ).listen((progress) {
+                                  ).listen((progress) async {
                                     if (mounted) {
                                       setState(() {
-                                        _downloadProgress = progress.progress / 100.0;
+                                        _downloadProgress = progress.progress;
                                       });
-                                      if (progress.status == 'completed' || progress.status == 'failed') {
+                                      if (progress.status == DownloadStatus.completed) {
+                                        final downloadItem = DownloadItem(
+                                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                          title: progress.title ?? track.title,
+                                          url: track.webUrl ?? '',
+                                          filePath: progress.outputFilePath ?? '',
+                                          format: DownloadFormat.mp3,
+                                          quality: 'Best (Audio)',
+                                          thumbnailUrl: track.artworkPath,
+                                          timestamp: DateTime.now(),
+                                        );
+                                        await DownloadHistoryService.instance.addDownload(downloadItem);
+                                        await MusicScannerService.instance.scanMusicDirectory(forceRefresh: true);
+                                        if (mounted) {
+                                          setState(() {
+                                            _isDownloading = false;
+                                          });
+                                        }
+                                      } else if (progress.status == DownloadStatus.failed || progress.status == DownloadStatus.cancelled) {
                                         setState(() {
                                           _isDownloading = false;
                                         });

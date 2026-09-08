@@ -133,6 +133,7 @@ object AndroidDownloadManager {
                     addOption("--no-playlist")
                     addOption("--no-update")
                     addOption("--no-check-certificates")
+                    addOption("--extractor-args", "youtube:player_client=mweb,android,web")
                     addOption("--socket-timeout", "15")
                     addOption("--retries", "3")
                 }
@@ -173,6 +174,7 @@ object AndroidDownloadManager {
                     addOption("--dump-single-json")
                     addOption("--no-update")
                     addOption("--no-check-certificates")
+                    addOption("--extractor-args", "youtube:player_client=mweb,android,web")
                     addOption("--socket-timeout", "15")
                     addOption("--retries", "3")
                     addOption("--yes-playlist")
@@ -236,6 +238,7 @@ object AndroidDownloadManager {
                 addOption("--no-update")
                 addOption("--no-check-certificates")
                 addOption("--no-mtime")
+                addOption("--extractor-args", "youtube:player_client=mweb,android,web")
 
                 // High-speed parallel fragment downloading and chunk buffering
                 addOption("-N", "8")
@@ -250,9 +253,8 @@ object AndroidDownloadManager {
                 addOption("--file-access-retries", "5")
 
                 if (isAudio) {
-                    // Zero-transcode audio: download native m4a stream. 
-                    // To prevent FFmpeg crashes and long hangs on Opus, we specifically request m4a.
-                    addOption("-f", "bestaudio[ext=m4a]")
+                    // Zero-transcode audio: download native m4a stream or best available audio
+                    addOption("-f", "bestaudio[ext=m4a]/bestaudio/best")
                     addOption("--extract-audio")
                     addOption("--audio-format", "m4a")
                     addOption("--no-keep-video")
@@ -523,6 +525,7 @@ object AndroidDownloadManager {
         if (raw.contains("Sign in to confirm your age", ignoreCase = true)) return "This video requires age confirmation."
         if (raw.contains("Incomplete YouTube ID", ignoreCase = true) || raw.contains("not a valid URL", ignoreCase = true)) return "Invalid YouTube URL provided."
         if (raw.contains("HTTP Error 403", ignoreCase = true)) return "Access forbidden (403). Please tap 'Check Update' in Settings."
+        if (raw.contains("The page needs to be reloaded", ignoreCase = true)) return "YouTube web challenge encountered. Please restart download or tap 'Check Update' in Settings."
 
         val cleanLines = raw.lines()
             .map { it.trim() }

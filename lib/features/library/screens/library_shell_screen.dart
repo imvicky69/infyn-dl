@@ -45,14 +45,14 @@ class _LibraryShellScreenState extends State<LibraryShellScreen> {
                       child: Row(
                         children: [
                           _TabPill(
-                            label: 'My Music',
-                            icon: Icons.folder_rounded,
+                            label: 'Downloads',
+                            icon: Icons.folder_copy_rounded,
                             selected: _tab == 0,
                             onTap: () => setState(() => _tab = 0),
                           ),
                           _TabPill(
-                            label: 'Download',
-                            icon: Icons.download_rounded,
+                            label: 'URL Downloader',
+                            icon: Icons.link_rounded,
                             selected: _tab == 1,
                             onTap: () => setState(() => _tab = 1),
                           ),

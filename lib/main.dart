@@ -3,7 +3,6 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'core/theme/app_theme.dart';
 import 'features/home/screens/main_shell_screen.dart';
 import 'features/player/services/liked_songs_service.dart';
-import 'features/player/services/media_cache_service.dart';
 import 'features/settings/services/settings_service.dart';
 
 void main() async {
@@ -15,7 +14,6 @@ void main() async {
   );
   await SettingsService.instance.init();
   await LikedSongsService.instance.init();
-  await MediaCacheService.instance.init();
   runApp(const MediaDownloaderApp());
 }
 

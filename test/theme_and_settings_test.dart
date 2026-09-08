@@ -69,9 +69,9 @@ void main() {
     });
   });
 
-  group('MainShellScreen 3-Tab Navigation Tests', () {
+  group('MainShellScreen Navigation Tests', () {
     testWidgets(
-        'Renders 3 tabs: Downloader, Library, Settings and no Tools tab',
+        'Renders 4 tabs: Music, Search, Library, Settings and no Tools tab',
         (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -80,15 +80,19 @@ void main() {
       );
       await tester.pump();
 
-      expect(find.text('Downloader'), findsAtLeastNWidgets(1));
+      expect(find.text('Music'), findsAtLeastNWidgets(1));
+      expect(find.text('Search'), findsAtLeastNWidgets(1));
       expect(find.text('Library'), findsAtLeastNWidgets(1));
       expect(find.text('Settings'), findsAtLeastNWidgets(1));
       expect(find.text('Tools'), findsNothing);
+
+      // Flush AudioPlayerService debounce state-persist timer
+      await tester.pump(const Duration(seconds: 4));
     });
   });
 
-  group('SettingsScreen Appearance & Web Tools Suite Tests', () {
-    testWidgets('Renders Theme Mode toggle and Infyn Web Tools Suite section',
+  group('SettingsScreen Appearance & Downloads Section Tests', () {
+    testWidgets('Renders Theme toggle and settings sections',
         (tester) async {
       tester.view.physicalSize = const Size(1280, 2000);
       tester.view.devicePixelRatio = 1.0;
@@ -108,14 +112,11 @@ void main() {
 
       // Verify Appearance section
       expect(find.text('APPEARANCE'), findsOneWidget);
-      expect(find.text('Theme Mode'), findsOneWidget);
+      expect(find.text('Theme'), findsOneWidget);
 
-      // Verify Infyn Web Utilities Suite section
-      expect(find.text('INFYN WEB UTILITIES SUITE'), findsOneWidget);
-      expect(find.text('Infyn Browser Tools Suite'), findsOneWidget);
-      expect(find.text('Launch Infyn Tools (infyn.software)'), findsOneWidget);
-      expect(find.text('PDF to Image'), findsOneWidget);
-      expect(find.text('Compress PDF'), findsOneWidget);
+      // Verify Download Folder & Downloads sections
+      expect(find.text('DOWNLOAD FOLDER'), findsOneWidget);
+      expect(find.text('DOWNLOADS'), findsOneWidget);
     });
   });
 }

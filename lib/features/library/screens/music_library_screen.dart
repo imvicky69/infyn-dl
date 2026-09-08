@@ -236,9 +236,14 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
 
             // Main Body: Playlists View OR Tracks View
             Expanded(
-              child: _viewMode == MusicLibraryViewMode.playlists
-                  ? _buildPlaylistsView(isDark)
-                  : _buildTracksView(isDark),
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () => MusicScannerService.instance
+                    .scanMusicDirectory(forceRefresh: true),
+                child: _viewMode == MusicLibraryViewMode.playlists
+                    ? _buildPlaylistsView(isDark)
+                    : _buildTracksView(isDark),
+              ),
             ),
           ],
         ),

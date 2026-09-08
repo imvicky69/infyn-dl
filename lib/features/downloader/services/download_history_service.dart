@@ -20,6 +20,7 @@ class DownloadHistoryService {
   final List<DownloadItem> _cachedItems = [];
   final Map<String, String> _playlistUrls = {};
   bool _isInitialized = false;
+  final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -148,6 +149,7 @@ class DownloadHistoryService {
     }
 
     await _persistToDisk();
+    changeNotifier.value++;
   }
 
   /// Deletes a download from history and optionally removes the physical file from disk.
@@ -169,6 +171,7 @@ class DownloadHistoryService {
       }
       _cachedItems.removeAt(index);
       await _persistToDisk();
+      changeNotifier.value++;
     }
   }
 
@@ -177,6 +180,28 @@ class DownloadHistoryService {
     if (!_isInitialized) await init();
     _cachedItems.clear();
     await _persistToDisk();
+    changeNotifier.value++;
+  }
+
+  /// Returns the existing DownloadItem for a given title or URL if already downloaded and file exists.
+  Future<DownloadItem?> getDownloadedItemForTitleOrUrl(String title, {String? url}) async {
+    if (!_isInitialized) await init();
+    final cleanTitle = _sanitizeFilename(title).toLowerCase();
+    final cleanUrl = url?.trim().toLowerCase();
+
+    for (final item in _cachedItems) {
+      if (item.filePath.isEmpty) continue;
+      final matchTitle = _sanitizeFilename(item.title).toLowerCase() == cleanTitle;
+      final matchUrl = cleanUrl != null && cleanUrl.isNotEmpty && item.url.trim().toLowerCase() == cleanUrl;
+      if (matchTitle || matchUrl) {
+        try {
+          if (await File(item.filePath).exists()) {
+            return item;
+          }
+        } catch (_) {}
+      }
+    }
+    return null;
   }
 
   /// Determines whether a video/track with the given title and format is already downloaded.

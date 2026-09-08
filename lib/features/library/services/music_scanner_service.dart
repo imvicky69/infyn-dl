@@ -142,6 +142,7 @@ class MusicScannerService {
               title: title,
               artist: artist,
               filePath: filePath,
+              webUrl: matchedHistory?.url,
               duration: duration,
               album: album,
               artworkPath: artworkPath,

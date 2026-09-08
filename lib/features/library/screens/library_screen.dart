@@ -65,11 +65,17 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void initState() {
     super.initState();
     _loadHistory();
+    DownloadHistoryService.instance.changeNotifier.addListener(_onHistoryChanged);
+  }
+
+  void _onHistoryChanged() {
+    if (mounted) _loadHistory();
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    DownloadHistoryService.instance.changeNotifier.removeListener(_onHistoryChanged);
     super.dispose();
   }
 
@@ -247,7 +253,33 @@ class _LibraryScreenState extends State<LibraryScreen> {
         artworkPath: item.thumbnailUrl,
         album: item.playlistName,
       );
-      await AudioPlayerService.instance.playTrack(track);
+
+      final currentList = _openedFolder?.items ?? _items;
+      final audioExts = {'mp3', 'm4a', 'wav', 'flac'};
+      final queue = currentList
+          .where((i) =>
+              i.format == DownloadFormat.mp3 ||
+              audioExts.contains(
+                  p.extension(i.filePath).replaceFirst('.', '').toLowerCase()))
+          .map((i) {
+        final rPath = i.filePath;
+        final rName = p.basenameWithoutExtension(rPath);
+        var art = 'Unknown Artist';
+        if (rName.contains(' - ')) {
+          art = rName.split(' - ')[0].trim();
+        }
+        return Track(
+          id: rPath,
+          title: i.title,
+          artist: art,
+          filePath: rPath,
+          artworkPath: i.thumbnailUrl,
+          album: i.playlistName,
+        );
+      }).toList();
+
+      await AudioPlayerService.instance
+          .playTrack(track, queue: queue.isNotEmpty ? queue : null);
       return;
     }
 

@@ -6,7 +6,6 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
-import 'stream_extractor_service.dart';
 
 enum PlayerLoopMode { off, all, one }
 
@@ -177,16 +176,11 @@ class AudioPlayerService extends ChangeNotifier {
       _duration = restoredTrack.duration ?? Duration.zero;
 
       // Load audio but do NOT auto-play
-      if (restoredTrack.isLocal) {
+      if (restoredTrack.isLocal && restoredTrack.filePath != null) {
         await _player?.setFilePath(restoredTrack.filePath!);
-      } else {
-        final streamUrl = await StreamExtractorService.instance.getStreamUrl(restoredTrack);
-        if (streamUrl != null) {
-          await _player?.setUrl(streamUrl);
+        if (positionMs > 0) {
+          await _player?.seek(Duration(milliseconds: positionMs));
         }
-      }
-      if (positionMs > 0) {
-        await _player?.seek(Duration(milliseconds: positionMs));
       }
 
       notifyListeners();
@@ -224,44 +218,29 @@ class AudioPlayerService extends ChangeNotifier {
       notifyListeners();
 
       try {
-      if (track.isLocal) {
+      if (track.isLocal && track.filePath != null) {
+        final fileUri = Uri.file(track.filePath!);
+        Uri? artUri;
+        if (track.artworkPath != null && track.artworkPath!.isNotEmpty) {
+          artUri = track.artworkPath!.startsWith('http')
+              ? Uri.tryParse(track.artworkPath!)
+              : Uri.file(track.artworkPath!);
+        }
         await _player?.setAudioSource(
           AudioSource.uri(
-            Uri.parse(track.filePath!),
+            fileUri,
             tag: MediaItem(
               id: track.id,
               title: track.title,
               artist: track.artist,
-              artUri: track.artworkPath != null ? Uri.parse(track.artworkPath!) : null,
+              artUri: artUri,
             ),
           ),
         );
       } else {
-        _isBuffering = true;
-        notifyListeners();
-        
-        final streamUrl = await StreamExtractorService.instance.getStreamUrl(track);
-        if (streamUrl != null) {
-          await _player?.setAudioSource(
-            AudioSource.uri(
-              Uri.parse(streamUrl),
-              tag: MediaItem(
-                id: track.id,
-                title: track.title,
-                artist: track.artist,
-                artUri: track.artworkPath != null ? Uri.parse(track.artworkPath!) : null,
-              ),
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-              },
-            ),
-          );
-        } else {
-          // Extraction failed
-          _isBuffering = false;
-          notifyListeners();
-          return;
-        }
+        debugPrint(
+            'AudioPlayerService: Cannot play track "${track.title}" without a local file.');
+        return;
       }
 
         final loadedDuration = _player?.duration;
