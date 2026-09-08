@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../screens/now_playing_screen.dart';
 import '../services/audio_player_service.dart';
@@ -27,53 +28,68 @@ class MiniPlayer extends StatelessWidget {
                 .clamp(0.0, 1.0)
             : 0.0;
 
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: isDark ? AppColors.surfaceElevated : AppColors.surface,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: AppColors.surfaceBorder,
-              width: 1,
+        return GestureDetector(
+          onHorizontalDragEnd: (details) {
+            final primaryVelocity = details.primaryVelocity ?? 0.0;
+            if (primaryVelocity < -300) {
+              // Swiped left: skip next
+              if (player.hasNext) {
+                HapticFeedback.lightImpact();
+                player.skipToNext();
+              }
+            } else if (primaryVelocity > 300) {
+              // Swiped right: skip previous
+              HapticFeedback.lightImpact();
+              player.skipToPrevious();
+            }
+          },
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceElevated : AppColors.surface,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: AppColors.surfaceBorder,
+                width: 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.4 : 0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Top linear progress bar
-              LinearProgressIndicator(
-                value: progress,
-                minHeight: 2.5,
-                backgroundColor: Colors.transparent,
-                valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
-              ),
-              InkWell(
-                onTap: () {
-                  Navigator.of(context).push(
-                    PageRouteBuilder(
-                      pageBuilder: (context, anim, secAnim) =>
-                          const NowPlayingScreen(),
-                      transitionsBuilder: (context, anim, secAnim, child) {
-                        final tween = Tween<Offset>(
-                          begin: const Offset(0, 1),
-                          end: Offset.zero,
-                        ).chain(CurveTween(curve: Curves.easeOutCubic));
-                        return SlideTransition(
-                          position: anim.drive(tween),
-                          child: child,
-                        );
-                      },
-                    ),
-                  );
-                },
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top linear progress bar
+                LinearProgressIndicator(
+                  value: progress,
+                  minHeight: 2.5,
+                  backgroundColor: Colors.transparent,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      PageRouteBuilder(
+                        pageBuilder: (context, anim, secAnim) =>
+                            const NowPlayingScreen(),
+                        transitionsBuilder: (context, anim, secAnim, child) {
+                          final tween = Tween<Offset>(
+                            begin: const Offset(0, 1),
+                            end: Offset.zero,
+                          ).chain(CurveTween(curve: Curves.easeOutCubic));
+                          return SlideTransition(
+                            position: anim.drive(tween),
+                            child: child,
+                          );
+                        },
+                      ),
+                    );
+                  },
                 child: Padding(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -131,8 +147,10 @@ class MiniPlayer extends StatelessWidget {
                           final liked = LikedSongsService.instance
                               .isLiked(track.id);
                           return IconButton(
-                            onPressed: () => LikedSongsService.instance
-                                .toggleLike(track.id),
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              LikedSongsService.instance.toggleLike(track.id);
+                            },
                             icon: Icon(
                               liked
                                   ? Icons.favorite_rounded
@@ -153,7 +171,10 @@ class MiniPlayer extends StatelessWidget {
                       ),
                       // Play/Pause button
                       IconButton(
-                        onPressed: () => player.togglePlayPause(),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          player.togglePlayPause();
+                        },
                         icon: Icon(
                           player.isPlaying
                               ? Icons.pause_rounded
@@ -170,8 +191,12 @@ class MiniPlayer extends StatelessWidget {
                       ),
                       // Skip next button
                       IconButton(
-                        onPressed:
-                            player.hasNext ? () => player.skipToNext() : null,
+                        onPressed: player.hasNext
+                            ? () {
+                                HapticFeedback.lightImpact();
+                                player.skipToNext();
+                              }
+                            : null,
                         icon: Icon(
                           Icons.skip_next_rounded,
                           color: player.hasNext
@@ -192,9 +217,10 @@ class MiniPlayer extends StatelessWidget {
               ),
             ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 
   Widget _buildArtwork(String? path) {

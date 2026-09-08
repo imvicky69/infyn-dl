@@ -1,11 +1,15 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../downloader/models/download_format.dart';
 import '../../downloader/models/download_item.dart';
 import '../../downloader/models/download_progress.dart';
 import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/download_history_service.dart';
+import '../../library/models/music_playlist.dart';
+import '../../library/models/track.dart';
+import '../../library/screens/playlist_detail_screen.dart';
 import '../../library/services/music_scanner_service.dart';
 import '../services/audio_player_service.dart';
 import '../services/liked_songs_service.dart';
@@ -73,63 +77,41 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                         color: AppColors.textPrimary,
                         tooltip: 'Collapse',
                       ),
-                      const Spacer(),
-                      // "Song" / "Video" pill toggle (Song active)
-                      Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF1F1F23)
-                              : const Color(0xFFE4E4E7),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF27272A)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(18),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 1),
-                                  ),
-                                ],
-                              ),
-                              child: Text(
-                                'Song',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
+                            Text(
+                              'PLAYING FROM',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 1.2,
+                                color: AppColors.textMuted,
                               ),
                             ),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 12, vertical: 6),
-                              child: Text(
-                                'Video',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: AppColors.textSecondary,
-                                ),
+                            const SizedBox(height: 2),
+                            Text(
+                              track.album?.isNotEmpty == true
+                                  ? track.album!
+                                  : 'Offline Music Library',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
                               ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
                             ),
                           ],
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 8),
                       IconButton(
-                        onPressed: () {},
-                        icon: const Icon(Icons.more_vert_rounded, size: 22),
+                        onPressed: () => _showTrackOptionsSheet(context, track),
+                        icon: const Icon(Icons.more_horiz_rounded, size: 24),
                         color: AppColors.textPrimary,
                         tooltip: 'Options',
                       ),
@@ -202,6 +184,58 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                 color: AppColors.textSecondary,
                               ),
                             ),
+                            const SizedBox(height: 6),
+                            // Sleek Audio Quality & Offline Status badge (NO EMOJIS)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? const Color(0xFF1F1F23)
+                                    : const Color(0xFFF4F4F5),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.surfaceBorder,
+                                  width: 0.8,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.offline_pin_rounded,
+                                    size: 13,
+                                    color: AppColors.success,
+                                  ),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'OFFLINE READY',
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w800,
+                                      letterSpacing: 0.6,
+                                      color: AppColors.textPrimary,
+                                    ),
+                                  ),
+                                  Text(
+                                    ' • ',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: AppColors.textMuted,
+                                    ),
+                                  ),
+                                  Text(
+                                    'HIGH QUALITY',
+                                    style: TextStyle(
+                                      fontSize: 9.5,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.4,
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -213,8 +247,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           final liked = LikedSongsService.instance
                               .isLiked(track.id);
                           return IconButton(
-                            onPressed: () => LikedSongsService.instance
-                                .toggleLike(track.id),
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              LikedSongsService.instance.toggleLike(track.id);
+                            },
                             icon: AnimatedSwitcher(
                               duration: const Duration(milliseconds: 200),
                               child: Icon(
@@ -385,7 +421,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                     children: [
                       // Shuffle
                       IconButton(
-                        onPressed: () => player.toggleShuffle(),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          player.toggleShuffle();
+                        },
                         icon: Icon(
                           Icons.shuffle_rounded,
                           color: player.isShuffle
@@ -397,7 +436,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       ),
                       // Skip Previous
                       IconButton(
-                        onPressed: () => player.skipToPrevious(),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          player.skipToPrevious();
+                        },
                         icon: Icon(
                           Icons.skip_previous_rounded,
                           color: AppColors.textPrimary,
@@ -421,7 +463,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                           ],
                         ),
                         child: IconButton(
-                          onPressed: () => player.togglePlayPause(),
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            player.togglePlayPause();
+                          },
                           icon: Icon(
                             player.isPlaying
                                 ? Icons.pause_rounded
@@ -434,8 +479,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       ),
                       // Skip Next
                       IconButton(
-                        onPressed:
-                            player.hasNext ? () => player.skipToNext() : null,
+                        onPressed: player.hasNext
+                            ? () {
+                                HapticFeedback.lightImpact();
+                                player.skipToNext();
+                              }
+                            : null,
                         icon: Icon(
                           Icons.skip_next_rounded,
                           color: player.hasNext
@@ -447,7 +496,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       ),
                       // Repeat
                       IconButton(
-                        onPressed: () => player.toggleRepeatMode(),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          player.toggleRepeatMode();
+                        },
                         icon: Icon(
                           player.loopMode == PlayerLoopMode.one
                               ? Icons.repeat_one_rounded
@@ -733,6 +785,209 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
           },
         );
       },
+    );
+  }
+
+  void _showTrackOptionsSheet(BuildContext context, Track track) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF141416) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                  child: Row(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox(
+                          width: 44,
+                          height: 44,
+                          child: _buildArtwork(track.artworkPath, isDark),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              track.title,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              track.artist,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 20),
+                ListTile(
+                  leading: const Icon(
+                    Icons.favorite_rounded,
+                    color: Color(0xFFEF4444),
+                  ),
+                  title: const Text(
+                    'View Liked Songs',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  subtitle: const Text(
+                    'Browse all your saved liked tracks',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _openLikedSongsScreen(context);
+                  },
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.info_outline_rounded,
+                    color: AppColors.textPrimary,
+                  ),
+                  title: const Text(
+                    'Track Details',
+                    style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    track.filePath != null
+                        ? 'Local: ${track.filePath}'
+                        : 'Web: ${track.id}',
+                    style: const TextStyle(fontSize: 11),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    _showTrackDetailsDialog(context, track);
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _openLikedSongsScreen(BuildContext context) {
+    final allTracks = MusicScannerService.instance.tracks;
+    final likedIds = LikedSongsService.instance.likedIds;
+    final likedTracks =
+        allTracks.where((t) => likedIds.contains(t.id)).toList();
+
+    final likedPlaylist = MusicPlaylist(
+      name: 'Liked Songs',
+      tracks: likedTracks,
+      artworkPath:
+          likedTracks.isNotEmpty ? likedTracks.first.artworkPath : null,
+    );
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => PlaylistDetailScreen(
+          playlist: likedPlaylist,
+          onBack: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  void _showTrackDetailsDialog(BuildContext context, Track track) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text(
+          'Track Details',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _detailRow('Title', track.title),
+            _detailRow('Artist', track.artist),
+            if (track.album != null && track.album!.isNotEmpty)
+              _detailRow('Album', track.album!),
+            if (track.duration != null)
+              _detailRow('Duration', _formatDuration(track.duration!)),
+            if (track.filePath != null)
+              _detailRow('File Path', track.filePath!),
+            _detailRow('Format', 'MP3 Audio (Offline)'),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textMuted,
+            ),
+          ),
+          const SizedBox(height: 1),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 13,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 

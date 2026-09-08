@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../player/services/audio_player_service.dart';
 import '../../player/services/liked_songs_service.dart';
@@ -10,6 +11,7 @@ import '../services/music_scanner_service.dart';
 import 'playlist_detail_screen.dart';
 
 enum MusicLibraryViewMode { playlists, tracks }
+enum TrackSortOption { recent, titleAZ, artist, duration }
 
 /// Music Library screen showing scanned local audio tracks and playlists.
 class MusicLibraryScreen extends StatefulWidget {
@@ -29,7 +31,29 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   String _searchQuery = '';
   String _downloadDirectory = '';
   MusicLibraryViewMode _viewMode = MusicLibraryViewMode.playlists;
+  TrackSortOption _sortOption = TrackSortOption.recent;
   MusicPlaylist? _selectedPlaylist;
+
+  List<Track> _sortTracks(List<Track> list) {
+    final copy = List<Track>.from(list);
+    switch (_sortOption) {
+      case TrackSortOption.titleAZ:
+        copy.sort((a, b) =>
+            a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        break;
+      case TrackSortOption.artist:
+        copy.sort((a, b) =>
+            a.artist.toLowerCase().compareTo(b.artist.toLowerCase()));
+        break;
+      case TrackSortOption.duration:
+        copy.sort((a, b) => (b.duration?.inSeconds ?? 0)
+            .compareTo(a.duration?.inSeconds ?? 0));
+        break;
+      case TrackSortOption.recent:
+        break;
+    }
+    return copy;
+  }
 
   @override
   void initState() {
@@ -79,16 +103,25 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                 children: [
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(
-                          Icons.music_note_rounded,
-                          color: AppColors.primary,
-                          size: 22,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.asset(
+                          'assets/logo-clear.png',
+                          width: 38,
+                          height: 38,
+                          fit: BoxFit.contain,
+                          errorBuilder: (_, __, ___) => Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.music_note_rounded,
+                              color: AppColors.primary,
+                              size: 22,
+                            ),
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -385,10 +418,16 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
     return InkWell(
       onTap: likedTracks.isNotEmpty
           ? () {
-              AudioPlayerService.instance.playTrack(
-                likedTracks.first,
-                queue: likedTracks,
-              );
+              HapticFeedback.lightImpact();
+              setState(() {
+                _selectedPlaylist = MusicPlaylist(
+                  name: 'Liked Songs',
+                  tracks: likedTracks,
+                  artworkPath: likedTracks.isNotEmpty
+                      ? likedTracks.first.artworkPath
+                      : null,
+                );
+              });
             }
           : null,
       borderRadius: BorderRadius.circular(14),
@@ -446,9 +485,10 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                   Text(
                     likedTracks.isEmpty
                         ? 'No liked songs yet'
-                        : '${likedTracks.length} song${likedTracks.length == 1 ? '' : 's'}',
+                        : '${likedTracks.length} song${likedTracks.length == 1 ? '' : 's'} • Tap to view all',
                     style: TextStyle(
-                      fontSize: 12,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w500,
                       color: isDark
                           ? const Color(0xFFC4B5FD)
                           : const Color(0xFF6D28D9),
@@ -458,18 +498,28 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
               ),
             ),
             if (likedTracks.isNotEmpty)
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF7C3AED),
-                  borderRadius: BorderRadius.circular(18),
+              IconButton(
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  AudioPlayerService.instance.playTrack(
+                    likedTracks.first,
+                    queue: likedTracks,
+                  );
+                },
+                icon: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF7C3AED),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: const Icon(
+                    Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.play_arrow_rounded,
-                  color: Colors.white,
-                  size: 20,
-                ),
+                tooltip: 'Play all liked songs',
               ),
           ],
         ),
@@ -601,6 +651,8 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
           );
         }
 
+        final sortedTracks = _sortTracks(filteredTracks);
+
         return Column(
           children: [
             // Play All & Shuffle Buttons
@@ -610,10 +662,11 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                 children: [
                   FilledButton.icon(
                     onPressed: () {
-                      if (filteredTracks.isNotEmpty) {
+                      if (sortedTracks.isNotEmpty) {
+                        HapticFeedback.lightImpact();
                         AudioPlayerService.instance.playTrack(
-                          filteredTracks.first,
-                          queue: filteredTracks,
+                          sortedTracks.first,
+                          queue: sortedTracks,
                         );
                       }
                     },
@@ -632,8 +685,9 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                   const SizedBox(width: 8),
                   OutlinedButton.icon(
                     onPressed: () {
-                      if (filteredTracks.isNotEmpty) {
-                        final shuffled = List<Track>.from(filteredTracks)
+                      if (sortedTracks.isNotEmpty) {
+                        HapticFeedback.lightImpact();
+                        final shuffled = List<Track>.from(sortedTracks)
                           ..shuffle();
                         AudioPlayerService.instance.playTrack(
                           shuffled.first,
@@ -654,10 +708,16 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                     ),
                   ),
                   const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.sort_rounded, size: 20),
+                    tooltip: 'Sort tracks',
+                    onPressed: () => _showSortModal(context),
+                  ),
                   Text(
-                    '${filteredTracks.length} tracks',
+                    '${sortedTracks.length} tracks',
                     style: TextStyle(
                       fontSize: 12,
+                      fontWeight: FontWeight.w500,
                       color: AppColors.textSecondary,
                     ),
                   ),
@@ -670,15 +730,98 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
             Expanded(
               child: ListView.builder(
                 padding: const EdgeInsets.only(bottom: 24),
-                itemCount: filteredTracks.length,
+                itemCount: sortedTracks.length,
                 itemBuilder: (context, index) {
-                  final track = filteredTracks[index];
-                  return _buildTrackTile(track, index, filteredTracks, isDark);
+                  final track = sortedTracks[index];
+                  return _buildTrackTile(track, index, sortedTracks, isDark);
                 },
               ),
             ),
           ],
         );
+      },
+    );
+  }
+
+  void _showSortModal(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF141416) : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: SafeArea(
+          top: false,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceBorder,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              Padding(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                child: Text(
+                  'Sort Tracks By',
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+              const Divider(height: 16),
+              _sortTile(ctx, 'Recently Added', TrackSortOption.recent,
+                  Icons.schedule_rounded),
+              _sortTile(ctx, 'Title (A to Z)', TrackSortOption.titleAZ,
+                  Icons.sort_by_alpha_rounded),
+              _sortTile(ctx, 'Artist Name', TrackSortOption.artist,
+                  Icons.person_rounded),
+              _sortTile(ctx, 'Duration (Longest first)',
+                  TrackSortOption.duration, Icons.timelapse_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sortTile(BuildContext ctx, String title, TrackSortOption option,
+      IconData icon) {
+    final isSelected = _sortOption == option;
+    return ListTile(
+      leading: Icon(icon,
+          color: isSelected ? AppColors.primary : AppColors.textSecondary,
+          size: 20),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14,
+          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+          color: isSelected ? AppColors.primary : AppColors.textPrimary,
+        ),
+      ),
+      trailing: isSelected
+          ? Icon(Icons.check_rounded, color: AppColors.primary, size: 20)
+          : null,
+      onTap: () {
+        HapticFeedback.lightImpact();
+        setState(() => _sortOption = option);
+        Navigator.of(ctx).pop();
       },
     );
   }

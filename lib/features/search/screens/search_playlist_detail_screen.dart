@@ -1,8 +1,11 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/ui_feedback_helper.dart';
+import '../../../shared/widgets/shimmer_skeleton.dart';
 import '../../downloader/models/download_format.dart';
 import '../../downloader/models/download_item.dart';
 import '../../downloader/models/download_progress.dart';
@@ -186,6 +189,7 @@ class _SearchPlaylistDetailScreenState
     final playlistUrl =
         'https://www.youtube.com/playlist?list=${widget.playlist.id.value}';
 
+    HapticFeedback.lightImpact();
     setState(() {
       _downloadingIds.add(track.id);
       _downloadProgress[track.id] = 0.0;
@@ -250,12 +254,9 @@ class _SearchPlaylistDetailScreenState
               queue: MusicScannerService.instance.tracks,
             );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Downloaded & playing "${playable.title}"'),
-                backgroundColor: AppColors.primary,
-                duration: const Duration(seconds: 2),
-              ),
+            UiFeedbackHelper.showSuccessToast(
+              context,
+              'Downloaded & playing "${playable.title}"',
             );
           }
         } else if (progress.status == DownloadStatus.failed ||
@@ -267,12 +268,10 @@ class _SearchPlaylistDetailScreenState
             _downloadProgress.remove(track.id);
             _downloadPercentage.remove(track.id);
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Download failed: ${progress.errorMessage ?? "Unknown error"}'),
-              backgroundColor: AppColors.error,
-            ),
+          UiFeedbackHelper.showErrorToast(
+            context,
+            progress.errorMessage,
+            onRetry: () => _downloadSingleTrack(track),
           );
         }
       },
@@ -284,6 +283,11 @@ class _SearchPlaylistDetailScreenState
           _downloadProgress.remove(track.id);
           _downloadPercentage.remove(track.id);
         });
+        UiFeedbackHelper.showErrorToast(
+          context,
+          err.toString(),
+          onRetry: () => _downloadSingleTrack(track),
+        );
       },
     );
   }
@@ -420,13 +424,9 @@ class _SearchPlaylistDetailScreenState
         _selectedIndices.clear();
       });
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Batch download complete: $_batchCompletedCount / $_batchTotalCount tracks saved.',
-          ),
-          backgroundColor: AppColors.primary,
-        ),
+      UiFeedbackHelper.showSuccessToast(
+        context,
+        'Batch download complete: $_batchCompletedCount / $_batchTotalCount tracks saved.',
       );
     }
   }
@@ -438,8 +438,9 @@ class _SearchPlaylistDetailScreenState
     setState(() {
       _isBatchDownloading = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Batch download cancelled.')),
+    UiFeedbackHelper.showErrorToast(
+      context,
+      'Batch download cancelled.',
     );
   }
 
@@ -484,16 +485,39 @@ class _SearchPlaylistDetailScreenState
         ],
       ),
       body: _isLoading
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+          ? ShimmerLoading(
+              child: ListView(
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: 100),
                 children: [
-                  CircularProgressIndicator(color: AppColors.primary),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Fetching tracks from playlist...',
-                    style: TextStyle(color: AppColors.textSecondary),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Row(
+                      children: [
+                        ShimmerBox(width: 96, height: 96, borderRadius: 14),
+                        SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ShimmerBox(
+                                  width: double.infinity,
+                                  height: 16,
+                                  borderRadius: 4),
+                              SizedBox(height: 8),
+                              ShimmerBox(
+                                  width: 140, height: 12, borderRadius: 4),
+                              SizedBox(height: 12),
+                              ShimmerBox(
+                                  width: 100, height: 28, borderRadius: 8),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                  const SizedBox(height: 16),
+                  ...List.generate(7, (_) => const TrackSkeletonTile()),
                 ],
               ),
             )
@@ -592,89 +616,209 @@ class _SearchPlaylistDetailScreenState
     return 'YouTube Playlist / Album';
   }
 
+  String get _formattedTotalDuration {
+    var totalSeconds = 0;
+    for (final t in _tracks) {
+      if (t.duration != null) {
+        totalSeconds += t.duration!.inSeconds;
+      }
+    }
+    if (totalSeconds == 0) return '';
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    if (hours > 0) {
+      return '$hours hr ${minutes > 0 ? '$minutes min' : ''}'.trim();
+    }
+    return '$minutes min';
+  }
+
   Widget _buildPlaylistHeader() {
     final thumbUrl = widget.playlist.thumbnails.isNotEmpty
         ? widget.playlist.thumbnails.first.url.toString()
         : null;
+    final durationStr = _formattedTotalDuration;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: AppColors.surfaceBorder),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          // Artwork
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: SizedBox(
-              width: 76,
-              height: 76,
-              child: thumbUrl != null
-                  ? Image.network(
-                      thumbUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => _buildFallbackArt(),
-                    )
-                  : _buildFallbackArt(),
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(width: 14),
-
-          // Info
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.playlist.title,
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Large cover art
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: SizedBox(
+                  width: 96,
+                  height: 96,
+                  child: thumbUrl != null
+                      ? Image.network(
+                          thumbUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildFallbackArt(),
+                        )
+                      : _buildFallbackArt(),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  _displayAuthor,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 10),
+              ),
+              const SizedBox(width: 14),
 
-                // Download All button
-                FilledButton.icon(
+              // Title and metadata
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.playlist.title,
+                      style: TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.3,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.person_rounded,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            _displayAuthor,
+                            style: TextStyle(
+                              color: AppColors.textSecondary,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.audiotrack_rounded,
+                          size: 13,
+                          color: AppColors.textMuted,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_tracks.length} tracks',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        if (durationStr.isNotEmpty) ...[
+                          Text(
+                            ' • ',
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            durationStr,
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Primary Actions
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton.icon(
                   onPressed: (_isBatchDownloading || _tracks.isEmpty)
                       ? null
-                      : () => _startBatchDownload(tracksToDownload: _tracks),
+                      : () {
+                          HapticFeedback.lightImpact();
+                          _startBatchDownload(tracksToDownload: _tracks);
+                        },
                   style: FilledButton.styleFrom(
                     backgroundColor: AppColors.primary,
                     foregroundColor: AppColors.onPrimary,
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    minimumSize: Size.zero,
                   ),
                   icon: const Icon(Icons.download_rounded, size: 18),
                   label: const Text(
                     'Download All',
-                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
                   ),
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              OutlinedButton.icon(
+                onPressed: _tracks.isEmpty
+                    ? null
+                    : () {
+                        HapticFeedback.lightImpact();
+                        setState(() {
+                          _isSelectMode = !_isSelectMode;
+                          _selectedIndices.clear();
+                        });
+                      },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor:
+                      _isSelectMode ? AppColors.primary : AppColors.textPrimary,
+                  side: BorderSide(
+                    color: _isSelectMode
+                        ? AppColors.primary
+                        : AppColors.surfaceBorder,
+                  ),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: Icon(
+                  _isSelectMode ? Icons.close_rounded : Icons.checklist_rounded,
+                  size: 18,
+                ),
+                label: Text(
+                  _isSelectMode ? 'Cancel' : 'Select',
+                  style:
+                      const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -807,11 +951,12 @@ class _SearchPlaylistDetailScreenState
             SizedBox(
               width: 24,
               child: Text(
-                '${index + 1}',
+                (index + 1).toString().padLeft(2, '0'),
                 style: TextStyle(
                   color: AppColors.textMuted,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
+                  fontFamily: 'monospace',
                 ),
                 textAlign: TextAlign.center,
               ),
@@ -934,15 +1079,17 @@ class _SearchPlaylistDetailScreenState
     final selectedCount = _selectedIndices.length;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        border: Border(top: BorderSide(color: AppColors.surfaceBorder)),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.surfaceBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.15),
-            blurRadius: 10,
-            offset: const Offset(0, -2),
+            color: Colors.black.withValues(alpha: 0.16),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -950,6 +1097,19 @@ class _SearchPlaylistDetailScreenState
         top: false,
         child: Row(
           children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                Icons.checklist_rtl_rounded,
+                size: 20,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Text(
                 '$selectedCount ${selectedCount == 1 ? "track" : "tracks"} selected',
@@ -964,6 +1124,7 @@ class _SearchPlaylistDetailScreenState
               onPressed: _isBatchDownloading
                   ? null
                   : () {
+                      HapticFeedback.lightImpact();
                       final selectedTracks = _selectedIndices
                           .map((i) => _tracks[i])
                           .toList();
@@ -973,15 +1134,18 @@ class _SearchPlaylistDetailScreenState
                 backgroundColor: AppColors.primary,
                 foregroundColor: AppColors.onPrimary,
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              icon: const Icon(Icons.download_rounded, size: 20),
+              icon: const Icon(Icons.download_rounded, size: 18),
               label: Text(
-                'Download Selected ($selectedCount)',
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                'Download ($selectedCount)',
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                ),
               ),
             ),
           ],

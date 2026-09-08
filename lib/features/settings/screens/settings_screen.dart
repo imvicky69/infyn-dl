@@ -558,15 +558,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           Center(
             child: Column(
               children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(14),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(14),
+                  child: Image.asset(
+                    'assets/logo-clear.png',
+                    width: 52,
+                    height: 52,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Icon(Icons.music_note_rounded,
+                          color: AppColors.onPrimary, size: 26),
+                    ),
                   ),
-                  child: Icon(Icons.music_note_rounded,
-                      color: AppColors.onPrimary, size: 26),
                 ),
                 const SizedBox(height: 10),
                 Text('Infyn DL',

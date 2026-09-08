@@ -112,14 +112,23 @@ class _MainShellScreenState extends State<MainShellScreen> {
             padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
             child: Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(10),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Image.asset(
+                    'assets/logo-clear.png',
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.music_note_rounded,
+                          color: AppColors.onPrimary, size: 20),
+                    ),
                   ),
-                  child: Icon(Icons.music_note_rounded,
-                      color: AppColors.onPrimary, size: 20),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

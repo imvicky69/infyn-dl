@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../../../core/theme/app_theme.dart';
+import '../../../core/utils/ui_feedback_helper.dart';
+import '../../../shared/widgets/shimmer_skeleton.dart';
 import '../../downloader/models/download_format.dart';
 import '../../downloader/models/download_item.dart';
 import '../../downloader/models/download_progress.dart';
@@ -27,6 +31,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Track> _songResults = [];
   List<yt.SearchPlaylist> _playlistResults = [];
+  List<String> _recentSearches = [];
   bool _isLoading = false;
   SearchFilter _currentFilter = SearchFilter.songs;
 
@@ -43,8 +48,39 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void initState() {
     super.initState();
+    _loadRecentSearches();
     DownloadHistoryService.instance.changeNotifier.addListener(_onHistoryChanged);
     MusicScannerService.instance.tracksNotifier.addListener(_onHistoryChanged);
+  }
+
+  Future<void> _loadRecentSearches() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('recent_searches') ?? [];
+      if (mounted) setState(() => _recentSearches = list);
+    } catch (_) {}
+  }
+
+  Future<void> _saveRecentSearch(String query) async {
+    final clean = query.trim();
+    if (clean.isEmpty) return;
+    final updated = [
+      clean,
+      ..._recentSearches.where((s) => s.toLowerCase() != clean.toLowerCase())
+    ].take(8).toList();
+    if (mounted) setState(() => _recentSearches = updated);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setStringList('recent_searches', updated);
+    } catch (_) {}
+  }
+
+  Future<void> _clearRecentSearches() async {
+    if (mounted) setState(() => _recentSearches = []);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('recent_searches');
+    } catch (_) {}
   }
 
   void _onHistoryChanged() {
@@ -72,6 +108,8 @@ class _SearchScreenState extends State<SearchScreen> {
       });
       return;
     }
+
+    _saveRecentSearch(cleanQuery);
 
     setState(() {
       _isLoading = true;
@@ -155,36 +193,12 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _downloadAndPlayTrack(Track track) async {
     final url = track.webUrl ?? 'https://www.youtube.com/watch?v=${track.id}';
 
+    HapticFeedback.lightImpact();
     setState(() {
       _downloadingIds.add(track.id);
       _downloadProgress[track.id] = 0.0;
       _downloadPercentage[track.id] = '0%';
     });
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Row(
-          children: [
-            const SizedBox(
-              width: 18,
-              height: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: Colors.white,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Downloading "${track.title}"...',
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        duration: const Duration(seconds: 2),
-      ),
-    );
 
     StreamSubscription? sub;
     sub = AndroidDownloaderService()
@@ -244,12 +258,9 @@ class _SearchScreenState extends State<SearchScreen> {
               queue: MusicScannerService.instance.tracks,
             );
             if (!mounted) return;
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Downloaded & playing "${playableTrack.title}"'),
-                backgroundColor: AppColors.primary,
-                duration: const Duration(seconds: 2),
-              ),
+            UiFeedbackHelper.showSuccessToast(
+              context,
+              'Downloaded & playing "${playableTrack.title}"',
             );
           }
         } else if (progress.status == DownloadStatus.failed ||
@@ -262,13 +273,10 @@ class _SearchScreenState extends State<SearchScreen> {
               _downloadProgress.remove(track.id);
               _downloadPercentage.remove(track.id);
             });
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Download failed: ${progress.errorMessage ?? "Unknown error"}',
-                ),
-                backgroundColor: AppColors.error,
-              ),
+            UiFeedbackHelper.showErrorToast(
+              context,
+              progress.errorMessage,
+              onRetry: () => _downloadAndPlayTrack(track),
             );
           }
         }
@@ -282,11 +290,10 @@ class _SearchScreenState extends State<SearchScreen> {
             _downloadProgress.remove(track.id);
             _downloadPercentage.remove(track.id);
           });
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Download error: $err'),
-              backgroundColor: AppColors.error,
-            ),
+          UiFeedbackHelper.showErrorToast(
+            context,
+            err.toString(),
+            onRetry: () => _downloadAndPlayTrack(track),
           );
         }
       },
@@ -427,12 +434,9 @@ class _SearchScreenState extends State<SearchScreen> {
           _downloadingPlaylistIds.remove(playlistId);
           _playlistDownloadProgress.remove(playlistId);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Downloaded $downloadedCount/${tracks.length} songs from "${playlist.title}"'),
-            backgroundColor: AppColors.primary,
-          ),
+        UiFeedbackHelper.showSuccessToast(
+          context,
+          'Downloaded $downloadedCount/${tracks.length} songs from "${playlist.title}"',
         );
       }
     } catch (e) {
@@ -441,11 +445,10 @@ class _SearchScreenState extends State<SearchScreen> {
           _downloadingPlaylistIds.remove(playlistId);
           _playlistDownloadProgress.remove(playlistId);
         });
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error downloading playlist: $e'),
-            backgroundColor: AppColors.error,
-          ),
+        UiFeedbackHelper.showErrorToast(
+          context,
+          e.toString(),
+          onRetry: () => _downloadPlaylist(playlist),
         );
       }
     }
@@ -462,6 +465,9 @@ class _SearchScreenState extends State<SearchScreen> {
         title: TextField(
           controller: _searchController,
           autofocus: false,
+          onChanged: (val) {
+            setState(() {});
+          },
           decoration: InputDecoration(
             hintText: 'Search YouTube Music...',
             hintStyle: TextStyle(color: AppColors.textMuted),
@@ -495,26 +501,24 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
           ),
+          if (_searchController.text.isEmpty && _recentSearches.isNotEmpty)
+            _buildRecentSearchesSection(),
           Expanded(
             child: _isLoading
-                ? Center(
-                    child: CircularProgressIndicator(color: AppColors.primary),
+                ? ShimmerLoading(
+                    child: ListView.builder(
+                      physics: const NeverScrollableScrollPhysics(),
+                      padding: const EdgeInsets.only(bottom: 110),
+                      itemCount: 7,
+                      itemBuilder: (context, index) {
+                        return _currentFilter == SearchFilter.songs
+                            ? const TrackSkeletonTile()
+                            : const PlaylistSkeletonCard();
+                      },
+                    ),
                   )
                 : _isEmptyResults()
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.search_rounded,
-                                size: 64, color: AppColors.surfaceBorder),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Search for songs, playlists, or albums to download & play',
-                              style: TextStyle(color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      )
+                    ? _buildEmptyStateView()
                     : ListView.builder(
                         padding: const EdgeInsets.only(bottom: 110),
                         itemCount: _currentFilter == SearchFilter.songs
@@ -532,6 +536,163 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRecentSearchesSection() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 10),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.history_rounded, size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: 8),
+              Text(
+                'RECENT SEARCHES',
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+              const Spacer(),
+              TextButton(
+                onPressed: _clearRecentSearches,
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: Text(
+                  'Clear',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: _recentSearches.map((query) {
+              return ActionChip(
+                avatar: Icon(
+                  Icons.north_west_rounded,
+                  size: 14,
+                  color: AppColors.textSecondary,
+                ),
+                label: Text(
+                  query,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                backgroundColor: AppColors.surfaceElevated,
+                side: BorderSide(color: AppColors.surfaceBorder),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                onPressed: () {
+                  _searchController.text = query;
+                  _performSearch(query);
+                },
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyStateView() {
+    if (_searchController.text.trim().isNotEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search_off_rounded,
+                size: 56,
+                color: AppColors.surfaceBorder,
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'No results found for "${_searchController.text.trim()}"',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Check your spelling or try searching for another song, artist, or playlist.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (_recentSearches.isNotEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 32),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Image.asset(
+              'assets/logo-clear.png',
+              width: 64,
+              height: 64,
+              fit: BoxFit.contain,
+              errorBuilder: (_, __, ___) => Icon(
+                Icons.search_rounded,
+                size: 56,
+                color: AppColors.surfaceBorder,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Search & Download Music',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Search for songs, playlists, or albums to download & play',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
