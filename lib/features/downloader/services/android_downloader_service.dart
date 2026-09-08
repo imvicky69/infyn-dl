@@ -19,6 +19,15 @@ import 'downloader_service.dart';
 /// [EventChannel.receiveBroadcastStream] replaces the Kotlin-side EventSink,
 /// causing all previously-started downloads to stop receiving progress events.
 class AndroidDownloaderService implements DownloaderService {
+  static final AndroidDownloaderService _instance =
+      AndroidDownloaderService._internal();
+
+  factory AndroidDownloaderService() => _instance;
+
+  AndroidDownloaderService._internal();
+
+  static AndroidDownloaderService get instance => _instance;
+
   static const MethodChannel _methodChannel =
       MethodChannel('com.example.media_downloader/downloader_methods');
   static const EventChannel _eventChannel =
@@ -274,7 +283,7 @@ class AndroidDownloaderService implements DownloaderService {
       cleanUrl = 'https://$cleanUrl';
     }
 
-    final controller = StreamController<DownloadProgress>();
+    final controller = StreamController<DownloadProgress>.broadcast();
     _controllers[downloadId] = controller;
 
     // Ensure we have one persistent event pipe BEFORE starting the download,
@@ -284,9 +293,10 @@ class AndroidDownloaderService implements DownloaderService {
     // Emit preparing immediately so the UI shows activity right away
     controller.add(DownloadProgress.preparing());
 
+    // NOTE: We do NOT cancel the native download on stream unsubscription.
+    // A UI widget closing its StreamSubscription (e.g. navigating back or switching tabs)
+    // must NEVER terminate an in-flight background download.
     controller.onCancel = () {
-      _controllers.remove(downloadId);
-      _cancelSpecific(downloadId);
       _pruneSubscriptionIfIdle();
     };
 
@@ -316,6 +326,17 @@ class AndroidDownloaderService implements DownloaderService {
       await _methodChannel
           .invokeMethod<bool>('cancelDownload', {'id': downloadId});
     } catch (_) {}
+  }
+
+  /// Explicitly cancels an active download by its downloadId.
+  Future<void> cancelSpecific(String downloadId) async {
+    final ctrl = _controllers.remove(downloadId);
+    if (ctrl != null && !ctrl.isClosed) {
+      ctrl.add(DownloadProgress.cancelled());
+      ctrl.close();
+    }
+    await _cancelSpecific(downloadId);
+    _pruneSubscriptionIfIdle();
   }
 
   @override

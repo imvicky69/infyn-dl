@@ -6,11 +6,8 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/ui_feedback_helper.dart';
 import '../../../shared/widgets/shimmer_skeleton.dart';
-import '../../downloader/models/download_format.dart';
-import '../../downloader/models/download_item.dart';
-import '../../downloader/models/download_progress.dart';
-import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/download_history_service.dart';
+import '../../downloader/services/music_download_manager.dart';
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
 import '../../player/services/audio_player_service.dart';
@@ -42,19 +39,16 @@ class _SearchPlaylistDetailScreenState
   bool _isSelectMode = false;
   final Set<int> _selectedIndices = {};
 
-  // Batch download state
-  bool _isBatchDownloading = false;
-  int _batchCompletedCount = 0;
-  int _batchTotalCount = 0;
-  String _batchCurrentTitle = '';
-  double _batchCurrentTrackProgress = 0.0;
-  bool _cancelBatchRequested = false;
-  StreamSubscription? _currentDownloadSub;
-
-  // Single track download state
-  final Map<String, double> _downloadProgress = {};
-  final Map<String, String> _downloadPercentage = {};
-  final Set<String> _downloadingIds = {};
+  // Batch download state read directly from persistent background manager
+  bool get _isBatchDownloading =>
+      MusicDownloadManager.instance.isBatchActive &&
+      MusicDownloadManager.instance.batchPlaylistName == widget.playlist.title;
+  int get _batchCompletedCount => MusicDownloadManager.instance.batchCompleted;
+  int get _batchTotalCount => MusicDownloadManager.instance.batchTotal;
+  String get _batchCurrentTitle =>
+      MusicDownloadManager.instance.batchCurrentTitle;
+  double get _batchCurrentTrackProgress =>
+      MusicDownloadManager.instance.batchCurrentProgress;
 
   @override
   void initState() {
@@ -62,6 +56,7 @@ class _SearchPlaylistDetailScreenState
     _fetchTracks();
     DownloadHistoryService.instance.changeNotifier.addListener(_onDataChanged);
     MusicScannerService.instance.tracksNotifier.addListener(_onDataChanged);
+    MusicDownloadManager.instance.addListener(_onDataChanged);
   }
 
   void _onDataChanged() {
@@ -73,8 +68,9 @@ class _SearchPlaylistDetailScreenState
     DownloadHistoryService.instance.changeNotifier
         .removeListener(_onDataChanged);
     MusicScannerService.instance.tracksNotifier.removeListener(_onDataChanged);
-    _cancelBatchRequested = true;
-    _currentDownloadSub?.cancel();
+    MusicDownloadManager.instance.removeListener(_onDataChanged);
+    // NOTE: We do NOT cancel the batch or single download here!
+    // Background downloads continue seamlessly through MusicDownloadManager.
     super.dispose();
   }
 
@@ -170,7 +166,7 @@ class _SearchPlaylistDetailScreenState
       return;
     }
 
-    if (_downloadingIds.contains(track.id) || _isBatchDownloading) {
+    if (MusicDownloadManager.instance.isDownloading(track.id) || _isBatchDownloading) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Download already in progress for "${track.title}"'),
@@ -184,111 +180,17 @@ class _SearchPlaylistDetailScreenState
   }
 
   Future<void> _downloadSingleTrack(Track track) async {
-    final url = track.webUrl ?? 'https://www.youtube.com/watch?v=${track.id}';
-    final playlistName = widget.playlist.title;
-    final playlistUrl =
-        'https://www.youtube.com/playlist?list=${widget.playlist.id.value}';
-
     HapticFeedback.lightImpact();
-    setState(() {
-      _downloadingIds.add(track.id);
-      _downloadProgress[track.id] = 0.0;
-      _downloadPercentage[track.id] = '0%';
-    });
-
-    StreamSubscription? sub;
-    sub = AndroidDownloaderService()
-        .download(
-      url: url,
-      format: DownloadFormat.mp3,
-    )
-        .listen(
-      (progress) async {
-        if (!mounted) return;
-
-        setState(() {
-          _downloadProgress[track.id] = progress.progress;
-          _downloadPercentage[track.id] = progress.percentage;
-        });
-
-        if (progress.status == DownloadStatus.completed) {
-          sub?.cancel();
-          final outputFilePath = progress.outputFilePath ?? '';
-          final downloadItem = DownloadItem(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: progress.title ?? track.title,
-            url: url,
-            filePath: outputFilePath,
-            format: DownloadFormat.mp3,
-            quality: 'Best (Audio)',
-            thumbnailUrl: track.artworkPath,
-            playlistName: playlistName,
-            playlistUrl: playlistUrl,
-            timestamp: DateTime.now(),
-          );
-
-          await DownloadHistoryService.instance.addDownload(downloadItem);
-          await MusicScannerService.instance.scanMusicDirectory(forceRefresh: true);
-
-          if (!mounted) return;
-          setState(() {
-            _downloadingIds.remove(track.id);
-            _downloadProgress.remove(track.id);
-            _downloadPercentage.remove(track.id);
-          });
-
-          final playable = Track(
-            id: outputFilePath.isNotEmpty ? outputFilePath : track.id,
-            title: progress.title ?? track.title,
-            artist: track.artist,
-            filePath: outputFilePath,
-            webUrl: url,
-            duration: track.duration,
-            album: playlistName,
-            artworkPath: track.artworkPath,
-          );
-
-          if (playable.isLocal) {
-            await AudioPlayerService.instance.playTrack(
-              playable,
-              queue: MusicScannerService.instance.tracks,
-            );
-            if (!mounted) return;
-            UiFeedbackHelper.showSuccessToast(
-              context,
-              'Downloaded & playing "${playable.title}"',
-            );
-          }
-        } else if (progress.status == DownloadStatus.failed ||
-            progress.status == DownloadStatus.cancelled) {
-          sub?.cancel();
-          if (!mounted) return;
-          setState(() {
-            _downloadingIds.remove(track.id);
-            _downloadProgress.remove(track.id);
-            _downloadPercentage.remove(track.id);
-          });
-          UiFeedbackHelper.showErrorToast(
-            context,
-            progress.errorMessage,
-            onRetry: () => _downloadSingleTrack(track),
-          );
-        }
-      },
-      onError: (err) {
-        sub?.cancel();
-        if (!mounted) return;
-        setState(() {
-          _downloadingIds.remove(track.id);
-          _downloadProgress.remove(track.id);
-          _downloadPercentage.remove(track.id);
-        });
-        UiFeedbackHelper.showErrorToast(
-          context,
-          err.toString(),
-          onRetry: () => _downloadSingleTrack(track),
-        );
-      },
+    UiFeedbackHelper.showSuccessToast(
+      context,
+      'Downloading "${track.title}" in background...',
+    );
+    await MusicDownloadManager.instance.downloadTrack(
+      track,
+      playlistName: widget.playlist.title,
+      playlistUrl:
+          'https://www.youtube.com/playlist?list=${widget.playlist.id.value}',
+      autoPlay: true,
     );
   }
 
@@ -302,142 +204,31 @@ class _SearchPlaylistDetailScreenState
       return;
     }
 
-    setState(() {
-      _isBatchDownloading = true;
-      _cancelBatchRequested = false;
-      _batchCompletedCount = 0;
-      _batchTotalCount = tracksToDownload.length;
-      _batchCurrentTitle = tracksToDownload.first.title;
-      _batchCurrentTrackProgress = 0.0;
-    });
-
     final playlistName = widget.playlist.title;
     final playlistUrl =
         'https://www.youtube.com/playlist?list=${widget.playlist.id.value}';
-    var hasStartedPlayingFirst = false;
 
-    for (var i = 0; i < tracksToDownload.length; i++) {
-      if (_cancelBatchRequested || !mounted) break;
+    UiFeedbackHelper.showSuccessToast(
+      context,
+      'Starting batch download of ${tracksToDownload.length} tracks...',
+    );
 
-      final track = tracksToDownload[i];
-      final url = track.webUrl ?? 'https://www.youtube.com/watch?v=${track.id}';
+    setState(() {
+      _isSelectMode = false;
+      _selectedIndices.clear();
+    });
 
-      setState(() {
-        _batchCurrentTitle = track.title;
-        _batchCurrentTrackProgress = 0.0;
-      });
-
-      // Check if already downloaded
-      final existing = _findLocalTrack(track);
-      if (existing != null && existing.isLocal) {
-        setState(() {
-          _batchCompletedCount++;
-        });
-        if (!hasStartedPlayingFirst) {
-          hasStartedPlayingFirst = true;
-          AudioPlayerService.instance.playTrack(
-            existing,
-            queue: MusicScannerService.instance.tracks,
-          );
-        }
-        continue;
-      }
-
-      final completer = Completer<void>();
-      _currentDownloadSub = AndroidDownloaderService()
-          .download(
-        url: url,
-        format: DownloadFormat.mp3,
-      )
-          .listen(
-        (progress) async {
-          if (!mounted) return;
-
-          setState(() {
-            _batchCurrentTrackProgress = progress.progress;
-          });
-
-          if (progress.status == DownloadStatus.completed) {
-            final outputFilePath = progress.outputFilePath ?? '';
-            final downloadItem = DownloadItem(
-              id: DateTime.now().millisecondsSinceEpoch.toString(),
-              title: progress.title ?? track.title,
-              url: url,
-              filePath: outputFilePath,
-              format: DownloadFormat.mp3,
-              quality: 'Best (Audio)',
-              thumbnailUrl: track.artworkPath,
-              playlistName: playlistName,
-              playlistUrl: playlistUrl,
-              timestamp: DateTime.now(),
-            );
-
-            await DownloadHistoryService.instance.addDownload(downloadItem);
-            await MusicScannerService.instance
-                .scanMusicDirectory(forceRefresh: true);
-
-            if (mounted) {
-              setState(() {
-                _batchCompletedCount++;
-              });
-
-              if (!hasStartedPlayingFirst) {
-                hasStartedPlayingFirst = true;
-                final playable = Track(
-                  id: outputFilePath.isNotEmpty ? outputFilePath : track.id,
-                  title: progress.title ?? track.title,
-                  artist: track.artist,
-                  filePath: outputFilePath,
-                  webUrl: url,
-                  album: playlistName,
-                  artworkPath: track.artworkPath,
-                );
-                if (playable.isLocal) {
-                  AudioPlayerService.instance.playTrack(
-                    playable,
-                    queue: MusicScannerService.instance.tracks,
-                  );
-                }
-              }
-            }
-
-            if (!completer.isCompleted) completer.complete();
-          } else if (progress.status == DownloadStatus.failed ||
-              progress.status == DownloadStatus.cancelled) {
-            if (!completer.isCompleted) completer.complete();
-          }
-        },
-        onError: (_) {
-          if (!completer.isCompleted) completer.complete();
-        },
-      );
-
-      await completer.future;
-      await _currentDownloadSub?.cancel();
-      _currentDownloadSub = null;
-    }
-
-    if (mounted) {
-      setState(() {
-        _isBatchDownloading = false;
-        _isSelectMode = false;
-        _selectedIndices.clear();
-      });
-
-      UiFeedbackHelper.showSuccessToast(
-        context,
-        'Batch download complete: $_batchCompletedCount / $_batchTotalCount tracks saved.',
-      );
-    }
+    // Delegate batch to background manager so navigating back will NOT cancel it!
+    MusicDownloadManager.instance.startBatchDownload(
+      tracks: tracksToDownload,
+      playlistName: playlistName,
+      playlistUrl: playlistUrl,
+      autoPlayFirst: true,
+    );
   }
 
   void _cancelBatchDownload() {
-    _cancelBatchRequested = true;
-    _currentDownloadSub?.cancel();
-    _currentDownloadSub = null;
-    setState(() {
-      _isBatchDownloading = false;
-    });
+    MusicDownloadManager.instance.cancelBatchDownload();
     UiFeedbackHelper.showErrorToast(
       context,
       'Batch download cancelled.',
@@ -928,9 +719,9 @@ class _SearchPlaylistDetailScreenState
   Widget _buildTrackTile(Track track, int index) {
     final localTrack = _findLocalTrack(track);
     final isDownloaded = localTrack != null && localTrack.isLocal;
-    final isDownloading = _downloadingIds.contains(track.id);
-    final progress = _downloadProgress[track.id] ?? 0.0;
-    final percentage = _downloadPercentage[track.id] ?? '';
+    final isDownloading = MusicDownloadManager.instance.isDownloading(track.id);
+    final progress = MusicDownloadManager.instance.getProgress(track.id);
+    final percentage = MusicDownloadManager.instance.getPercentage(track.id);
     final isSelected = _selectedIndices.contains(index);
 
     return ListTile(

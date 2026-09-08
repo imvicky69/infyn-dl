@@ -7,11 +7,8 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/ui_feedback_helper.dart';
 import '../../../shared/widgets/shimmer_skeleton.dart';
-import '../../downloader/models/download_format.dart';
-import '../../downloader/models/download_item.dart';
-import '../../downloader/models/download_progress.dart';
-import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/download_history_service.dart';
+import '../../downloader/services/music_download_manager.dart';
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
 import '../../player/services/audio_player_service.dart';
@@ -35,22 +32,13 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   SearchFilter _currentFilter = SearchFilter.songs;
 
-  // Track active downloads: key is track.id or track.webUrl
-  final Map<String, double> _downloadProgress = {};
-  final Map<String, String> _downloadPercentage = {};
-  final Set<String> _downloadingIds = {};
-  final Map<String, StreamSubscription> _downloadSubscriptions = {};
-
-  // For playlist downloads: key is playlist id
-  final Map<String, String> _playlistDownloadProgress = {};
-  final Set<String> _downloadingPlaylistIds = {};
-
   @override
   void initState() {
     super.initState();
     _loadRecentSearches();
     DownloadHistoryService.instance.changeNotifier.addListener(_onHistoryChanged);
     MusicScannerService.instance.tracksNotifier.addListener(_onHistoryChanged);
+    MusicDownloadManager.instance.addListener(_onHistoryChanged);
   }
 
   Future<void> _loadRecentSearches() async {
@@ -92,9 +80,7 @@ class _SearchScreenState extends State<SearchScreen> {
     _searchController.dispose();
     DownloadHistoryService.instance.changeNotifier.removeListener(_onHistoryChanged);
     MusicScannerService.instance.tracksNotifier.removeListener(_onHistoryChanged);
-    for (final sub in _downloadSubscriptions.values) {
-      sub.cancel();
-    }
+    MusicDownloadManager.instance.removeListener(_onHistoryChanged);
     super.dispose();
   }
 
@@ -175,8 +161,8 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     // If already downloading, let the user know
-    if (_downloadingIds.contains(track.id)) {
-      final pct = _downloadPercentage[track.id] ?? '0%';
+    if (MusicDownloadManager.instance.isDownloading(track.id)) {
+      final pct = MusicDownloadManager.instance.getPercentage(track.id);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Downloading "${track.title}" ($pct)...'),
@@ -191,121 +177,22 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _downloadAndPlayTrack(Track track) async {
-    final url = track.webUrl ?? 'https://www.youtube.com/watch?v=${track.id}';
-
     HapticFeedback.lightImpact();
-    setState(() {
-      _downloadingIds.add(track.id);
-      _downloadProgress[track.id] = 0.0;
-      _downloadPercentage[track.id] = '0%';
-    });
-
-    StreamSubscription? sub;
-    sub = AndroidDownloaderService()
-        .download(
-      url: url,
-      format: DownloadFormat.mp3,
-    )
-        .listen(
-      (progress) async {
-        if (!mounted) return;
-
-        setState(() {
-          _downloadProgress[track.id] = progress.progress;
-          _downloadPercentage[track.id] = progress.percentage;
-        });
-
-        if (progress.status == DownloadStatus.completed) {
-          sub?.cancel();
-          _downloadSubscriptions.remove(track.id);
-
-          final outputFilePath = progress.outputFilePath ?? '';
-          final downloadItem = DownloadItem(
-            id: DateTime.now().millisecondsSinceEpoch.toString(),
-            title: progress.title ?? track.title,
-            url: url,
-            filePath: outputFilePath,
-            format: DownloadFormat.mp3,
-            quality: 'Best (Audio)',
-            thumbnailUrl: track.artworkPath,
-            timestamp: DateTime.now(),
-          );
-
-          await DownloadHistoryService.instance.addDownload(downloadItem);
-          await MusicScannerService.instance.scanMusicDirectory(forceRefresh: true);
-
-          if (!mounted) return;
-          setState(() {
-            _downloadingIds.remove(track.id);
-            _downloadProgress.remove(track.id);
-            _downloadPercentage.remove(track.id);
-          });
-
-          // Automatically start playing the newly downloaded track!
-          final playableTrack = Track(
-            id: outputFilePath.isNotEmpty ? outputFilePath : track.id,
-            title: progress.title ?? track.title,
-            artist: track.artist,
-            filePath: outputFilePath,
-            webUrl: url,
-            duration: track.duration,
-            artworkPath: track.artworkPath,
-          );
-
-          if (playableTrack.isLocal) {
-            await AudioPlayerService.instance.playTrack(
-              playableTrack,
-              queue: MusicScannerService.instance.tracks,
-            );
-            if (!mounted) return;
-            UiFeedbackHelper.showSuccessToast(
-              context,
-              'Downloaded & playing "${playableTrack.title}"',
-            );
-          }
-        } else if (progress.status == DownloadStatus.failed ||
-            progress.status == DownloadStatus.cancelled) {
-          sub?.cancel();
-          _downloadSubscriptions.remove(track.id);
-          if (mounted) {
-            setState(() {
-              _downloadingIds.remove(track.id);
-              _downloadProgress.remove(track.id);
-              _downloadPercentage.remove(track.id);
-            });
-            UiFeedbackHelper.showErrorToast(
-              context,
-              progress.errorMessage,
-              onRetry: () => _downloadAndPlayTrack(track),
-            );
-          }
-        }
-      },
-      onError: (err) {
-        sub?.cancel();
-        _downloadSubscriptions.remove(track.id);
-        if (mounted) {
-          setState(() {
-            _downloadingIds.remove(track.id);
-            _downloadProgress.remove(track.id);
-            _downloadPercentage.remove(track.id);
-          });
-          UiFeedbackHelper.showErrorToast(
-            context,
-            err.toString(),
-            onRetry: () => _downloadAndPlayTrack(track),
-          );
-        }
-      },
+    UiFeedbackHelper.showSuccessToast(
+      context,
+      'Downloading "${track.title}" in background...',
     );
-
-    _downloadSubscriptions[track.id] = sub;
+    await MusicDownloadManager.instance.downloadTrack(
+      track,
+      autoPlay: true,
+    );
   }
 
-  /// Downloads all tracks in a playlist and auto-plays once the first track completes
+  /// Downloads all tracks in a playlist in background
   Future<void> _downloadPlaylist(yt.SearchPlaylist playlist) async {
     final playlistId = playlist.id.value;
-    if (_downloadingPlaylistIds.contains(playlistId)) {
+    if (MusicDownloadManager.instance.isBatchActive &&
+        MusicDownloadManager.instance.batchPlaylistName == playlist.title) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Playlist "${playlist.title}" is already downloading.'),
@@ -314,20 +201,16 @@ class _SearchScreenState extends State<SearchScreen> {
       return;
     }
 
-    setState(() {
-      _downloadingPlaylistIds.add(playlistId);
-      _playlistDownloadProgress[playlistId] = 'Fetching tracks...';
-    });
-
     try {
+      UiFeedbackHelper.showSuccessToast(
+        context,
+        'Fetching tracks for "${playlist.title}"...',
+      );
+
       final tracks =
           await YtmSearchService.instance.getPlaylistTracks(playlistId);
       if (tracks.isEmpty) {
         if (mounted) {
-          setState(() {
-            _downloadingPlaylistIds.remove(playlistId);
-            _playlistDownloadProgress.remove(playlistId);
-          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('No tracks found in playlist.')),
           );
@@ -336,115 +219,20 @@ class _SearchScreenState extends State<SearchScreen> {
       }
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-              'Starting download for "${playlist.title}" (${tracks.length} tracks)...'),
-        ),
+      UiFeedbackHelper.showSuccessToast(
+        context,
+        'Downloading ${tracks.length} tracks from "${playlist.title}" in background...',
       );
 
-      var downloadedCount = 0;
-      var hasStartedPlayingFirst = false;
-
-      for (var i = 0; i < tracks.length; i++) {
-        if (!mounted) break;
-        final track = tracks[i];
-        final url = track.webUrl ?? 'https://www.youtube.com/watch?v=${track.id}';
-
-        setState(() {
-          _playlistDownloadProgress[playlistId] =
-              '${i + 1}/${tracks.length} (${track.title})';
-        });
-
-        // Check if already downloaded
-        final existing = _findLocalTrack(track);
-        if (existing != null && existing.isLocal) {
-          downloadedCount++;
-          if (!hasStartedPlayingFirst) {
-            hasStartedPlayingFirst = true;
-            AudioPlayerService.instance.playTrack(
-              existing,
-              queue: MusicScannerService.instance.tracks,
-            );
-          }
-          continue;
-        }
-
-        final completer = Completer<void>();
-        final sub = AndroidDownloaderService()
-            .download(
-          url: url,
-          format: DownloadFormat.mp3,
-        )
-            .listen(
-          (progress) async {
-            if (progress.status == DownloadStatus.completed) {
-              final downloadItem = DownloadItem(
-                id: DateTime.now().millisecondsSinceEpoch.toString(),
-                title: progress.title ?? track.title,
-                url: url,
-                filePath: progress.outputFilePath ?? '',
-                format: DownloadFormat.mp3,
-                quality: 'Best (Audio)',
-                thumbnailUrl: track.artworkPath,
-                playlistName: playlist.title,
-                playlistUrl: 'https://www.youtube.com/playlist?list=$playlistId',
-                timestamp: DateTime.now(),
-              );
-              await DownloadHistoryService.instance.addDownload(downloadItem);
-              await MusicScannerService.instance.scanMusicDirectory(forceRefresh: true);
-              downloadedCount++;
-
-              if (!hasStartedPlayingFirst && mounted) {
-                hasStartedPlayingFirst = true;
-                final firstTrack = Track(
-                  id: progress.outputFilePath ?? track.id,
-                  title: progress.title ?? track.title,
-                  artist: track.artist,
-                  filePath: progress.outputFilePath,
-                  webUrl: url,
-                  album: playlist.title,
-                  artworkPath: track.artworkPath,
-                );
-                if (firstTrack.isLocal) {
-                  AudioPlayerService.instance.playTrack(
-                    firstTrack,
-                    queue: MusicScannerService.instance.tracks,
-                  );
-                }
-              }
-
-              if (!completer.isCompleted) completer.complete();
-            } else if (progress.status == DownloadStatus.failed ||
-                progress.status == DownloadStatus.cancelled) {
-              if (!completer.isCompleted) completer.complete();
-            }
-          },
-          onError: (_) {
-            if (!completer.isCompleted) completer.complete();
-          },
-        );
-
-        await completer.future;
-        await sub.cancel();
-      }
-
-      if (mounted) {
-        setState(() {
-          _downloadingPlaylistIds.remove(playlistId);
-          _playlistDownloadProgress.remove(playlistId);
-        });
-        UiFeedbackHelper.showSuccessToast(
-          context,
-          'Downloaded $downloadedCount/${tracks.length} songs from "${playlist.title}"',
-        );
-      }
+      // Delegate batch download to background manager so navigating away never cancels it!
+      MusicDownloadManager.instance.startBatchDownload(
+        tracks: tracks,
+        playlistName: playlist.title,
+        playlistUrl: 'https://www.youtube.com/playlist?list=$playlistId',
+        autoPlayFirst: true,
+      );
     } catch (e) {
       if (mounted) {
-        setState(() {
-          _downloadingPlaylistIds.remove(playlistId);
-          _playlistDownloadProgress.remove(playlistId);
-        });
         UiFeedbackHelper.showErrorToast(
           context,
           e.toString(),
@@ -456,6 +244,8 @@ class _SearchScreenState extends State<SearchScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -501,6 +291,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ],
             ),
           ),
+          _buildActiveDownloadBanner(isDark),
           if (_searchController.text.isEmpty && _recentSearches.isNotEmpty)
             _buildRecentSearchesSection(),
           Expanded(
@@ -508,7 +299,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 ? ShimmerLoading(
                     child: ListView.builder(
                       physics: const NeverScrollableScrollPhysics(),
-                      padding: const EdgeInsets.only(bottom: 110),
+                      padding: const EdgeInsets.only(bottom: 24),
                       itemCount: 7,
                       itemBuilder: (context, index) {
                         return _currentFilter == SearchFilter.songs
@@ -520,7 +311,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 : _isEmptyResults()
                     ? _buildEmptyStateView()
                     : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: 110),
+                        padding: const EdgeInsets.only(bottom: 24),
                         itemCount: _currentFilter == SearchFilter.songs
                             ? _songResults.length
                             : _playlistResults.length,
@@ -537,6 +328,90 @@ class _SearchScreenState extends State<SearchScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildActiveDownloadBanner(bool isDark) {
+    return ListenableBuilder(
+      listenable: MusicDownloadManager.instance,
+      builder: (context, _) {
+        final manager = MusicDownloadManager.instance;
+        if (!manager.hasActiveDownloads) return const SizedBox.shrink();
+
+        final isBatch = manager.isBatchActive;
+        final activeList = manager.activeDownloads.values.toList();
+        final firstActive = activeList.isNotEmpty ? activeList.first : null;
+
+        final title = isBatch
+            ? 'Downloading: ${manager.batchPlaylistName ?? "Playlist"} (${manager.batchCompleted}/${manager.batchTotal})'
+            : 'Downloading: ${firstActive?.title ?? "Song"}';
+        final pct = isBatch
+            ? '${(manager.batchCurrentProgress * 100).toInt()}%'
+            : firstActive?.percentage ?? '';
+        final progress = isBatch
+            ? manager.batchCurrentProgress
+            : firstActive?.progress ?? 0.0;
+
+        return Container(
+          margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F5),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: AppColors.primary.withValues(alpha: 0.35),
+            ),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.cloud_download_rounded,
+                    color: AppColors.primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      title,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  if (pct.isNotEmpty) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      pct,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 6),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(2),
+                child: LinearProgressIndicator(
+                  value: progress > 0 ? progress : null,
+                  minHeight: 3,
+                  backgroundColor: isDark ? Colors.white10 : Colors.black12,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -728,9 +603,9 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSongTile(Track track) {
     final localTrack = _findLocalTrack(track);
     final isDownloaded = localTrack != null && localTrack.isLocal;
-    final isDownloading = _downloadingIds.contains(track.id);
-    final progress = _downloadProgress[track.id] ?? 0.0;
-    final percentage = _downloadPercentage[track.id] ?? '';
+    final isDownloading = MusicDownloadManager.instance.isDownloading(track.id);
+    final progress = MusicDownloadManager.instance.getProgress(track.id);
+    final percentage = MusicDownloadManager.instance.getPercentage(track.id);
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -859,9 +734,11 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildPlaylistTile(yt.SearchPlaylist playlist) {
-    final playlistId = playlist.id.value;
-    final isDownloading = _downloadingPlaylistIds.contains(playlistId);
-    final progressStatus = _playlistDownloadProgress[playlistId];
+    final isDownloading = MusicDownloadManager.instance.isBatchActive &&
+        MusicDownloadManager.instance.batchPlaylistName == playlist.title;
+    final progressStatus = isDownloading
+        ? '${MusicDownloadManager.instance.batchCompleted}/${MusicDownloadManager.instance.batchTotal} tracks (${(MusicDownloadManager.instance.batchCurrentProgress * 100).toInt()}%)'
+        : null;
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),

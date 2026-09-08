@@ -293,36 +293,33 @@ class _MainShellScreenState extends State<MainShellScreen> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      body: Stack(
+      body: Column(
         children: [
           // Main tab content
-          IndexedStack(
-            index: _currentIndex,
-            children: [
-              // 0 — Music
-              MusicLibraryScreen(
-                onNavigateToDownloader: () => setState(() => _currentIndex = 2),
-              ),
-              // 1 — Search
-              const SearchScreen(),
-              // 2 — Library
-              LibraryShellScreen(
-                downloaderService: widget.downloaderService,
-              ),
-              // 3 — Settings
-              SettingsScreen(
-                downloaderService: widget.downloaderService,
-              ),
-            ],
+          Expanded(
+            child: IndexedStack(
+              index: _currentIndex,
+              children: [
+                // 0 — Music
+                MusicLibraryScreen(
+                  onNavigateToDownloader: () => setState(() => _currentIndex = 2),
+                ),
+                // 1 — Search
+                const SearchScreen(),
+                // 2 — Library
+                LibraryShellScreen(
+                  downloaderService: widget.downloaderService,
+                ),
+                // 3 — Settings
+                SettingsScreen(
+                  downloaderService: widget.downloaderService,
+                ),
+              ],
+            ),
           ),
 
-          // Persistent mini-player above bottom nav
-          const Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: MiniPlayer(),
-          ),
+          // Persistent mini-player above bottom nav (strictly non-overlapping)
+          const MiniPlayer(),
         ],
       ),
       bottomNavigationBar: Container(
@@ -334,9 +331,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
         ),
         child: SafeArea(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _buildMobileNavItem(
                   index: 0,
@@ -378,40 +374,42 @@ class _MainShellScreenState extends State<MainShellScreen> {
   }) {
     final isSelected = _currentIndex == index;
 
-    return InkWell(
-      onTap: () => setState(() => _currentIndex = index),
-      borderRadius: BorderRadius.circular(16),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 5),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? AppColors.primary.withValues(alpha: 0.12)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
+    return Expanded(
+      child: InkWell(
+        onTap: () => setState(() => _currentIndex = index),
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? AppColors.primary.withValues(alpha: 0.12)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Icon(
+                  isSelected ? selectedIcon : icon,
+                  size: 22,
+                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                ),
               ),
-              child: Icon(
-                isSelected ? selectedIcon : icon,
-                size: 22,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 10.5,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  letterSpacing: -0.1,
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10.5,
-                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? AppColors.primary : AppColors.textSecondary,
-                letterSpacing: -0.1,
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
