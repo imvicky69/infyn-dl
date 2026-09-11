@@ -3,10 +3,11 @@ import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../downloader/services/android_downloader_service.dart';
 import '../models/app_release_info.dart';
 
-/// Current installed version of the Infyn DL application.
-const String kCurrentAppVersion = '1.0.3';
+/// Fallback installed version of the Infyn DL application.
+const String kCurrentAppVersion = '1.0.4';
 
 /// Service responsible for querying GitHub Releases API to detect new versions
 /// and prompt the user with download/release notes.
@@ -20,6 +21,11 @@ class AppUpdateService {
 
   AppUpdateService._();
 
+  final ValueNotifier<String> currentVersionNotifier =
+      ValueNotifier<String>(kCurrentAppVersion);
+
+  String get currentVersion => currentVersionNotifier.value;
+
   final ValueNotifier<AppReleaseInfo?> latestReleaseNotifier =
       ValueNotifier<AppReleaseInfo?>(null);
   final ValueNotifier<bool> isCheckingNotifier = ValueNotifier<bool>(false);
@@ -28,9 +34,25 @@ class AppUpdateService {
   AppReleaseInfo? get latestRelease => latestReleaseNotifier.value;
   bool get hasUpdate => latestReleaseNotifier.value?.isUpdateAvailable ?? false;
 
+  /// Initializes and resolves the actual application version dynamically from the Android platform.
+  Future<void> init() async {
+    try {
+      final actualVer = await AndroidDownloaderService.instance.getAppVersion();
+      if (actualVer != null && actualVer.isNotEmpty) {
+        currentVersionNotifier.value = actualVer;
+      }
+    } catch (e) {
+      debugPrint('AppUpdateService.init error: $e');
+    }
+  }
+
   /// Checks GitHub releases API for new versions.
   Future<AppReleaseInfo?> checkForUpdates({bool force = false}) async {
     if (isCheckingNotifier.value) return latestRelease;
+
+    if (currentVersionNotifier.value == kCurrentAppVersion) {
+      await init();
+    }
 
     isCheckingNotifier.value = true;
     lastErrorNotifier.value = null;
@@ -53,7 +75,7 @@ class AppUpdateService {
         final Map<String, dynamic> data = jsonDecode(response.body);
         final release = AppReleaseInfo.fromJson(
           data,
-          currentVersion: kCurrentAppVersion,
+          currentVersion: currentVersion,
         );
         latestReleaseNotifier.value = release;
 

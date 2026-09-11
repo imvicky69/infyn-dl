@@ -57,6 +57,17 @@ class AppColors {
   static const Color error = Color(0xFFEF4444);
   static Color get errorBg =>
       isDark ? const Color(0xFF7F1D1D) : const Color(0xFFFEF2F2);
+
+  // Dynamic Brand Assets
+  /// Returns 'assets/logo-wh.png' in dark mode, and 'assets/logo-clear.png' in light mode.
+  static String get logo =>
+      isDark ? 'assets/logo-wh.png' : 'assets/logo-clear.png';
+
+  /// Context-aware logo asset getter.
+  static String logoFor(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+          ? 'assets/logo-wh.png'
+          : 'assets/logo-clear.png';
 }
 
 class AppTheme {
@@ -133,6 +144,15 @@ class AppTheme {
         ),
         color: const Color(0xFFFFFFFF),
       ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: const Color(0xFF09090B),
+        contentTextStyle: const TextStyle(
+          color: Color(0xFFFAFAFA),
+          fontWeight: FontWeight.w600,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
   }
 
@@ -206,6 +226,15 @@ class AppTheme {
           side: const BorderSide(color: Color(0xFF27272A), width: 1),
         ),
         color: const Color(0xFF141416),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: const Color(0xFFFAFAFA),
+        contentTextStyle: const TextStyle(
+          color: Color(0xFF09090B),
+          fontWeight: FontWeight.w600,
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }

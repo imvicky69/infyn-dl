@@ -59,12 +59,14 @@ void main() {
       expect(AppColors.surface, const Color(0xFFFFFFFF));
       expect(AppColors.textPrimary, const Color(0xFF09090B));
       expect(AppColors.primary, const Color(0xFF09090B));
+      expect(AppColors.logo, 'assets/logo-clear.png');
 
       AppColors.isDark = true;
       expect(AppColors.background, const Color(0xFF09090B));
       expect(AppColors.surface, const Color(0xFF141416));
       expect(AppColors.textPrimary, const Color(0xFFFAFAFA));
       expect(AppColors.primary, const Color(0xFFFAFAFA));
+      expect(AppColors.logo, 'assets/logo-wh.png');
 
       // Reset
       AppColors.isDark = false;
@@ -122,8 +124,12 @@ void main() {
 
       // Verify App Updates section
       expect(find.text('APP UPDATES'), findsOneWidget);
-      expect(find.text('Infyn DL v1.0.3'), findsAtLeastNWidgets(1));
+      expect(find.text('Infyn DL v1.0.4'), findsAtLeastNWidgets(1));
       expect(find.text('Auto-Check for Updates'), findsOneWidget);
+
+      // Verify Crafted by Vicky footer
+      expect(find.text('Crafted by '), findsOneWidget);
+      expect(find.text('Vicky'), findsOneWidget);
     });
   });
 

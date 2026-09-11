@@ -363,4 +363,16 @@ class AndroidDownloaderService implements DownloaderService {
       }
     }
   }
+
+  /// Retrieves the actual installed application version string (e.g. "1.0.4")
+  /// from the native Android PackageManager. Returns null on non-Android or on error.
+  Future<String?> getAppVersion() async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return null;
+    try {
+      final res = await _methodChannel.invokeMethod<Map>('getAppVersion');
+      return res?['version'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
 }

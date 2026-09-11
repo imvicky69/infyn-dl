@@ -17,6 +17,7 @@ void main() async {
   await SettingsService.instance.init();
   await LikedSongsService.instance.init();
   await RecentlyPlayedService.instance.init();
+  await AppUpdateService.instance.init();
   if (SettingsService.instance.autoCheckUpdates) {
     AppUpdateService.instance.checkForUpdates();
   }

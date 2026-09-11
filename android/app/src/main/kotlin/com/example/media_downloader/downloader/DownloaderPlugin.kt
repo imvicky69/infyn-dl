@@ -111,6 +111,29 @@ class DownloaderPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
             "getBackendInfo" -> {
                 result.success(AndroidDownloadManager.getBackendInfo())
             }
+            "getAppVersion" -> {
+                try {
+                    val pInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        ctx.packageManager.getPackageInfo(ctx.packageName, PackageManager.PackageInfoFlags.of(0))
+                    } else {
+                        @Suppress("DEPRECATION")
+                        ctx.packageManager.getPackageInfo(ctx.packageName, 0)
+                    }
+                    val versionName = pInfo.versionName ?: "1.0.4"
+                    val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        pInfo.longVersionCode
+                    } else {
+                        @Suppress("DEPRECATION")
+                        pInfo.versionCode.toLong()
+                    }
+                    result.success(mapOf(
+                        "version" to versionName,
+                        "buildNumber" to versionCode.toString()
+                    ))
+                } catch (e: Exception) {
+                    result.error("VERSION_ERROR", e.message, null)
+                }
+            }
             "hasNotificationPermission" -> {
                 val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED

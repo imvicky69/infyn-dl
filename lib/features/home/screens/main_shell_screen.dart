@@ -130,7 +130,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: Image.asset(
-                    'assets/logo-clear.png',
+                    AppColors.logoFor(context),
                     width: 36,
                     height: 36,
                     fit: BoxFit.contain,

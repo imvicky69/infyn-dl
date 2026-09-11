@@ -543,7 +543,7 @@ class _SearchScreenState extends State<SearchScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Image.asset(
-              'assets/logo-clear.png',
+              AppColors.logoFor(context),
               width: 64,
               height: 64,
               fit: BoxFit.contain,
@@ -588,6 +588,7 @@ class _SearchScreenState extends State<SearchScreen> {
     return ChoiceChip(
       label: Text(label),
       selected: isSelected,
+      showCheckmark: false,
       onSelected: (selected) {
         if (selected && _currentFilter != filter) {
           setState(() => _currentFilter = filter);
@@ -598,9 +599,15 @@ class _SearchScreenState extends State<SearchScreen> {
       },
       selectedColor: AppColors.primary,
       backgroundColor: AppColors.surfaceElevated,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(
+          color: isSelected ? AppColors.primary : AppColors.surfaceBorder,
+        ),
+      ),
       labelStyle: TextStyle(
-        color: isSelected ? Colors.white : AppColors.textPrimary,
-        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        color: isSelected ? AppColors.onPrimary : AppColors.textPrimary,
+        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
       ),
     );
   }

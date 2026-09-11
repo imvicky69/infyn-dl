@@ -106,7 +106,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(10),
                         child: Image.asset(
-                          'assets/logo-clear.png',
+                          AppColors.logoFor(context),
                           width: 38,
                           height: 38,
                           fit: BoxFit.contain,
@@ -308,7 +308,8 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
             Icon(
               icon,
               size: 15,
-              color: isSelected ? Colors.white : AppColors.textSecondary,
+              color:
+                  isSelected ? AppColors.onPrimary : AppColors.textSecondary,
             ),
             const SizedBox(width: 6),
             Text(
@@ -316,7 +317,8 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
               style: TextStyle(
                 fontSize: 12.5,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                color: isSelected ? Colors.white : AppColors.textPrimary,
+                color:
+                    isSelected ? AppColors.onPrimary : AppColors.textPrimary,
               ),
             ),
           ],
@@ -863,10 +865,12 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
   Widget _buildTrackTile(
       Track track, int index, List<Track> queue, bool isDark) {
     return ListenableBuilder(
-      listenable: AudioPlayerService.instance,
+      listenable: Listenable.merge(
+          [AudioPlayerService.instance, LikedSongsService.instance]),
       builder: (context, _) {
         final player = AudioPlayerService.instance;
         final isCurrent = player.currentTrack?.id == track.id;
+        final isLiked = LikedSongsService.instance.isLiked(track.id);
 
         return ListTile(
           onTap: () {
@@ -929,12 +933,58 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
               color: AppColors.textSecondary,
             ),
           ),
-          trailing: Text(
-            track.formattedDuration,
-            style: TextStyle(
-              fontSize: 12,
-              color: AppColors.textMuted,
-            ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                track.formattedDuration,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(width: 2),
+              IconButton(
+                icon: Icon(
+                  isLiked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                  color: isLiked
+                      ? const Color(0xFFEF4444)
+                      : AppColors.textMuted.withValues(alpha: 0.6),
+                  size: 20,
+                ),
+                tooltip:
+                    isLiked ? 'Remove from Liked Songs' : 'Add to Liked Songs',
+                splashRadius: 20,
+                onPressed: () async {
+                  HapticFeedback.lightImpact();
+                  await LikedSongsService.instance.toggleLike(track.id);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          isLiked
+                              ? 'Removed "${track.title}" from Liked Songs'
+                              : 'Added "${track.title}" to Liked Songs',
+                        ),
+                        duration: const Duration(seconds: 2),
+                        action: isLiked
+                            ? SnackBarAction(
+                                label: 'Undo',
+                                onPressed: () async {
+                                  await LikedSongsService.instance
+                                      .toggleLike(track.id);
+                                },
+                              )
+                            : null,
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
           ),
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 2),

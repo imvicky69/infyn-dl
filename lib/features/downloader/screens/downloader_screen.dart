@@ -843,10 +843,10 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         ClipRRect(
           borderRadius: BorderRadius.circular(10),
           child: Image.asset(
-            'assets/logo.png',
+            AppColors.logoFor(context),
             width: 32,
             height: 32,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             errorBuilder: (context, error, stackTrace) => Icon(
               Icons.all_inclusive_rounded,
               size: 32,

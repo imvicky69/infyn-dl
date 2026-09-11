@@ -139,17 +139,17 @@ class UiFeedbackHelper {
       SnackBar(
         content: Row(
           children: [
-            const Icon(
+            Icon(
               Icons.check_circle_outline_rounded,
-              color: Colors.white,
+              color: AppColors.onPrimary,
               size: 20,
             ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(
                 message,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppColors.onPrimary,
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
