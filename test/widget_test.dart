@@ -2,14 +2,14 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:media_downloader/features/downloader/models/download_format.dart';
-import 'package:media_downloader/features/downloader/models/download_progress.dart';
-import 'package:media_downloader/features/downloader/models/media_quality.dart';
-import 'package:media_downloader/features/downloader/models/playlist_metadata.dart';
-import 'package:media_downloader/features/downloader/models/video_metadata.dart';
-import 'package:media_downloader/features/downloader/screens/downloader_screen.dart';
-import 'package:media_downloader/features/downloader/services/downloader_service.dart';
-import 'package:media_downloader/features/downloader/widgets/batch_progress_card.dart';
+import 'package:infyn_dl/features/downloader/models/download_format.dart';
+import 'package:infyn_dl/features/downloader/models/download_progress.dart';
+import 'package:infyn_dl/features/downloader/models/media_quality.dart';
+import 'package:infyn_dl/features/downloader/models/playlist_metadata.dart';
+import 'package:infyn_dl/features/downloader/models/video_metadata.dart';
+import 'package:infyn_dl/features/downloader/screens/downloader_screen.dart';
+import 'package:infyn_dl/features/downloader/services/downloader_service.dart';
+import 'package:infyn_dl/features/downloader/widgets/batch_progress_card.dart';
 
 class FakeDownloaderService implements DownloaderService {
   final StreamController<DownloadProgress> _controller =

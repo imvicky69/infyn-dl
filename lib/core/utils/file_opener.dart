@@ -26,7 +26,6 @@ class FileOpener {
       }
     }
 
-
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.macOS) {
       try {
         await Process.run('open', [filePath]);

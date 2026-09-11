@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
+import 'package:path/path.dart' as p;
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
 import '../../player/services/audio_player_service.dart';
@@ -7,6 +9,7 @@ import '../../settings/services/settings_service.dart';
 import '../models/download_format.dart';
 import '../models/download_item.dart';
 import '../models/download_progress.dart';
+import '../models/media_quality.dart';
 import 'android_downloader_service.dart';
 import 'download_history_service.dart';
 import 'downloader_service.dart';
@@ -66,6 +69,41 @@ class MusicDownloadManager extends ChangeNotifier {
   DownloaderService downloaderService = AndroidDownloaderService.instance;
 
   final Map<String, ActiveMusicDownload> _activeDownloads = {};
+
+  // Debounced library rescan: fires once 600ms after the last download event.
+  // Prevents N full filesystem scans for an N-track batch download while keeping UI reactive.
+  Timer? _rescanDebounce;
+
+  void _scheduleLibraryRescan() {
+    _rescanDebounce?.cancel();
+    _rescanDebounce = Timer(const Duration(milliseconds: 600), () {
+      MusicScannerService.instance.scanMusicDirectory(forceRefresh: true);
+    });
+  }
+
+  static String sanitizeFolderName(String name) {
+    return name.replaceAll(RegExp(r'[\\/:*?"<>|]'), '').trim();
+  }
+
+  Future<String> _resolveTargetDirectory({
+    String? destinationDirectory,
+    String? playlistName,
+  }) async {
+    final baseDir = destinationDirectory ??
+        await SettingsService.instance.resolveDownloadDirectory();
+    if (playlistName != null && playlistName.trim().isNotEmpty) {
+      final cleanFolder = sanitizeFolderName(playlistName);
+      if (cleanFolder.isNotEmpty) {
+        final targetDir = p.join(baseDir, cleanFolder);
+        final dir = Directory(targetDir);
+        if (!await dir.exists()) {
+          await dir.create(recursive: true);
+        }
+        return targetDir;
+      }
+    }
+    return baseDir;
+  }
 
   // Batch download state
   bool _isBatchActive = false;
@@ -135,12 +173,18 @@ class MusicDownloadManager extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final destDir = destinationDirectory ??
-          await SettingsService.instance.resolveDownloadDirectory();
+      final destDir = await _resolveTargetDirectory(
+        destinationDirectory: destinationDirectory,
+        playlistName: playlistName,
+      );
 
       final stream = downloaderService.download(
         url: url,
         format: DownloadFormat.mp3,
+        // Use native M4A quality (fastest, no FFmpeg transcode, ~128 kbps AAC).
+        // AudioQuality.k192 maps to qualityValue='mid' which AndroidDownloadManager
+        // uses to select bestaudio[ext=m4a] — the native YouTube AAC stream.
+        audioQuality: AudioQuality.k192,
         destinationDirectory: destDir,
       );
 
@@ -190,7 +234,9 @@ class MusicDownloadManager extends ChangeNotifier {
     );
 
     await DownloadHistoryService.instance.addDownload(downloadItem);
-    await MusicScannerService.instance.scanMusicDirectory(forceRefresh: true);
+    // Debounced rescan: if multiple tracks complete in quick succession (batch),
+    // only one filesystem scan fires — 1.5s after the last completion event.
+    _scheduleLibraryRescan();
 
     if (download.autoPlay && outputFilePath.isNotEmpty) {
       final playableTrack = Track(
@@ -251,8 +297,10 @@ class MusicDownloadManager extends ChangeNotifier {
 
     var hasStartedPlayingFirst = false;
 
-    final destDir = destinationDirectory ??
-        await SettingsService.instance.resolveDownloadDirectory();
+    final destDir = await _resolveTargetDirectory(
+      destinationDirectory: destinationDirectory,
+      playlistName: playlistName,
+    );
 
     for (var i = 0; i < tracks.length; i++) {
       if (_cancelBatchRequested) break;
@@ -297,6 +345,8 @@ class MusicDownloadManager extends ChangeNotifier {
           .download(
         url: url,
         format: DownloadFormat.mp3,
+        // Same native M4A quality as individual track downloads
+        audioQuality: AudioQuality.k192,
         destinationDirectory: destDir,
       )
           .listen(
@@ -320,8 +370,10 @@ class MusicDownloadManager extends ChangeNotifier {
             );
 
             await DownloadHistoryService.instance.addDownload(downloadItem);
-            await MusicScannerService.instance
-                .scanMusicDirectory(forceRefresh: true);
+            // Schedule a debounced rescan instead of scanning immediately.
+            // The rescan fires 1.5s after the last completed track, so a
+            // 15-track batch produces exactly 1 filesystem scan, not 15.
+            _scheduleLibraryRescan();
             _batchCompleted++;
 
             if (autoPlayFirst &&
@@ -365,6 +417,8 @@ class MusicDownloadManager extends ChangeNotifier {
     _batchCurrentProgress = 0.0;
     _batchCurrentTitle = '';
     notifyListeners();
+    // Immediate library refresh when batch completes
+    MusicScannerService.instance.scanMusicDirectory(forceRefresh: true);
   }
 
   /// Explicitly cancels an active batch download.

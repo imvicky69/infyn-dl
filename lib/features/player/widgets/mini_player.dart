@@ -90,137 +90,137 @@ class MiniPlayer extends StatelessWidget {
                       ),
                     );
                   },
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Row(
-                    children: [
-                      // Thumbnail
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          width: 44,
-                          height: 44,
-                          color: isDark
-                              ? const Color(0xFF27272A)
-                              : const Color(0xFFE4E4E7),
-                          child: _buildArtwork(track.artworkPath),
+                  child: Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    child: Row(
+                      children: [
+                        // Thumbnail
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            width: 44,
+                            height: 44,
+                            color: isDark
+                                ? const Color(0xFF27272A)
+                                : const Color(0xFFE4E4E7),
+                            child: _buildArtwork(track.artworkPath),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Title & Artist
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              track.title,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.textPrimary,
-                                letterSpacing: -0.2,
+                        const SizedBox(width: 12),
+                        // Title & Artist
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                track.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                  letterSpacing: -0.2,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              track.artist,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                                color: AppColors.textSecondary,
+                              const SizedBox(height: 2),
+                              Text(
+                                track.artist,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      // Heart button
-                      ListenableBuilder(
-                        listenable: LikedSongsService.instance,
-                        builder: (context, _) {
-                          final liked = LikedSongsService.instance
-                              .isLiked(track.id);
-                          return IconButton(
-                            onPressed: () {
-                              HapticFeedback.lightImpact();
-                              LikedSongsService.instance.toggleLike(track.id);
-                            },
-                            icon: Icon(
-                              liked
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              color: liked
-                                  ? const Color(0xFFEF4444)
-                                  : AppColors.textMuted,
-                              size: 20,
-                            ),
-                            splashRadius: 18,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 36,
-                              minHeight: 36,
-                            ),
-                          );
-                        },
-                      ),
-                      // Play/Pause button
-                      IconButton(
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          player.togglePlayPause();
-                        },
-                        icon: Icon(
-                          player.isPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          color: AppColors.textPrimary,
-                          size: 26,
-                        ),
-                        splashRadius: 20,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
-                        ),
-                      ),
-                      // Skip next button
-                      IconButton(
-                        onPressed: player.hasNext
-                            ? () {
+                        const SizedBox(width: 8),
+                        // Heart button
+                        ListenableBuilder(
+                          listenable: LikedSongsService.instance,
+                          builder: (context, _) {
+                            final liked =
+                                LikedSongsService.instance.isLiked(track.id);
+                            return IconButton(
+                              onPressed: () {
                                 HapticFeedback.lightImpact();
-                                player.skipToNext();
-                              }
-                            : null,
-                        icon: Icon(
-                          Icons.skip_next_rounded,
-                          color: player.hasNext
-                              ? AppColors.textPrimary
-                              : AppColors.textMuted,
-                          size: 24,
+                                LikedSongsService.instance.toggleLike(track.id);
+                              },
+                              icon: Icon(
+                                liked
+                                    ? Icons.favorite_rounded
+                                    : Icons.favorite_border_rounded,
+                                color: liked
+                                    ? const Color(0xFFEF4444)
+                                    : AppColors.textMuted,
+                                size: 20,
+                              ),
+                              splashRadius: 18,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(
+                                minWidth: 36,
+                                minHeight: 36,
+                              ),
+                            );
+                          },
                         ),
-                        splashRadius: 20,
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 36,
-                          minHeight: 36,
+                        // Play/Pause button
+                        IconButton(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            player.togglePlayPause();
+                          },
+                          icon: Icon(
+                            player.isPlaying
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
+                            color: AppColors.textPrimary,
+                            size: 26,
+                          ),
+                          splashRadius: 20,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
                         ),
-                      ),
-                    ],
+                        // Skip next button
+                        IconButton(
+                          onPressed: player.hasNext
+                              ? () {
+                                  HapticFeedback.lightImpact();
+                                  player.skipToNext();
+                                }
+                              : null,
+                          icon: Icon(
+                            Icons.skip_next_rounded,
+                            color: player.hasNext
+                                ? AppColors.textPrimary
+                                : AppColors.textMuted,
+                            size: 24,
+                          ),
+                          splashRadius: 20,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 36,
+                            minHeight: 36,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
-    },
-  );
+        );
+      },
+    );
   }
 
   Widget _buildArtwork(String? path) {

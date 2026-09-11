@@ -12,6 +12,7 @@ import io.flutter.plugin.common.EventChannel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
@@ -23,7 +24,8 @@ import java.util.concurrent.ConcurrentHashMap
 
 object AndroidDownloadManager {
     private const val TAG = "AndroidDownloadManager"
-    private val scope = CoroutineScope(Dispatchers.IO + Job())
+    // SupervisorJob: a failure in one download coroutine does NOT cancel sibling downloads.
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val mainHandler = Handler(Looper.getMainLooper())
 
     @Volatile
@@ -112,6 +114,7 @@ object AndroidDownloadManager {
         return mapOf(
             "platform" to "android",
             "isAvailable" to isInitialized,
+            "isInitializing" to isInitializing,
             "initError" to initError,
             "ytDlpVersion" to try { YoutubeDL.getInstance().version(null) } catch (_: Throwable) { "bundled" }
         )
@@ -133,7 +136,6 @@ object AndroidDownloadManager {
                     addOption("--no-playlist")
                     addOption("--no-update")
                     addOption("--no-check-certificates")
-                    addOption("--extractor-args", "youtube:player_client=mweb,android,web")
                     addOption("--socket-timeout", "15")
                     addOption("--retries", "3")
                 }
@@ -174,7 +176,6 @@ object AndroidDownloadManager {
                     addOption("--dump-single-json")
                     addOption("--no-update")
                     addOption("--no-check-certificates")
-                    addOption("--extractor-args", "youtube:player_client=mweb,android,web")
                     addOption("--socket-timeout", "15")
                     addOption("--retries", "3")
                     addOption("--yes-playlist")
@@ -238,7 +239,6 @@ object AndroidDownloadManager {
                 addOption("--no-update")
                 addOption("--no-check-certificates")
                 addOption("--no-mtime")
-                addOption("--extractor-args", "youtube:player_client=mweb,android,web")
 
                 // High-speed parallel fragment downloading and chunk buffering
                 addOption("-N", "8")
@@ -253,13 +253,23 @@ object AndroidDownloadManager {
                 addOption("--file-access-retries", "5")
 
                 if (isAudio) {
-                    // Zero-transcode audio: download native m4a stream or best available audio
-                    addOption("-f", "bestaudio[ext=m4a]/bestaudio/best")
-                    addOption("--extract-audio")
-                    addOption("--audio-format", "m4a")
-                    addOption("--no-keep-video")
-                    // 16 parallel fragments for audio (small segments, parallel download)
-                    addOption("-N", "16")
+                    // Prefer the native AAC/M4A stream from YouTube (itag 140, ~128 kbps).
+                    // This avoids ALL FFmpeg post-processing — no transcode, no remux.
+                    // audioQuality selects the tier:
+                    //   "high"  → prefer opus ~160 kbps (WebM) if m4a unavailable; best quality
+                    //   "mid"   → native m4a ~128 kbps (default, always available)
+                    //   "low"   → 48 kbps m4a mobile stream (smallest file)
+                    // Note: we do NOT use --extract-audio or --audio-format m4a, because those
+                    // flags unconditionally invoke FFmpeg even on an already-correct stream.
+                    val audioFormatString = when (audioQuality) {
+                        "high" -> "bestaudio[ext=m4a][abr>120]/bestaudio[ext=m4a]/bestaudio[acodec=aac]/bestaudio/best"
+                        "low"  -> "worstaudio[ext=m4a]/bestaudio[ext=m4a][abr<=64]/bestaudio[ext=m4a]/worstaudio/worst/best"
+                        else   -> "bestaudio[ext=m4a]/bestaudio[acodec=aac]/bestaudio/best"
+                    }
+                    addOption("-f", audioFormatString)
+                    // No --extract-audio, no --audio-format: keep native container as-is.
+                    // Fragment parallelism for audio (segments are small; 8 is effective on mobile)
+                    addOption("-N", "8")
                 } else {
                     addOption("-S", "res,size,br")
                     val formatString = when (videoQuality?.lowercase()) {
@@ -351,7 +361,7 @@ object AndroidDownloadManager {
                     // Prefer m4a (native YouTube AAC stream, no re-encode).
                     // Fallback to opus/ogg (opus remuxed), then any other audio.
                     // We no longer produce .mp3 — direct remux skips FFmpeg entirely.
-                    val audioExts = listOf("m4a", "opus", "ogg", "aac", "flac", "wav", "mp3")
+                    val audioExts = listOf("m4a", "opus", "ogg", "aac", "flac", "wav", "mp3", "webm", "mp4")
                     audioExts.firstNotNullOfOrNull { ext ->
                         stagingDir.listFiles { file ->
                             file.isFile &&
@@ -413,22 +423,19 @@ object AndroidDownloadManager {
                         )
                     )
                 } else {
-                    // Completed with stdout log
+                    // yt-dlp exited without producing a usable output file.
+                    // This can happen if the stream was skipped (already downloaded),
+                    // or if a temp/part file was left behind. Treat this as a failure
+                    // so the Dart layer does NOT store a broken directory path as outputFilePath.
                     val finalTitle = detectedTitle.get() ?: "Media Download"
-                    val remainingJobs = (activeJobs.size - 1).coerceAtLeast(0)
-                    if (remainingJobs <= 0) {
-                        DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
-                    } else {
-                        DownloadForegroundService.showItemFinished(context, finalTitle, "$remainingJobs remaining download(s)...")
-                    }
+                    Log.w(TAG, "Download '$downloadId' completed but no output file found in staging dir: ${stagingDir.absolutePath}")
+                    DownloadForegroundService.showError(context, finalTitle, "Output file not found after download")
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
-                            "status" to "completed",
-                            "progress" to 1.0,
-                            "percentage" to "100%",
-                            "title" to finalTitle,
-                            "path" to stagingDir.absolutePath
+                            "status" to "failed",
+                            "error" to "Output file not found. The video may be unavailable or already downloaded.",
+                            "title" to finalTitle
                         )
                     )
                 }
@@ -524,9 +531,6 @@ object AndroidDownloadManager {
         if (raw.contains("Video unavailable", ignoreCase = true)) return "The requested YouTube video is unavailable."
         if (raw.contains("Sign in to confirm your age", ignoreCase = true)) return "This video requires age confirmation."
         if (raw.contains("Incomplete YouTube ID", ignoreCase = true) || raw.contains("not a valid URL", ignoreCase = true)) return "Invalid YouTube URL provided."
-        if (raw.contains("HTTP Error 403", ignoreCase = true)) return "Access forbidden (403). Please tap 'Check Update' in Settings."
-        if (raw.contains("The page needs to be reloaded", ignoreCase = true)) return "YouTube web challenge encountered. Please restart download or tap 'Check Update' in Settings."
-
         val cleanLines = raw.lines()
             .map { it.trim() }
             .filter { it.isNotEmpty() && !it.startsWith("WARNING", ignoreCase = true) && !it.startsWith("[debug]", ignoreCase = true) }
@@ -535,7 +539,15 @@ object AndroidDownloadManager {
             ?: cleanLines.lastOrNull()
             ?: raw
 
-        return errorLine.removePrefix("ERROR:").trim()
+        val message = errorLine.removePrefix("ERROR:").trim()
+        if (message.contains("HTTP Error 403", ignoreCase = true)) {
+            return "Access forbidden (403). Please tap 'Check Update' in Settings."
+        }
+        if (message.contains("Requested format is not available", ignoreCase = true)) {
+            return "Requested media format is unavailable. Try another quality option."
+        }
+
+        return message
     }
 
     private fun dispatchProgress(data: Map<String, Any?>) {

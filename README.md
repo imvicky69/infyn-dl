@@ -1,7 +1,7 @@
 <div align="center">
   <img src="assets/logo.png" alt="Infyn DL Logo" width="130" />
   <h1>Infyn DL</h1>
-  <p><strong>Universal, Local-First Media & Music Downloader for Windows & Android</strong></p>
+  <p><strong>Universal, Local-First Media & Music Downloader for Android</strong></p>
 
   <p>
     <a href="https://github.com/imvicky69/infyn-dl/releases"><img src="https://img.shields.io/github/v/release/imvicky69/infyn-dl?include_prereleases&logo=github&color=00B4D8&label=Release" alt="Latest Release"></a>
@@ -10,7 +10,8 @@
     <a href="https://flutter.dev"><img src="https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white" alt="Flutter"></a>
     <a href="https://dart.dev"><img src="https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white" alt="Dart"></a>
     <a href="https://github.com/yt-dlp/yt-dlp"><img src="https://img.shields.io/badge/Engine-yt--dlp%20Native-FF0000?logo=youtube&logoColor=white" alt="yt-dlp"></a>
-    <a href="https://ffmpeg.org"><img src="https://img.shields.io/badge/Audio-FFmpeg%20320k-007808?logo=ffmpeg&logoColor=white" alt="FFmpeg"></a>
+    <a href="https://ffmpeg.org"><img src="https://img.shields.io/badge/Audio-FFmpeg%20Native-007808?logo=ffmpeg&logoColor=white" alt="FFmpeg"></a>
+    <a href="https://developer.android.com"><img src="https://img.shields.io/badge/Platform-Android%207.0%2B-3DDC84?logo=android&logoColor=white" alt="Android"></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-black.svg" alt="License: MIT"></a>
   </p>
 </div>
@@ -19,95 +20,93 @@
 
 ## 🌟 Overview
 
-**Infyn DL** is a high-performance, privacy-respecting media downloader built with Flutter. It executes **`yt-dlp` and `FFmpeg` locally on your device** without routing traffic through third-party servers or APIs.
+**Infyn DL** is a high-performance, privacy-respecting media and music downloader built with Flutter for Android. It executes **`yt-dlp` and `FFmpeg` locally on your device** without routing traffic through third-party servers, external cloud APIs, or tracking services.
 
-Whether you're grabbing a 4K 60fps video, extracting 320kbps pristine audio from YouTube Music, or batch-downloading a 200+ track playlist in parallel, Infyn DL provides a clean, responsive, and distraction-free experience across Windows desktop and Android mobile devices.
+Whether you are downloading a single 4K 60fps video, extracting native high-bitrate M4A/MP3 audio from YouTube Music, or batch-downloading full playlists and albums, Infyn DL delivers an uninterrupted, offline-first experience with a sleek, minimalist aesthetic.
 
 ---
 
 ## 📥 Downloads & Releases
 
-Pre-compiled, ready-to-run releases for **Windows** and **Android** are available on our [**GitHub Releases Page**](https://github.com/imvicky69/infyn-dl/releases).
+Pre-compiled, signed APK packages are available on our [**GitHub Releases Page**](https://github.com/imvicky69/infyn-dl/releases).
 
-| Platform | Download Asset | Instructions |
+| Package | File Name | Description |
 | :--- | :--- | :--- |
-| 🪟 **Windows** (Setup Installer) | [`Infyn-DL-*-windows-setup.exe`](https://github.com/imvicky69/infyn-dl/releases/latest) | **Recommended**: Single-file setup wizard with Desktop & Start Menu shortcuts. |
-| 🪟 **Windows** (Portable ZIP) | [`Infyn-DL-*-windows-portable.zip`](https://github.com/imvicky69/infyn-dl/releases/latest) | Portable bundle. Extract and run `media_downloader.exe`. No installation required. |
-| 📱 **Android** (Universal APK) | [`Infyn-DL-*-android.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Compatible with all Android phones, tablets, and TVs (Android 7.0+). |
-| 📱 **Android** (ARM64 APK) | [`Infyn-DL-*-android-arm64.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Optimized, lightweight package for modern 64-bit Android smartphones. |
+| 📱 **ARM64 APK (Recommended)** | [`Infyn-DL-*-android-arm64.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | **Lightweight (~69 MB)**: Optimized for 99% of modern 64-bit Android phones and tablets. |
+| 📱 **Universal APK** | [`Infyn-DL-*-android.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Compatible with all Android architectures (`arm64-v8a`, `armeabi-v7a`, `x86_64`). |
+| 📱 **ARMv7 APK** | [`Infyn-DL-*-android-armeabi-v7a.apk`](https://github.com/imvicky69/infyn-dl/releases/latest) | Optimized build for older 32-bit Android devices. |
 
 ---
 
-## 🚀 What's New in v1.0.2
+## 🚀 What's New in v1.0.3
 
-- **Lightning Fast Audio Downloads (Native M4A)**: We've completely bypassed heavy local media transcoding. Downloads now stream the original high-quality `M4A` audio natively, meaning downloads are near-instantaneous and drastically save on your device's battery and CPU usage.
-- **Background Audio & Lock Screen Controls**: The app now integrates directly with Android's MediaSession API. When you play a song, a beautiful notification will appear on your lock screen and notification shade. You can pause, play, skip, or go back without opening the app, and Android will no longer kill your music when the app is minimized!
-- **Playlists Support**: The Search tab now features intuitive filter chips (`[Songs]` and `[Playlists]`). Tapping a playlist instantly fetches all its tracks, begins playback, and automatically lines them up in your "Up Next" queue.
-- **Real-time Download Progress**: The download button in the Now Playing screen now transforms into a real-time circular progress indicator, so you always know exactly how much of your track has been downloaded.
+- **Instant Native M4A Streaming & Downloading**: Directly pulls native AAC/M4A streams without CPU-heavy local re-encoding. Downloads finish in seconds and conserve battery life.
+- **Dedicated Playlist Folder Organization**: Tracks downloaded from curated or searched playlists are automatically routed into dedicated subdirectories (`Downloads/<PlaylistName>/`) and immediately appear as grouped playlists in your local library.
+- **Instant (0ms) Playlist Caching & Background Revalidation**: Cached playlists load with zero delay. Background revalidation ensures freshest track listings without intrusive spinners.
+- **Persistent Player State Across Restarts**: Infyn DL remembers your last played song, seek position, queue, shuffle, and repeat modes.
+- **Recently Played Quick-Resume Strip**: A persistent, deduplicated history feed right above the library tabs to resume recent tracks with a single tap.
+- **Curated Discover Catalog (v3)**: Explore 18 curated playlists across Ghazals, 90s/00s Bollywood, Desi Pop, Punjabi Hits, and Bhojpuri Classics.
+- **Lock Screen & MediaSession Controls**: Full background playback integration with Android notification controls, album artwork, and lock screen media seekbars.
 
 ---
 
 ## ✨ Key Features
 
-### 🎬 High-Resolution Video & Audio
-- **Up to 4K / 1080p MP4 Video**: Automatic high-bitrate stream selection (`-S res,size,br`) with custom quality presets (4K, 1080p, 720p, 480p, 360p).
-- **320kbps Pristine Audio Extraction**: Direct MP3 encoding powered by FFmpeg with bitrate selection (320k, 192k, 128k).
-- **YouTube Music & Shorts Support**: Seamless extraction of full tracks, playlists, albums, and Shorts.
+### 🎬 High-Resolution Video & Native Audio
+- **Up to 4K / 1080p MP4 Video**: Automatic high-bitrate stream selection (`-S res,size,br`) with quality options (4K, 1080p, 720p, 480p, 360p).
+- **Native M4A & Pristine MP3 Audio**: Native YouTube AAC streams for instant downloads or FFmpeg encoding with bitrate selection (320k, 192k, 128k).
+- **YouTube Music, Playlists, Albums & Shorts**: Direct metadata extraction and download support for singles, full playlists, and Shorts.
 
-### ⚡ Parallel Playlist Batching & Selective Downloads
-- **Multi-Worker Acceleration**: Download multiple playlist tracks simultaneously with user-configurable parallel worker speeds (`1x`, `2x`, `3x`, `4x`, `5x`).
-- **Multi-Threaded Fragment Chunking (`-N 4`)**: Multi-connection stream chunking per file to bypass bandwidth throttling.
-- **Selective Item Checkboxes**: Preview entire playlists with track lengths and toggle items individually or use **Select All / Deselect All**.
-- **Smart Duplicate Detection**: Automatically checks existing files on disk and in history, instantly skipping duplicates in 0ms without re-downloading.
+### ⚡ Background Batch Downloads & Multi-Worker Pipeline
+- **Parallel Worker Acceleration**: Multi-worker downloads for playlist queues with speed multiplier options (`1x`, `2x`, `3x`, `4x`, `5x`).
+- **Selective Track Checkboxes**: Inspect playlist tracklists, preview durations, and select individual songs or batch download the whole collection.
+- **Smart Duplicate Prevention**: Automatically inspects disk storage and history, skipping existing tracks in 0ms without re-downloading.
 
-### 📱 Android-Native Storage & Scoped Storage
-- **Direct Public Downloads Directory**: Automatically saves files to `Download/infyn-dl/` (or custom folders) using Android Scoped Storage `MediaStore.Downloads`.
-- **Instant System Indexing**: Runs `MediaScannerConnection` on completion so downloads appear immediately in Files by Google, Samsung My Files, VLC, and system media players without requiring a device restart.
-- **Background Foreground Service**: Persistent notifications with live progress bar and cancel actions.
+### 📱 Android-Native Storage & System Integration
+- **Direct Public Downloads**: Files save cleanly to `Download/infyn-dl/` or custom subdirectories via Android Scoped Storage (`MediaStore.Downloads`).
+- **Instant System Indexing**: Automatic `MediaScannerConnection` triggers ensure downloaded files appear immediately in Files by Google, Samsung My Files, VLC, and system media players.
+- **Foreground Service & Notification**: Persistent notification bar displaying real-time download progress, track title, and cancel buttons.
 
-### 📚 Downloads Library & Cache
-- **Local History**: Built-in library screen categorized by `All`, `Playlists`, `Videos`, and `Audio`.
-- **Instant Playback**: Tap to open and play downloaded videos and music in your default media player.
-- **Deduplication Guarantee**: Keeps a clean cache with options to delete history entries and physical files from disk.
-
-### 🎨 Modern Minimalist Design
-- **Black & White Aesthetics**: Clean, monochrome visual design system with zero visual clutter.
-- **Single-Line Features Capsule**: Space-saving inline stat pills for capabilities.
-- **Responsive Layout**: Adapts dynamically from mobile phones to high-resolution desktop monitors.
+### 🎵 In-App Player & Discovery Feed
+- **Built-In Audio Player**: Mini-player and full-screen player with live progress scrubbing, volume controls, shuffle, and loop modes.
+- **Persistent History Feed**: Quick resume of recently played music directly from the home library.
+- **Offline-First Library**: Sort by title, artist, duration, or date added. Filter by Playlists, Tracks, or Liked Songs.
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Android Native Architecture
 
 ```
-                                  +-----------------------+
-                                  |    Infyn DL Flutter   |
-                                  | (UI & State Management|
-                                  +-----------+-----------+
-                                              |
-                     +------------------------+------------------------+
-                     |                                                 |
-                     v (Desktop)                                       v (Mobile)
-          +-----------------------+                         +-----------------------+
-          | WindowsDownloaderSvc  |                         | AndroidDownloaderSvc  |
-          +-----------+-----------+                         +-----------+-----------+
-                      |                                                 | (MethodChannel & EventChannel)
-                      v                                                 v
-          +-----------------------+                         +-----------------------+
-          |  Local Process Runner |                         |  DownloaderPlugin.kt  |
-          |  (yt-dlp.exe + FFmpeg)|                         +-----------+-----------+
-          +-----------------------+                                     |
-                                                            +-----------+-----------+
-                                                            |  AndroidDownloadMgr   |
-                                                            | (YoutubeDL-Android &  |
-                                                            |     FFmpeg-Kit)       |
-                                                            +-----------+-----------+
-                                                                        |
-                                                            +-----------+-----------+
-                                                            |  MediaStorageHelper   |
-                                                            | (Scoped Storage &     |
-                                                            |  MediaScanner)        |
-                                                            +-----------------------+
+                      +-----------------------+
+                      |   Infyn DL Flutter    |
+                      | (UI & State Management|
+                      +-----------+-----------+
+                                  |
+                                  | (Platform Channels)
+                                  v
+                      +-----------------------+
+                      |  AndroidDownloaderSvc |
+                      +-----------+-----------+
+                                  | (MethodChannel & EventChannel)
+                                  v
+                      +-----------------------+
+                      |  DownloaderPlugin.kt  |
+                      +-----------+-----------+
+                                  |
+                      +-----------+-----------+
+                      |  AndroidDownloadMgr   |
+                      | (youtubedl-android &  |
+                      |     ffmpeg-android)   |
+                      +-----------+-----------+
+                                  |
+          +-----------------------+-----------------------+
+          |                                               |
+          v                                               v
++-----------------------+                       +-----------------------+
+| DownloadForegroundSvc |                       |  MediaStorageHelper   |
+| (Persistent Notifs &  |                       | (Scoped Storage &     |
+|  Background Workers)  |                       |  MediaScanner Index)  |
++-----------------------+                       +-----------------------+
 ```
 
 ---
@@ -115,33 +114,33 @@ Pre-compiled, ready-to-run releases for **Windows** and **Android** are availabl
 ## 📁 Repository Structure
 
 ```
-media_downloader/
+infyn-dl/
 ├── android/                         # Android native project & Kotlin platform channels
-│   └── app/src/main/kotlin/.../downloader/
-│       ├── AndroidDownloadManager.kt  # Local YoutubeDL & FFmpeg execution engine
-│       ├── DownloadForegroundService.kt # Background notification service
-│       ├── DownloaderPlugin.kt       # MethodChannel & EventChannel bindings
-│       └── MediaStorageHelper.kt     # Scoped Storage & MediaStore publication
-├── assets/                          # App branding & infinity icons
-│   ├── logo.png                     # Official Infyn DL icon
+│   └── app/src/main/
+│       ├── AndroidManifest.xml      # App permissions, foreground services & media session
+│       └── kotlin/.../downloader/
+│           ├── AndroidDownloadManager.kt    # Embedded yt-dlp & FFmpeg execution
+│           ├── DownloadForegroundService.kt # Background notification & task management
+│           ├── DownloaderPlugin.kt          # MethodChannel & EventChannel bridge
+│           └── MediaStorageHelper.kt        # Scoped Storage & MediaStore publication
+├── assets/                          # App logos & branding vectors
+│   ├── logo.png                     # Primary application icon
 │   └── logo-clear.png               # Transparent vector logo
-├── lib/                             # Core Flutter application source
-│   ├── core/
-│   │   ├── theme/app_theme.dart     # Design system & dark/light tokens
-│   │   └── utils/                   # Path resolution & native file openers
+├── catalog/                         # Curated playlists catalog
+│   ├── catalog.schema.json          # Draft-07 JSON Schema validation
+│   └── playlists.json               # Offline fallback catalog (v3)
+├── lib/                             # Flutter cross-platform source code
+│   ├── core/                        # Themes, colors & utilities
 │   ├── features/
-│   │   ├── downloader/              # Downloader feature (models, screens, services, widgets)
-│   │   ├── home/                    # Main shell navigation
-│   │   ├── library/                 # History, filters & playback
-│   │   └── settings/                # Storage paths, parallel speed & preferences
-│   └── main.dart                    # App initialization
-├── test/                            # Unit and integration test suites
-│   ├── widget_test.dart             # UI widget tests
-│   └── windows_downloader_integration_test.dart # Local process integration tests
-├── tool/
-│   └── setup_binaries.ps1           # Windows binary fetcher for yt-dlp & FFmpeg
-├── windows/                         # Windows C++ runner & executable packaging
-└── pubspec.yaml                     # Dependencies & assets configuration
+│   │   ├── downloader/              # Download engine, progress cards & batch queue
+│   │   ├── home/                    # Shell navigation, curated playlists & recommendations
+│   │   ├── library/                 # Local scanner, tracks, playlists & liked songs
+│   │   ├── player/                  # Audio player, mini-player, queue & recently played
+│   │   ├── search/                  # YouTube Music search, innertube & playlist detail
+│   │   └── settings/                # Download directories, theme & audio quality
+│   └── main.dart                    # Application entrypoint & service bootstrap
+├── test/                            # Comprehensive unit & widget test suites
+└── pubspec.yaml                     # Dependencies, assets & versioning
 ```
 
 ---
@@ -151,108 +150,68 @@ media_downloader/
 ### Prerequisites
 
 1. **Flutter SDK** (v3.19 or later): [Install Flutter](https://docs.flutter.dev/get-started/install)
-2. **Git**: [Install Git](https://git-scm.com/)
+2. **Android Studio** with:
+   - Android SDK (API 26+)
+   - Android SDK Build-Tools
+   - Android NDK
+3. **Physical Android Device or Emulator** (API 26+; API 29+ recommended for Scoped Storage testing)
 
 ---
 
-### Windows Development Setup
+### Running the App Locally
 
-1. **Install Visual Studio Community** with the *"Desktop development with C++"* workload.
-2. **Clone the repository**:
+1. **Clone the repository**:
    ```bash
    git clone https://github.com/imvicky69/infyn-dl.git
    cd infyn-dl
    ```
-3. **Download Windows Binaries (`yt-dlp.exe` and `ffmpeg.exe`)**:
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File tool\setup_binaries.ps1
-   ```
-4. **Install Flutter packages**:
-   ```bash
-   flutter pub get
-   ```
-5. **Run the Windows application**:
-   ```bash
-   flutter run -d windows
-   ```
 
----
-
-### Android Development Setup
-
-1. **Install Android Studio** and set up an Android Virtual Device (AVD) running API 26 or higher (API 29+ recommended for Scoped Storage testing).
 2. **Install Flutter packages**:
    ```bash
    flutter pub get
    ```
-3. **Launch the app on your emulator or physical device**:
+
+3. **Launch on your connected device or emulator**:
    ```bash
    flutter run -d android
    ```
-   *(Note: The Android build automatically bundles `youtubedl-android` and `ffmpeg-kit` so no manual binary downloads are required!)*
+   *(Note: Native `yt-dlp` and `FFmpeg` runtimes are automatically embedded via Gradle dependencies—no manual binary setups required!)*
 
 ---
 
-## 📦 Production Builds & Release Automation
+## 📦 Building Android Release APKs
 
-### 🚀 Automated GitHub Releases (Recommended)
-
-Infyn DL uses **GitHub Actions** to automatically build, package, sign checksums, and publish releases for **both Windows & Android** whenever a semantic version tag is pushed:
-
+### Recommended: Split APKs per Architecture (~69 MB)
+To build optimized packages for real phones:
 ```bash
-# 1. Ensure working directory is clean
-git status
-
-# 2. Create a version tag (e.g., v1.0.0)
-git tag -a v1.0.0 -m "Release v1.0.0"
-
-# 3. Push the tag to GitHub
-git push origin v1.0.0
-```
-
-The [`.github/workflows/release.yml`](.github/workflows/release.yml) workflow will automatically:
-1. Compile Windows release executable and package portable `Infyn-DL-v1.0.0-windows-x64.zip` with bundled `yt-dlp.exe` and `ffmpeg.exe`.
-2. Compile Android Universal APK, Split-ABI APKs (`arm64-v8a`, `armeabi-v7a`, `x86_64`), and Android App Bundle (`.aab`).
-3. Generate SHA256 checksums (`checksums.txt` and `.sha256` files).
-4. Publish a structured GitHub Release with changelog notes and attached binary artifacts.
-
----
-
-### 💻 Local Production Builds
-
-#### Building Windows Portable Bundle locally:
-```powershell
-# Setup required dependencies
-powershell -ExecutionPolicy Bypass -File tool\setup_binaries.ps1
-
-# Build release executable
-flutter build windows --release
-```
-*The compiled portable package is created in `build\windows\x64\runner\Release\`.*
-
-#### Building Android APKs & Bundle locally:
-```bash
-# Build universal APK
-flutter build apk --release
-
-# Build split APKs per CPU architecture (smaller file size)
 flutter build apk --release --split-per-abi
+```
+Generated APK files:
+- `build/app/outputs/flutter-apk/app-arm64-v8a-release.apk` (**~69 MB**, modern phones)
+- `build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk` (**~63 MB**, older 32-bit phones)
 
-# Build Google Play App Bundle (AAB)
+### Universal APK (All Architectures)
+```bash
+flutter build apk --release
+```
+Output: `build/app/outputs/flutter-apk/app-release.apk` (~177 MB containing all native ABIs).
+
+### Google Play App Bundle (AAB)
+```bash
 flutter build appbundle --release
 ```
-*The outputs are generated in `build/app/outputs/flutter-apk/` and `build/app/outputs/bundle/release/`.*
+Output: `build/app/outputs/bundle/release/app-release.aab`.
 
 ---
 
 ## 🧪 Testing & Code Quality
 
-Run static code analysis:
+Verify static analysis:
 ```bash
 flutter analyze
 ```
 
-Run the full automated test suite:
+Run automated test suite:
 ```bash
 flutter test
 ```
@@ -261,18 +220,16 @@ flutter test
 
 ## 🤝 Contributing
 
-Contributions are what make the open-source community an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**!
-
-Please review our [**Contributing Guide (CONTRIBUTING.md)**](CONTRIBUTING.md) for details on code style, branch naming conventions, submitting issues, and opening pull requests.
+Contributions are warmly welcomed! Please review our [**Contributing Guide (CONTRIBUTING.md)**](CONTRIBUTING.md) for details on code style, issue templates, and pull request workflows.
 
 ---
 
 ## 🛡️ License
 
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
+Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for details.
 
 ---
 
 ## ⚖️ Legal Disclaimer
 
-**Infyn DL** is intended for downloading content that you own, content in the public domain, or content for which you have express permission from the copyright holder. The developers of Infyn DL do not endorse copyright infringement and are not liable for any misuse of this software.
+**Infyn DL** is intended for personal archiving of content that you own, content in the public domain, or content for which you have authorization from the copyright holder. The maintainers do not endorse copyright infringement and are not liable for any misuse of this software.

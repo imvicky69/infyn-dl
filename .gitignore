@@ -47,4 +47,6 @@ app.*.map.json
 # Release output packages
 release_v*/
 staging-*/
+dist/*.apk
+*.apk
 

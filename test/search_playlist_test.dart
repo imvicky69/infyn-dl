@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:media_downloader/features/search/screens/search_screen.dart';
+import 'package:infyn_dl/features/search/screens/search_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -21,7 +21,8 @@ void main() {
   );
 
   group('SearchScreen Playlist & Album UI Tests', () {
-    testWidgets('Renders search input and filter chips for Songs and Playlists & Albums',
+    testWidgets(
+        'Renders search input and filter chips for Songs and Playlists & Albums',
         (tester) async {
       await tester.pumpWidget(
         const MaterialApp(

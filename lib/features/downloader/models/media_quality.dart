@@ -51,23 +51,31 @@ enum VideoQuality {
 }
 
 enum AudioQuality {
+  /// Best available audio — selects opus ~160 kbps when available, m4a otherwise.
+  /// Note: 320 kbps is not a native YouTube stream. This picks the highest bitrate
+  /// available without re-encoding, which is typically 128–165 kbps.
   k320(
-    label: '320 kbps',
-    subtitle: 'Pristine Audio',
-    shortLabel: '320k',
-    qualityValue: '0',
+    label: 'Best Available',
+    subtitle: '~128–165 kbps (Opus/M4A)',
+    shortLabel: 'Best',
+    qualityValue: 'high',
   ),
+
+  /// Native AAC stream at ~128 kbps. Always available, zero FFmpeg processing.
+  /// Recommended default: fastest download, smallest file, transparent quality.
   k192(
-    label: '192 kbps',
-    subtitle: 'Standard High',
-    shortLabel: '192k',
-    qualityValue: '2',
+    label: 'Native M4A',
+    subtitle: '~128 kbps AAC (fastest)',
+    shortLabel: '~128k',
+    qualityValue: 'mid',
   ),
+
+  /// Low-bitrate M4A mobile stream (~48 kbps). Use for data-saving.
   k128(
-    label: '128 kbps',
-    subtitle: 'Compact Size',
-    shortLabel: '128k',
-    qualityValue: '5',
+    label: 'Data Saver',
+    subtitle: '~48 kbps AAC',
+    shortLabel: '~48k',
+    qualityValue: 'low',
   );
 
   const AudioQuality({

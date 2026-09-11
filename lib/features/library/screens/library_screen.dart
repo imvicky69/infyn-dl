@@ -28,10 +28,12 @@ class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
     this.onNavigateToDownloader,
+    this.onNavigateToSearch,
     this.downloaderService,
   });
 
   final VoidCallback? onNavigateToDownloader;
+  final VoidCallback? onNavigateToSearch;
   final DownloaderService? downloaderService;
 
   @override
@@ -65,7 +67,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   void initState() {
     super.initState();
     _loadHistory();
-    DownloadHistoryService.instance.changeNotifier.addListener(_onHistoryChanged);
+    DownloadHistoryService.instance.changeNotifier
+        .addListener(_onHistoryChanged);
   }
 
   void _onHistoryChanged() {
@@ -75,13 +78,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    DownloadHistoryService.instance.changeNotifier.removeListener(_onHistoryChanged);
+    DownloadHistoryService.instance.changeNotifier
+        .removeListener(_onHistoryChanged);
     super.dispose();
   }
 
   Future<void> _loadHistory() async {
     setState(() => _isLoading = true);
-    final history = await DownloadHistoryService.instance.getHistory();
+    final history = await DownloadHistoryService.instance.getExistingHistory();
     final urlMap = <String, String>{};
     for (final item in history) {
       if (item.playlistName != null && item.playlistName!.trim().isNotEmpty) {
@@ -1720,7 +1724,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
           .download(
         url: entry.url,
         format: DownloadFormat.mp3,
-        audioQuality: AudioQuality.k320,
+        audioQuality:
+            AudioQuality.k192, // native m4a ~128 kbps, no FFmpeg transcode
         destinationDirectory: destDir,
       )
           .listen(
@@ -1737,7 +1742,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               url: entry.url,
               filePath: progress.outputFilePath ?? '',
               format: DownloadFormat.mp3,
-              quality: '320k',
+              quality: 'Native M4A',
               thumbnailUrl: entry.id.isNotEmpty
                   ? 'https://img.youtube.com/vi/${entry.id}/mqdefault.jpg'
                   : null,
@@ -2116,42 +2121,63 @@ class _LibraryScreenState extends State<LibraryScreen> {
               child: Icon(
                 Icons.folder_open_rounded,
                 size: 36,
-                color: AppColors.textMuted,
+                color: AppColors.primary,
               ),
             ),
             const SizedBox(height: 18),
             Text(
-              'No Downloads Yet',
+              'No Downloaded Media Yet',
               style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               ),
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 8),
             Text(
-              'Downloaded media will be organized here into playlist folders, unorganized downloads, and videos.',
+              'Search for music or paste a YouTube link to start downloading. Your files and playlist folders will appear here.',
               textAlign: TextAlign.center,
               style: TextStyle(
                   fontSize: 13, color: AppColors.textSecondary, height: 1.4),
             ),
-            if (widget.onNavigateToDownloader != null) ...[
-              const SizedBox(height: 20),
-              FilledButton.icon(
-                onPressed: widget.onNavigateToDownloader,
-                style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: AppColors.onPrimary,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                ),
-                icon: const Icon(Icons.download_rounded, size: 18),
-                label: const Text('Go to Downloader',
-                    style: TextStyle(fontWeight: FontWeight.w600)),
-              ),
-            ],
+            const SizedBox(height: 20),
+            Wrap(
+              spacing: 12,
+              runSpacing: 10,
+              alignment: WrapAlignment.center,
+              children: [
+                if (widget.onNavigateToSearch != null)
+                  FilledButton.icon(
+                    onPressed: widget.onNavigateToSearch,
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: AppColors.onPrimary,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 11),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.search_rounded, size: 18),
+                    label: const Text('Search Music',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                if (widget.onNavigateToDownloader != null)
+                  OutlinedButton.icon(
+                    onPressed: widget.onNavigateToDownloader,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      side: BorderSide(color: AppColors.surfaceBorder),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 18, vertical: 11),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                    ),
+                    icon: const Icon(Icons.link_rounded, size: 18),
+                    label: const Text('Go to Downloader',
+                        style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+              ],
+            ),
           ],
         ),
       ),

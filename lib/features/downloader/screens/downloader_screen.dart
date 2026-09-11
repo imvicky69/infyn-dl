@@ -32,11 +32,13 @@ class DownloaderScreen extends StatefulWidget {
     this.downloaderService,
     this.onOpenSettings,
     this.onOpenLibrary,
+    this.onOpenSearch,
   });
 
   final DownloaderService? downloaderService;
   final VoidCallback? onOpenSettings;
   final VoidCallback? onOpenLibrary;
+  final VoidCallback? onOpenSearch;
 
   @override
   State<DownloaderScreen> createState() => _DownloaderScreenState();
@@ -57,6 +59,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   PlaylistMetadata? _playlistMetadata;
   bool _isFetchingMetadata = false;
   Timer? _debounceTimer;
+  Timer? _completedDismissTimer;
 
   // Batch playlist state
   bool _isBatchDownloading = false;
@@ -73,11 +76,13 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   String _currentDownloadDir = 'Loading folder...';
   List<DownloadItem> _recentDownloads = [];
 
+  // Engine initialization state: 'initializing', 'ready', 'error'
+  String _engineState = 'initializing';
+
   @override
   void initState() {
     super.initState();
-    _downloaderService =
-        widget.downloaderService ?? AndroidDownloaderService();
+    _downloaderService = widget.downloaderService ?? AndroidDownloaderService();
     _loadInitialData();
   }
 
@@ -103,12 +108,47 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
         _recentDownloads = history.take(2).toList();
       });
     }
+
+    // Poll engine state: it initializes asynchronously on Android.
+    // Check up to 30× (3 seconds total) before giving up.
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      final service = _downloaderService;
+      final androidService = service is AndroidDownloaderService
+          ? service
+          : AndroidDownloaderService();
+      for (var i = 0; i < 30; i++) {
+        final info = await androidService.getBackendInfo();
+        final available = info['isAvailable'] == 'true';
+        final initializing = info['isInitializing'] == 'true';
+        final error = info['initError'];
+        if (available) {
+          if (mounted) setState(() => _engineState = 'ready');
+          break;
+        } else if (!initializing) {
+          // Not initializing and not available → error
+          if (mounted) {
+            setState(() => _engineState = error != null ? 'error' : 'ready');
+          }
+          break;
+        }
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      // If we exhausted attempts and still initializing, check once more
+      if (_engineState == 'initializing' && mounted) {
+        final info = await androidService.getBackendInfo();
+        final available = info['isAvailable'] == 'true';
+        setState(() => _engineState = available ? 'ready' : 'error');
+      }
+    } else {
+      if (mounted) setState(() => _engineState = 'ready');
+    }
   }
 
   @override
   void dispose() {
     _debounceTimer?.cancel();
     _downloadSubscription?.cancel();
+    _completedDismissTimer?.cancel();
     _urlController.dispose();
     super.dispose();
   }
@@ -341,6 +381,13 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
           );
           await DownloadHistoryService.instance.addDownload(downloadItem);
           _loadInitialData();
+
+          _completedDismissTimer?.cancel();
+          _completedDismissTimer = Timer(const Duration(seconds: 4), () {
+            if (mounted && _downloadProgress.isCompleted) {
+              setState(() => _downloadProgress = DownloadProgress.idle());
+            }
+          });
 
           _showSnackbar('Download completed and saved!');
         }
@@ -601,21 +648,26 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
 
                   // 2b. Search YouTube Music button
                   GestureDetector(
-                    onTap: () => YtmSearchSheet.show(
-                      context,
-                      (selectedUrl) {
-                        _urlController.text = selectedUrl;
-                        _handleUrlChanged(selectedUrl);
-                      },
-                    ),
+                    onTap: () {
+                      if (widget.onOpenSearch != null) {
+                        widget.onOpenSearch!();
+                      } else {
+                        YtmSearchSheet.show(
+                          context,
+                          (selectedUrl) {
+                            _urlController.text = selectedUrl;
+                            _handleUrlChanged(selectedUrl);
+                          },
+                        );
+                      }
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 11),
                       decoration: BoxDecoration(
                         color: AppColors.surfaceElevated,
                         borderRadius: BorderRadius.circular(14),
-                        border:
-                            Border.all(color: AppColors.surfaceBorder),
+                        border: Border.all(color: AppColors.surfaceBorder),
                       ),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -819,10 +871,22 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
             ),
             Row(
               children: [
-                Icon(Icons.circle, size: 6, color: AppColors.success),
-                SizedBox(width: 5),
+                Icon(
+                  Icons.circle,
+                  size: 6,
+                  color: _engineState == 'ready'
+                      ? AppColors.success
+                      : _engineState == 'error'
+                          ? AppColors.error
+                          : const Color(0xFFF59E0B), // amber for initializing
+                ),
+                const SizedBox(width: 5),
                 Text(
-                  'Engine Ready',
+                  _engineState == 'ready'
+                      ? 'Engine Ready'
+                      : _engineState == 'error'
+                          ? 'Engine Error'
+                          : 'Initializing…',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
@@ -947,7 +1011,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  '320k Audio',
+                  'Native Audio',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w800,
@@ -956,7 +1020,7 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  'Pristine MP3 music & audio extraction',
+                  'Native M4A — fast, no re-encoding',
                   style: TextStyle(
                     fontSize: 11,
                     color: AppColors.textSecondary,

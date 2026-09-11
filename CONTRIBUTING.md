@@ -57,8 +57,8 @@ Feature suggestions are tracked as GitHub issues. When proposing a new feature:
 
 - **Flutter SDK**: 3.19.x or later (`flutter doctor` should report no issues).
 - **Dart SDK**: 3.x (bundled with Flutter).
-- **For Windows**: Visual Studio 2022 Community with *"Desktop development with C++"*.
-- **For Android**: Android Studio with Android SDK (API 26+), Android NDK, and CMake.
+- **Android Studio**: Android SDK (API 26+), Android SDK Build-Tools, and NDK.
+- **Android Device or Emulator**: Android 7.0+ (API 26+).
 
 ---
 
@@ -78,10 +78,11 @@ Feature suggestions are tracked as GitHub issues. When proposing a new feature:
    ```bash
    flutter pub get
    ```
-5. **Download Windows Binaries** (if developing on Windows):
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File tool\setup_binaries.ps1
+5. **Run the app on Android**:
+   ```bash
+   flutter run -d android
    ```
+   *(Note: Android native dependencies like `youtubedl-android` and `ffmpeg` are automatically managed by Gradle).*
 6. **Create a topic branch**:
    ```bash
    git checkout -b feature/your-feature-name
@@ -102,7 +103,7 @@ Feature suggestions are tracked as GitHub issues. When proposing a new feature:
   - Never hardcode ad-hoc colors in widgets. Always use `AppColors` from `lib/core/theme/app_theme.dart`.
 - **Platform Channels & Abstraction**:
   - Maintain the clean separation defined in `DownloaderService` (`lib/features/downloader/services/downloader_service.dart`).
-  - Keep platform-specific code isolated in `WindowsDownloaderService` and `AndroidDownloaderService` / `AndroidDownloadManager.kt`.
+  - Native Android implementation resides in `AndroidDownloaderService` and `AndroidDownloadManager.kt`.
 - **Android Scoped Storage**:
   - Follow Android Scoped Storage best practices via `MediaStorageHelper.kt` to ensure public visibility and MediaStore indexing.
 

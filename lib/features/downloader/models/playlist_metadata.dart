@@ -45,7 +45,9 @@ class PlaylistEntry {
     // Best thumbnail: prefer explicit thumbnail field, then best from thumbnails array
     String? thumbUrl = json['thumbnail'] as String?;
     if ((thumbUrl == null || thumbUrl.isEmpty) && json['thumbnails'] is List) {
-      final thumbs = (json['thumbnails'] as List).whereType<Map<String, dynamic>>().toList();
+      final thumbs = (json['thumbnails'] as List)
+          .whereType<Map<String, dynamic>>()
+          .toList();
       // Pick highest resolution (prefer maxresdefault or largest width)
       thumbs.sort((a, b) {
         final wa = (a['width'] as num?)?.toInt() ?? 0;

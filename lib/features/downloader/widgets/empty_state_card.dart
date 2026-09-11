@@ -79,7 +79,7 @@ class EmptyStateCard extends StatelessWidget {
             children: [
               _buildTag('Videos & Shorts'),
               _buildTag('MP4 up to 4K'),
-              _buildTag('320kbps MP3'),
+              _buildTag('Native M4A ~128k'),
               _buildTag('Lossless Audio'),
             ],
           ),

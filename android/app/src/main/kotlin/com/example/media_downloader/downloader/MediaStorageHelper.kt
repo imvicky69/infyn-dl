@@ -22,7 +22,7 @@ object MediaStorageHelper {
         if (isAudio) {
             return when (file.extension.lowercase()) {
                 "mp3" -> "audio/mpeg"
-                "m4a" -> "audio/mp4"
+                "m4a", "mp4" -> "audio/mp4"
                 "opus" -> "audio/opus"
                 "flac" -> "audio/flac"
                 "wav" -> "audio/wav"

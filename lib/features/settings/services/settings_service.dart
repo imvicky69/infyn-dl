@@ -13,6 +13,7 @@ class SettingsService {
   static const String _keyPlaylistSubfolder = 'playlist_subfolder';
   static const String _keyConcurrentDownloads = 'concurrent_downloads';
   static const String _keyThemeMode = 'theme_mode';
+  static const String _keyAutoCheckUpdates = 'auto_check_updates';
 
   static SettingsService? _instance;
   static SettingsService get instance => _instance ??= SettingsService._();
@@ -77,6 +78,13 @@ class SettingsService {
 
   Future<void> setConcurrentDownloads(int count) async {
     await _prefs?.setInt(_keyConcurrentDownloads, count.clamp(1, 5));
+  }
+
+  /// Whether the app automatically checks GitHub for new releases on launch.
+  bool get autoCheckUpdates => _prefs?.getBool(_keyAutoCheckUpdates) ?? true;
+
+  Future<void> setAutoCheckUpdates(bool value) async {
+    await _prefs?.setBool(_keyAutoCheckUpdates, value);
   }
 
   /// Resolves the effective download directory.

@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/downloader_service.dart';
+import '../../home/services/catalog_service.dart';
+import '../../home/widgets/preference_selection_sheet.dart';
+import '../models/app_release_info.dart';
+import '../services/app_update_service.dart';
 import '../services/settings_service.dart';
 
 /// Clean, user-friendly settings screen.
@@ -26,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _playlistSubfolder = true;
   int _concurrentDownloads = 3;
   bool _isUpdatingEngine = false;
+  bool _autoCheckUpdates = true;
   ThemeMode _themeMode = ThemeMode.system;
 
   @override
@@ -46,10 +51,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _playlistSubfolder = SettingsService.instance.playlistSubfolder;
           _concurrentDownloads = SettingsService.instance.concurrentDownloads;
           _themeMode = SettingsService.instance.themeMode;
+          _autoCheckUpdates = SettingsService.instance.autoCheckUpdates;
         });
       }
     } catch (e) {
       debugPrint('SettingsScreen._loadSettings error: $e');
+    }
+  }
+
+  Future<void> _handleCheckForUpdates() async {
+    final release = await AppUpdateService.instance.checkForUpdates(force: true);
+    if (!mounted) return;
+    if (release != null && release.isUpdateAvailable) {
+      _showSnackbar('New update ${release.tagName} is available!');
+    } else if (AppUpdateService.instance.lastErrorNotifier.value != null) {
+      _showSnackbar(AppUpdateService.instance.lastErrorNotifier.value!,
+          isError: true);
+    } else {
+      _showSnackbar('Infyn DL is up to date (v$kCurrentAppVersion)');
     }
   }
 
@@ -158,8 +177,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     : (_themeMode == ThemeMode.light
                         ? 'Light'
                         : 'Follow system'),
-                style:
-                    TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
               ),
               trailing: SegmentedButton<ThemeMode>(
                 showSelectedIcon: false,
@@ -229,15 +247,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             foregroundColor: AppColors.onPrimary,
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10)),
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 10),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
                           ),
                           icon: const Icon(Icons.drive_file_move_rounded,
                               size: 16),
                           label: const Text('Change Folder',
                               style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600)),
+                                  fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                       ),
                       if (SettingsService.instance.customDownloadPath !=
@@ -247,8 +263,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onPressed: _resetDefaultDirectory,
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textSecondary,
-                            side:
-                                BorderSide(color: AppColors.surfaceBorder),
+                            side: BorderSide(color: AppColors.surfaceBorder),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10)),
                             padding: const EdgeInsets.symmetric(
@@ -256,8 +271,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           child: const Text('Reset',
                               style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600)),
+                                  fontSize: 13, fontWeight: FontWeight.w600)),
                         ),
                       ],
                     ],
@@ -278,8 +292,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SwitchListTile(
                   value: _autoSkip,
                   activeThumbColor: AppColors.primary,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 4),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   title: Text('Skip Already Downloaded',
                       style: TextStyle(
                           fontSize: 14,
@@ -290,8 +304,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(
                           fontSize: 12, color: AppColors.textSecondary)),
                   onChanged: (val) async {
-                    await SettingsService.instance
-                        .setAutoSkipDuplicates(val);
+                    await SettingsService.instance.setAutoSkipDuplicates(val);
                     setState(() => _autoSkip = val);
                   },
                 ),
@@ -303,8 +316,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 SwitchListTile(
                   value: _playlistSubfolder,
                   activeThumbColor: AppColors.primary,
-                  contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 4),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                   title: Text('Playlist Subfolders',
                       style: TextStyle(
                           fontSize: 14,
@@ -315,8 +328,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       style: TextStyle(
                           fontSize: 12, color: AppColors.textSecondary)),
                   onChanged: (val) async {
-                    await SettingsService.instance
-                        .setPlaylistSubfolder(val);
+                    await SettingsService.instance.setPlaylistSubfolder(val);
                     setState(() => _playlistSubfolder = val);
                   },
                 ),
@@ -342,8 +354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color:
-                                  AppColors.primary.withValues(alpha: 0.1),
+                              color: AppColors.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text('${_concurrentDownloads}x',
@@ -355,36 +366,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(
-                          'Download multiple tracks at once from a playlist',
+                      Text('Download multiple tracks at once from a playlist',
                           style: TextStyle(
-                              fontSize: 12,
-                              color: AppColors.textSecondary)),
+                              fontSize: 12, color: AppColors.textSecondary)),
                       const SizedBox(height: 12),
                       Row(
                         children: [1, 2, 3, 4, 5].map((count) {
                           final sel = _concurrentDownloads == count;
                           return Expanded(
                             child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 3),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 3),
                               child: InkWell(
                                 onTap: () async {
                                   await SettingsService.instance
                                       .setConcurrentDownloads(count);
-                                  setState(
-                                      () => _concurrentDownloads = count);
+                                  setState(() => _concurrentDownloads = count);
                                 },
                                 borderRadius: BorderRadius.circular(8),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 8),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 8),
                                   decoration: BoxDecoration(
                                     color: sel
                                         ? AppColors.primary
                                         : AppColors.surfaceElevated,
-                                    borderRadius:
-                                        BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
                                         color: sel
                                             ? AppColors.primary
@@ -413,6 +420,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
           ),
 
+          const SizedBox(height: 24),
+
+          // ── Discovery & Preferences ───────────────────────────────────────
+          _sectionLabel('DISCOVERY & PREFERENCES'),
+          const SizedBox(height: 8),
+          _card(
+            child: Column(
+              children: [
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  leading: _iconBox(Icons.tune_rounded),
+                  title: Text('Music Preferences',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  subtitle: Text(
+                    'Customize preferred languages, genres, and listening moods',
+                    style:
+                        TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  trailing: const Icon(Icons.chevron_right_rounded),
+                  onTap: () => PreferenceSelectionSheet.show(context),
+                ),
+                Divider(height: 1, color: AppColors.surfaceBorder),
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  leading: _iconBox(Icons.cloud_sync_rounded),
+                  title: Text('Curated Playlist Catalog',
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary)),
+                  subtitle: Text(
+                    '${CatalogService.instance.playlists.length} playlists loaded • Tap to refresh',
+                    style:
+                        TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                  ),
+                  trailing: CatalogService.instance.isRefreshingNotifier.value
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.refresh_rounded),
+                  onTap: () async {
+                    final success = await CatalogService.instance
+                        .refreshRemote(force: true);
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(success
+                              ? 'Catalog updated successfully from GitHub!'
+                              : 'Already using the latest playlist catalog.'),
+                        ),
+                      );
+                      setState(() {});
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+
           // ── Android only ─────────────────────────────────────────────────
           if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) ...[
             const SizedBox(height: 24),
@@ -422,20 +495,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 children: [
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
-                    leading:
-                        _iconBox(Icons.notifications_active_outlined),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: _iconBox(Icons.notifications_active_outlined),
                     title: Text('Download Notifications',
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary)),
-                    subtitle: Text(
-                        'Show progress in the notification shade',
+                    subtitle: Text('Show progress in the notification shade',
                         style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary)),
+                            fontSize: 12, color: AppColors.textSecondary)),
                     trailing: FilledButton(
                       onPressed: () async {
                         final AndroidDownloaderService s;
@@ -444,8 +514,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         } else {
                           s = AndroidDownloaderService();
                         }
-                        final granted =
-                            await s.requestNotificationPermission();
+                        final granted = await s.requestNotificationPermission();
                         if (context.mounted) {
                           _showSnackbar(granted
                               ? 'Notifications enabled!'
@@ -462,8 +531,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: const Text('Allow',
                           style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
+                              fontSize: 12, fontWeight: FontWeight.w600)),
                     ),
                   ),
                   Divider(
@@ -472,20 +540,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       endIndent: 16,
                       color: AppColors.surfaceBorder),
                   ListTile(
-                    contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 4),
-                    leading:
-                        _iconBox(Icons.battery_charging_full_outlined),
+                    contentPadding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                    leading: _iconBox(Icons.battery_charging_full_outlined),
                     title: Text('Background Downloads',
                         style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: AppColors.textPrimary)),
-                    subtitle: Text(
-                        'Keep downloading when screen is off',
+                    subtitle: Text('Keep downloading when screen is off',
                         style: TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary)),
+                            fontSize: 12, color: AppColors.textSecondary)),
                     trailing: FilledButton(
                       onPressed: () async {
                         final AndroidDownloaderService s;
@@ -506,8 +571,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: const Text('Allow',
                           style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600)),
+                              fontSize: 12, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],
@@ -516,8 +580,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 16),
             _card(
               child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16, vertical: 8),
+                contentPadding:
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 leading: _iconBox(Icons.system_update_alt_rounded),
                 title: Text('Update Downloader Engine',
                     style: TextStyle(
@@ -529,11 +593,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     style: TextStyle(
                         fontSize: 12, color: AppColors.textSecondary)),
                 trailing: FilledButton.tonal(
-                  onPressed:
-                      _isUpdatingEngine ? null : _handleUpdateEngine,
+                  onPressed: _isUpdatingEngine ? null : _handleUpdateEngine,
                   style: FilledButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                   ),
@@ -545,12 +608,221 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               strokeWidth: 2, color: AppColors.primary))
                       : const Text('Update',
                           style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700)),
+                              fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
               ),
             ),
           ],
+
+          const SizedBox(height: 24),
+
+          // ── App Updates ───────────────────────────────────────────────────
+          _sectionLabel('APP UPDATES'),
+          const SizedBox(height: 8),
+          _card(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  leading: _iconBox(Icons.system_update_rounded),
+                  title: Text(
+                    'Infyn DL v$kCurrentAppVersion',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: ValueListenableBuilder<AppReleaseInfo?>(
+                    valueListenable:
+                        AppUpdateService.instance.latestReleaseNotifier,
+                    builder: (context, release, _) {
+                      if (release != null && release.isUpdateAvailable) {
+                        return Text(
+                          'Update available: ${release.tagName}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: AppColors.primary,
+                          ),
+                        );
+                      }
+                      return Text(
+                        'Installed version',
+                        style: TextStyle(
+                            fontSize: 12, color: AppColors.textSecondary),
+                      );
+                    },
+                  ),
+                  trailing: ValueListenableBuilder<bool>(
+                    valueListenable:
+                        AppUpdateService.instance.isCheckingNotifier,
+                    builder: (context, isChecking, _) {
+                      return FilledButton.tonal(
+                        onPressed: isChecking ? null : _handleCheckForUpdates,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8)),
+                        ),
+                        child: isChecking
+                            ? SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: AppColors.primary,
+                                ),
+                              )
+                            : const Text(
+                                'Check',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                      );
+                    },
+                  ),
+                ),
+                ValueListenableBuilder<AppReleaseInfo?>(
+                  valueListenable:
+                      AppUpdateService.instance.latestReleaseNotifier,
+                  builder: (context, release, _) {
+                    if (release == null || !release.isUpdateAvailable) {
+                      return const SizedBox.shrink();
+                    }
+                    return Container(
+                      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'NEW RELEASE',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.onPrimary,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  release.title.isNotEmpty
+                                      ? release.title
+                                      : release.tagName,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (release.body.trim().isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            Text(
+                              release.body.trim(),
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                                height: 1.35,
+                              ),
+                            ),
+                          ],
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton.icon(
+                              onPressed: () => AppUpdateService.instance
+                                  .launchDownloadPage(release),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: AppColors.primary,
+                                foregroundColor: AppColors.onPrimary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                              icon: const Icon(Icons.download_rounded,
+                                  size: 16),
+                              label: Text(
+                                release.arm64ApkUrl != null
+                                    ? 'Download ${release.tagName} (APK)'
+                                    : 'Download ${release.tagName}',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+                Divider(
+                  height: 1,
+                  indent: 16,
+                  endIndent: 16,
+                  color: AppColors.surfaceBorder,
+                ),
+                SwitchListTile(
+                  value: _autoCheckUpdates,
+                  activeThumbColor: AppColors.primary,
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  title: Text(
+                    'Auto-Check for Updates',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Check GitHub for new releases on startup',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  onChanged: (val) async {
+                    await SettingsService.instance.setAutoCheckUpdates(val);
+                    setState(() => _autoCheckUpdates = val);
+                  },
+                ),
+              ],
+            ),
+          ),
 
           const SizedBox(height: 40),
 
@@ -578,15 +850,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                 ),
                 const SizedBox(height: 10),
-                Text('Infyn DL',
+                Text('Infyn DL v$kCurrentAppVersion',
                     style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary)),
                 const SizedBox(height: 3),
-                Text('Music Player & Downloader',
-                    style: TextStyle(
-                        fontSize: 12, color: AppColors.textMuted)),
+                Text('Music Player & Downloader • GitHub Releases',
+                    style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
               ],
             ),
           ),
@@ -631,5 +902,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
       child: Icon(icon, color: AppColors.primary, size: 20),
     );
   }
-
 }

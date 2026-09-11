@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/ui_feedback_helper.dart';
 import '../../../shared/widgets/shimmer_skeleton.dart';
@@ -12,6 +11,7 @@ import '../../downloader/services/music_download_manager.dart';
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
 import '../../player/services/audio_player_service.dart';
+import '../models/search_playlist_info.dart';
 import '../services/ytm_search_service.dart';
 import 'search_playlist_detail_screen.dart';
 
@@ -27,7 +27,7 @@ enum SearchFilter { songs, playlists }
 class _SearchScreenState extends State<SearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   List<Track> _songResults = [];
-  List<yt.SearchPlaylist> _playlistResults = [];
+  List<SearchPlaylistInfo> _playlistResults = [];
   List<String> _recentSearches = [];
   bool _isLoading = false;
   SearchFilter _currentFilter = SearchFilter.songs;
@@ -36,7 +36,8 @@ class _SearchScreenState extends State<SearchScreen> {
   void initState() {
     super.initState();
     _loadRecentSearches();
-    DownloadHistoryService.instance.changeNotifier.addListener(_onHistoryChanged);
+    DownloadHistoryService.instance.changeNotifier
+        .addListener(_onHistoryChanged);
     MusicScannerService.instance.tracksNotifier.addListener(_onHistoryChanged);
     MusicDownloadManager.instance.addListener(_onHistoryChanged);
   }
@@ -78,8 +79,10 @@ class _SearchScreenState extends State<SearchScreen> {
   @override
   void dispose() {
     _searchController.dispose();
-    DownloadHistoryService.instance.changeNotifier.removeListener(_onHistoryChanged);
-    MusicScannerService.instance.tracksNotifier.removeListener(_onHistoryChanged);
+    DownloadHistoryService.instance.changeNotifier
+        .removeListener(_onHistoryChanged);
+    MusicScannerService.instance.tracksNotifier
+        .removeListener(_onHistoryChanged);
     MusicDownloadManager.instance.removeListener(_onHistoryChanged);
     super.dispose();
   }
@@ -132,7 +135,8 @@ class _SearchScreenState extends State<SearchScreen> {
         return local;
       }
       if (local.id == track.id ||
-          local.title.trim().toLowerCase() == track.title.trim().toLowerCase()) {
+          local.title.trim().toLowerCase() ==
+              track.title.trim().toLowerCase()) {
         if (File(local.filePath!).existsSync()) {
           return local;
         }
@@ -189,8 +193,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   /// Downloads all tracks in a playlist in background
-  Future<void> _downloadPlaylist(yt.SearchPlaylist playlist) async {
-    final playlistId = playlist.id.value;
+  Future<void> _downloadPlaylist(SearchPlaylistInfo playlist) async {
+    final playlistId = playlist.id;
     if (MusicDownloadManager.instance.isBatchActive &&
         MusicDownloadManager.instance.batchPlaylistName == playlist.title) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -423,7 +427,8 @@ class _SearchScreenState extends State<SearchScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.history_rounded, size: 16, color: AppColors.textSecondary),
+              Icon(Icons.history_rounded,
+                  size: 16, color: AppColors.textSecondary),
               const SizedBox(width: 8),
               Text(
                 'RECENT SEARCHES',
@@ -725,7 +730,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  void _openPlaylistDetail(yt.SearchPlaylist playlist) {
+  void _openPlaylistDetail(SearchPlaylistInfo playlist) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => SearchPlaylistDetailScreen(playlist: playlist),
@@ -733,7 +738,7 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildPlaylistTile(yt.SearchPlaylist playlist) {
+  Widget _buildPlaylistTile(SearchPlaylistInfo playlist) {
     final isDownloading = MusicDownloadManager.instance.isBatchActive &&
         MusicDownloadManager.instance.batchPlaylistName == playlist.title;
     final progressStatus = isDownloading
@@ -744,9 +749,9 @@ class _SearchScreenState extends State<SearchScreen> {
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       leading: ClipRRect(
         borderRadius: BorderRadius.circular(8),
-        child: playlist.thumbnails.isNotEmpty
+        child: playlist.thumbnailUrl != null
             ? Image.network(
-                playlist.thumbnails.first.url.toString(),
+                playlist.thumbnailUrl!,
                 width: 50,
                 height: 50,
                 fit: BoxFit.cover,
@@ -767,7 +772,7 @@ class _SearchScreenState extends State<SearchScreen> {
       subtitle: Text(
         isDownloading && progressStatus != null
             ? progressStatus
-            : '${playlist.videoCount} tracks • Tap to view & download',
+            : playlist.subtitle,
         style: TextStyle(
           color: isDownloading ? AppColors.primary : AppColors.textSecondary,
           fontSize: 13,

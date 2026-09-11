@@ -172,7 +172,10 @@ class FileResolver {
               (item.format == DownloadFormat.mp4 &&
                   (ext == '.mkv' || ext == '.webm' || ext == '.mp4')) ||
               (item.format == DownloadFormat.mp3 &&
-                  (ext == legacyAudioExt || ext == '.opus' || ext == '.ogg' || ext == '.aac'));
+                  (ext == legacyAudioExt ||
+                      ext == '.opus' ||
+                      ext == '.ogg' ||
+                      ext == '.aac'));
           if (!isExtMatch) continue;
 
           final entityName = p.basenameWithoutExtension(entity.path);

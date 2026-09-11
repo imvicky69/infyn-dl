@@ -217,8 +217,7 @@ class _YtmSearchSheetState extends State<YtmSearchSheet> {
                   width: _focusNode.hasFocus ? 1.5 : 1,
                 ),
               ),
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               child: Row(
                 children: [
                   Icon(Icons.search_rounded,
@@ -442,13 +441,15 @@ class _YtmSearchSheetState extends State<YtmSearchSheet> {
                 'Arijit Singh',
                 'Lofi Hip Hop',
                 'Punjabi Hits',
-              ].map((s) => _SuggestionChip(
-                    label: s,
-                    onTap: () {
-                      _searchCtrl.text = s;
-                      _onQueryChanged(s);
-                    },
-                  )).toList(),
+              ]
+                  .map((s) => _SuggestionChip(
+                        label: s,
+                        onTap: () {
+                          _searchCtrl.text = s;
+                          _onQueryChanged(s);
+                        },
+                      ))
+                  .toList(),
             ),
           ],
         ),
@@ -534,8 +535,7 @@ class _ResultTile extends StatelessWidget {
 
             // Type badge
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: _badgeColor(result.type).withValues(alpha: 0.12),
                 borderRadius: BorderRadius.circular(6),

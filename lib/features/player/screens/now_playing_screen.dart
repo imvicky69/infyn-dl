@@ -244,8 +244,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                       ListenableBuilder(
                         listenable: LikedSongsService.instance,
                         builder: (context, _) {
-                          final liked = LikedSongsService.instance
-                              .isLiked(track.id);
+                          final liked =
+                              LikedSongsService.instance.isLiked(track.id);
                           return IconButton(
                             onPressed: () {
                               HapticFeedback.lightImpact();
@@ -278,51 +278,68 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                   alignment: Alignment.center,
                                   children: [
                                     CircularProgressIndicator(
-                                      value: _downloadProgress > 0 ? _downloadProgress : null,
+                                      value: _downloadProgress > 0
+                                          ? _downloadProgress
+                                          : null,
                                       strokeWidth: 2.5,
                                       color: AppColors.primary,
                                       backgroundColor: AppColors.surfaceBorder,
                                     ),
-                                    Icon(Icons.download_rounded, size: 16, color: AppColors.primary),
+                                    Icon(Icons.download_rounded,
+                                        size: 16, color: AppColors.primary),
                                   ],
                                 ),
                               )
                             : IconButton(
                                 onPressed: () {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Downloading "${track.title}"...')),
+                                    SnackBar(
+                                        content: Text(
+                                            'Downloading "${track.title}"...')),
                                   );
                                   setState(() {
                                     _isDownloading = true;
                                     _downloadProgress = 0.0;
                                   });
-                                  AndroidDownloaderService().download(
+                                  AndroidDownloaderService()
+                                      .download(
                                     url: track.webUrl!,
                                     format: DownloadFormat.mp3,
-                                  ).listen((progress) async {
+                                  )
+                                      .listen((progress) async {
                                     if (mounted) {
                                       setState(() {
                                         _downloadProgress = progress.progress;
                                       });
-                                      if (progress.status == DownloadStatus.completed) {
+                                      if (progress.status ==
+                                          DownloadStatus.completed) {
                                         final downloadItem = DownloadItem(
-                                          id: DateTime.now().millisecondsSinceEpoch.toString(),
+                                          id: DateTime.now()
+                                              .millisecondsSinceEpoch
+                                              .toString(),
                                           title: progress.title ?? track.title,
                                           url: track.webUrl ?? '',
-                                          filePath: progress.outputFilePath ?? '',
+                                          filePath:
+                                              progress.outputFilePath ?? '',
                                           format: DownloadFormat.mp3,
                                           quality: 'Best (Audio)',
                                           thumbnailUrl: track.artworkPath,
                                           timestamp: DateTime.now(),
                                         );
-                                        await DownloadHistoryService.instance.addDownload(downloadItem);
-                                        await MusicScannerService.instance.scanMusicDirectory(forceRefresh: true);
+                                        await DownloadHistoryService.instance
+                                            .addDownload(downloadItem);
+                                        await MusicScannerService.instance
+                                            .scanMusicDirectory(
+                                                forceRefresh: true);
                                         if (mounted) {
                                           setState(() {
                                             _isDownloading = false;
                                           });
                                         }
-                                      } else if (progress.status == DownloadStatus.failed || progress.status == DownloadStatus.cancelled) {
+                                      } else if (progress.status ==
+                                              DownloadStatus.failed ||
+                                          progress.status ==
+                                              DownloadStatus.cancelled) {
                                         setState(() {
                                           _isDownloading = false;
                                         });
@@ -334,7 +351,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                     }
                                   });
                                 },
-                                icon: Icon(Icons.download_rounded, color: AppColors.textSecondary, size: 24),
+                                icon: Icon(Icons.download_rounded,
+                                    color: AppColors.textSecondary, size: 24),
                                 tooltip: 'Download',
                               ),
                       ],
@@ -589,9 +607,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
             return Container(
               height: MediaQuery.of(ctx).size.height * 0.72,
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF141416)
-                    : const Color(0xFFFFFFFF),
+                color:
+                    isDark ? const Color(0xFF141416) : const Color(0xFFFFFFFF),
                 borderRadius:
                     const BorderRadius.vertical(top: Radius.circular(24)),
               ),
@@ -608,8 +625,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                     child: Row(
                       children: [
                         Text(
@@ -768,8 +785,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                                   ],
                                 ),
                                 onTap: () {
-                                  player.playTrack(item,
-                                      queue: player.queue);
+                                  player.playTrack(item, queue: player.queue);
                                   Navigator.pop(ctx);
                                 },
                               ),

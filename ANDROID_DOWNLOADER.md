@@ -131,8 +131,8 @@ To achieve maximum throughput and prevent freezing or format errors on Android:
    `--socket-timeout 30`, `--retries 10`, `--fragment-retries 10`, and `--file-access-retries 5` prevent unhandled socket drops or network jitter from freezing the download job.
 4. **IPC & Event Throttling**:
    Atomic snapshot polling in `AndroidDownloadManager.kt` prevents Android Binder saturation and main-thread UI jank.
-5. **Direct Player Client Configuration**:
-   Extractor args use `youtube:player_client=android,web;player_skip=configs,webpage` to retrieve full formats without triggering PO-token/SABR format skipping warnings.
+5. **Resilient Format Negotiation & Fallbacks**:
+   Default client negotiation avoids restrictive SABR/PO-token format filtering, while multi-tier format selectors (`bestaudio[ext=m4a]/bestaudio[acodec=aac]/bestaudio/best`) ensure high quality native AAC when available with guaranteed graceful fallbacks.
 
 ---
 

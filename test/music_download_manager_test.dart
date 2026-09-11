@@ -3,17 +3,17 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:media_downloader/features/downloader/models/download_format.dart';
-import 'package:media_downloader/features/downloader/models/download_progress.dart';
-import 'package:media_downloader/features/downloader/models/media_quality.dart';
-import 'package:media_downloader/features/downloader/models/playlist_metadata.dart';
-import 'package:media_downloader/features/downloader/models/video_metadata.dart';
-import 'package:media_downloader/features/downloader/services/download_history_service.dart';
-import 'package:media_downloader/features/downloader/services/downloader_service.dart';
-import 'package:media_downloader/features/downloader/services/music_download_manager.dart';
-import 'package:media_downloader/features/home/screens/main_shell_screen.dart';
-import 'package:media_downloader/features/library/models/track.dart';
-import 'package:media_downloader/features/player/widgets/mini_player.dart';
+import 'package:infyn_dl/features/downloader/models/download_format.dart';
+import 'package:infyn_dl/features/downloader/models/download_progress.dart';
+import 'package:infyn_dl/features/downloader/models/media_quality.dart';
+import 'package:infyn_dl/features/downloader/models/playlist_metadata.dart';
+import 'package:infyn_dl/features/downloader/models/video_metadata.dart';
+import 'package:infyn_dl/features/downloader/services/download_history_service.dart';
+import 'package:infyn_dl/features/downloader/services/downloader_service.dart';
+import 'package:infyn_dl/features/downloader/services/music_download_manager.dart';
+import 'package:infyn_dl/features/home/screens/main_shell_screen.dart';
+import 'package:infyn_dl/features/library/models/track.dart';
+import 'package:infyn_dl/features/player/widgets/mini_player.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class _FakeMusicDownloaderService implements DownloaderService {
@@ -96,7 +96,8 @@ void main() {
   });
 
   group('MusicDownloadManager Tests', () {
-    test('Downloads single track in background and persists to history', () async {
+    test('Downloads single track in background and persists to history',
+        () async {
       final fakeService = _FakeMusicDownloaderService();
       final manager = MusicDownloadManager.instance;
       manager.downloaderService = fakeService;
@@ -123,7 +124,8 @@ void main() {
       // Complete download
       final sampleMp3 = File('${tempDir.path}/Background Symphony.mp3');
       await sampleMp3.writeAsString('audio-bytes');
-      fakeService.complete(track.webUrl!, filePath: sampleMp3.path, title: track.title);
+      fakeService.complete(track.webUrl!,
+          filePath: sampleMp3.path, title: track.title);
 
       await Future<void>.delayed(const Duration(milliseconds: 50));
 
@@ -134,7 +136,8 @@ void main() {
   });
 
   group('MainShellScreen Non-Overlapping Layout Tests', () {
-    testWidgets('Renders MiniPlayer below IndexedStack in Column to prevent overlap',
+    testWidgets(
+        'Renders MiniPlayer below IndexedStack in Column to prevent overlap',
         (tester) async {
       tester.view.physicalSize = const Size(400, 800);
       tester.view.devicePixelRatio = 1.0;

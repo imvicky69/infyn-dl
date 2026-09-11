@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import '../../../core/utils/file_resolver.dart';
 import '../models/download_format.dart';
 import '../models/download_item.dart';
 import '../../settings/services/settings_service.dart';
@@ -134,6 +135,55 @@ class DownloadHistoryService {
         _cachedItems..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
   }
 
+  /// Returns only downloads whose physical files actually exist on disk,
+  /// attempting self-healing resolution for moved files.
+  Future<List<DownloadItem>> getExistingHistory() async {
+    if (!_isInitialized) await init();
+    final valid = <DownloadItem>[];
+    var cacheModified = false;
+
+    for (var i = 0; i < _cachedItems.length; i++) {
+      final item = _cachedItems[i];
+      if (item.filePath.isEmpty) continue;
+
+      if (File(item.filePath).existsSync()) {
+        valid.add(item);
+      } else {
+        // Attempt self-healing resolution
+        final resolved = await FileResolver.resolveFile(item);
+        if (resolved != null && File(resolved).existsSync()) {
+          final updated = item.copyWith(filePath: resolved);
+          _cachedItems[i] = updated;
+          valid.add(updated);
+          cacheModified = true;
+        }
+      }
+    }
+
+    if (cacheModified) {
+      await _persistToDisk();
+    }
+
+    return List.unmodifiable(
+        valid..sort((a, b) => b.timestamp.compareTo(a.timestamp)));
+  }
+
+  /// Prunes downloads from the cache whose files no longer exist on disk.
+  Future<int> pruneMissingDownloads() async {
+    if (!_isInitialized) await init();
+    final beforeCount = _cachedItems.length;
+    _cachedItems.removeWhere((item) {
+      if (item.filePath.isEmpty) return true;
+      return !File(item.filePath).existsSync();
+    });
+    final removed = beforeCount - _cachedItems.length;
+    if (removed > 0) {
+      await _persistToDisk();
+      changeNotifier.value++;
+    }
+    return removed;
+  }
+
   /// Adds a completed download item to the persistent history.
   Future<void> addDownload(DownloadItem item) async {
     if (!_isInitialized) await init();
@@ -184,15 +234,19 @@ class DownloadHistoryService {
   }
 
   /// Returns the existing DownloadItem for a given title or URL if already downloaded and file exists.
-  Future<DownloadItem?> getDownloadedItemForTitleOrUrl(String title, {String? url}) async {
+  Future<DownloadItem?> getDownloadedItemForTitleOrUrl(String title,
+      {String? url}) async {
     if (!_isInitialized) await init();
     final cleanTitle = _sanitizeFilename(title).toLowerCase();
     final cleanUrl = url?.trim().toLowerCase();
 
     for (final item in _cachedItems) {
       if (item.filePath.isEmpty) continue;
-      final matchTitle = _sanitizeFilename(item.title).toLowerCase() == cleanTitle;
-      final matchUrl = cleanUrl != null && cleanUrl.isNotEmpty && item.url.trim().toLowerCase() == cleanUrl;
+      final matchTitle =
+          _sanitizeFilename(item.title).toLowerCase() == cleanTitle;
+      final matchUrl = cleanUrl != null &&
+          cleanUrl.isNotEmpty &&
+          item.url.trim().toLowerCase() == cleanUrl;
       if (matchTitle || matchUrl) {
         try {
           if (await File(item.filePath).exists()) {
@@ -241,24 +295,29 @@ class DownloadHistoryService {
         final dir = Directory(targetDirectory);
         if (await dir.exists()) {
           // Check primary extension first
-          final expectedFile = File(p.join(targetDirectory, '$cleanTitle.$ext'));
+          final expectedFile =
+              File(p.join(targetDirectory, '$cleanTitle.$ext'));
           if (await expectedFile.exists()) return true;
 
           // For audio, also check legacy .mp3 and other audio containers
           if (format == DownloadFormat.mp3) {
             for (final altExt in audioExts) {
-              final altFile = File(p.join(targetDirectory, '$cleanTitle.$altExt'));
+              final altFile =
+                  File(p.join(targetDirectory, '$cleanTitle.$altExt'));
               if (await altFile.exists()) return true;
             }
           }
 
           // Scan directory files for matching title (handles title-sanitization mismatches)
           final entities = await dir.list().toList();
-          final validExts = format == DownloadFormat.mp3 ? audioExts : ['mp4', 'mkv', 'webm'];
+          final validExts =
+              format == DownloadFormat.mp3 ? audioExts : ['mp4', 'mkv', 'webm'];
           for (final entity in entities) {
             if (entity is File) {
-              final fileName = p.basenameWithoutExtension(entity.path).toLowerCase();
-              final fileExt = p.extension(entity.path).replaceFirst('.', '').toLowerCase();
+              final fileName =
+                  p.basenameWithoutExtension(entity.path).toLowerCase();
+              final fileExt =
+                  p.extension(entity.path).replaceFirst('.', '').toLowerCase();
               if (validExts.contains(fileExt) &&
                   (fileName == cleanTitle || fileName.contains(cleanTitle))) {
                 return true;

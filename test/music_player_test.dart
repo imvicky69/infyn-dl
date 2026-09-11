@@ -1,15 +1,17 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:media_downloader/features/library/models/music_playlist.dart';
-import 'package:media_downloader/features/library/models/track.dart';
-import 'package:media_downloader/features/library/services/music_scanner_service.dart';
-import 'package:media_downloader/features/player/services/audio_player_service.dart';
+import 'package:infyn_dl/features/library/models/music_playlist.dart';
+import 'package:infyn_dl/features/library/models/track.dart';
+import 'package:infyn_dl/features/library/services/music_scanner_service.dart';
+import 'package:infyn_dl/features/player/services/audio_player_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   setUp(() {
+    SharedPreferences.setMockInitialValues({});
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(
       const MethodChannel('com.ryanheise.just_audio.methods'),
@@ -79,6 +81,31 @@ void main() {
         filePath: '/test/song.mp3',
       );
       expect(track1, equals(track2));
+    });
+
+    test('Track toJson and fromJson round-trips correctly', () {
+      const original = Track(
+        id: 'track_123',
+        title: 'Tere Hawale',
+        artist: 'Arijit Singh',
+        filePath: '/storage/Tere Hawale.m4a',
+        webUrl: 'https://www.youtube.com/watch?v=track_123',
+        duration: Duration(minutes: 5, seconds: 45),
+        album: 'Laal Singh Chaddha',
+        artworkPath: 'https://i.ytimg.com/vi/track_123/hqdefault.jpg',
+      );
+
+      final json = original.toJson();
+      final restored = Track.fromJson(json);
+
+      expect(restored.id, original.id);
+      expect(restored.title, original.title);
+      expect(restored.artist, original.artist);
+      expect(restored.filePath, original.filePath);
+      expect(restored.webUrl, original.webUrl);
+      expect(restored.duration, original.duration);
+      expect(restored.album, original.album);
+      expect(restored.artworkPath, original.artworkPath);
     });
   });
 

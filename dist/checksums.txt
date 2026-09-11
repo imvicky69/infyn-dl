@@ -1,0 +1,4 @@
+fce3ecb17b5d4ce16dca23e5ec716fe4036fcc89ba9326b0fe475f7a419a544b  Infyn-DL-v1.0.3-android-arm64.apk
+1c2d0a8dc614ddda57e079cf15d7ec4eb9d9fff611b1ebf33e5b22915dcea61a  Infyn-DL-v1.0.3-android-armeabi-v7a.apk
+88ef06d02b8feb550e3c00c43f28e264246d42d23df63de4dcf6a766b22e367d  Infyn-DL-v1.0.3-android-x86_64.apk
+d7b6e1ede53af3893d34f8538da74e7acb19a6eabc5fd3cf5ca62dd0a4b6c135  Infyn-DL-v1.0.3-android-universal.apk

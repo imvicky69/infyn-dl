@@ -10,11 +10,11 @@ class PlaylistDetailScreen extends StatefulWidget {
   const PlaylistDetailScreen({
     super.key,
     required this.playlist,
-    required this.onBack,
+    this.onBack,
   });
 
   final MusicPlaylist playlist;
-  final VoidCallback onBack;
+  final VoidCallback? onBack;
 
   @override
   State<PlaylistDetailScreen> createState() => _PlaylistDetailScreenState();
@@ -137,7 +137,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
         children: [
           // Back Button
           InkWell(
-            onTap: widget.onBack,
+            onTap: widget.onBack ?? () => Navigator.of(context).maybePop(),
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),

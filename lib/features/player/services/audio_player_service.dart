@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
@@ -6,6 +8,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
+import 'recently_played_service.dart';
 
 enum PlayerLoopMode { off, all, one }
 
@@ -109,6 +112,8 @@ class AudioPlayerService extends ChangeNotifier {
 
   // ── State persistence ────────────────────────────────────────────────────────
 
+  static const String _kLastTrackJson = 'player_last_track_json';
+  static const String _kLastQueueJson = 'player_last_queue_json';
   static const String _kLastTrackId = 'player_last_track_id';
   static const String _kLastQueueIds = 'player_last_queue_ids';
   static const String _kLastPosition = 'player_last_position_ms';
@@ -125,7 +130,11 @@ class AudioPlayerService extends ChangeNotifier {
     if (_currentTrack == null) return;
     try {
       final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(
+          _kLastTrackJson, jsonEncode(_currentTrack!.toJson()));
       await prefs.setString(_kLastTrackId, _currentTrack!.id);
+      await prefs.setString(
+          _kLastQueueJson, jsonEncode(_queue.map((t) => t.toJson()).toList()));
       await prefs.setStringList(
           _kLastQueueIds, _queue.map((t) => t.id).toList());
       await prefs.setInt(_kLastPosition, _position.inMilliseconds);
@@ -140,46 +149,74 @@ class AudioPlayerService extends ChangeNotifier {
   Future<void> _restoreLastState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final lastTrackId = prefs.getString(_kLastTrackId);
-      if (lastTrackId == null) return;
 
-      final queueIds = prefs.getStringList(_kLastQueueIds) ?? [];
+      Track? restoredTrack;
+      final lastTrackJsonStr = prefs.getString(_kLastTrackJson);
+      if (lastTrackJsonStr != null && lastTrackJsonStr.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(lastTrackJsonStr);
+          if (decoded is Map<String, dynamic>) {
+            restoredTrack = Track.fromJson(decoded);
+          }
+        } catch (_) {}
+      }
+
       final positionMs = prefs.getInt(_kLastPosition) ?? 0;
       final shuffle = prefs.getBool(_kLastShuffle) ?? false;
       final loopIndex = prefs.getInt(_kLastLoop) ?? 0;
       final savedIndex = prefs.getInt(_kLastIndex) ?? 0;
 
-      // Wait for scanner to populate tracks
-      await Future.delayed(const Duration(milliseconds: 300));
-      final allTracks = MusicScannerService.instance.tracksNotifier.value;
+      // Restore queue from JSON if available
+      List<Track> restoredQueue = [];
+      final queueJsonStr = prefs.getString(_kLastQueueJson);
+      if (queueJsonStr != null && queueJsonStr.isNotEmpty) {
+        try {
+          final List<dynamic> decodedList = jsonDecode(queueJsonStr);
+          restoredQueue = decodedList
+              .map((item) => Track.fromJson(Map<String, dynamic>.from(item)))
+              .where((t) => t.id.isNotEmpty && t.title.isNotEmpty)
+              .toList();
+        } catch (_) {}
+      }
 
-      // Build track lookup by ID
-      final byId = {for (final t in allTracks) t.id: t};
-
-      final restoredQueue = queueIds
-          .map((p) => byId[p])
-          .whereType<Track>()
-          .toList();
-
-      if (restoredQueue.isEmpty) return;
-
-      final restoredTrack = byId[lastTrackId];
-      if (restoredTrack == null) return;
+      // Fallback for legacy installs
+      if (restoredTrack == null) {
+        final lastTrackId = prefs.getString(_kLastTrackId);
+        if (lastTrackId == null) return;
+        final allTracks = MusicScannerService.instance.tracksNotifier.value;
+        restoredTrack = allTracks.where((t) => t.id == lastTrackId).firstOrNull;
+        if (restoredTrack == null) return;
+      }
 
       _isShuffle = shuffle;
-      _loopMode = PlayerLoopMode.values[loopIndex.clamp(0, PlayerLoopMode.values.length - 1)];
-      _originalQueue = List<Track>.from(restoredQueue);
-      _queue = List<Track>.from(restoredQueue);
-      _currentIndex = savedIndex.clamp(0, _queue.length - 1);
+      _loopMode = PlayerLoopMode
+          .values[loopIndex.clamp(0, PlayerLoopMode.values.length - 1)];
       _currentTrack = restoredTrack;
       _position = Duration(milliseconds: positionMs);
       _duration = restoredTrack.duration ?? Duration.zero;
 
-      // Load audio but do NOT auto-play
-      if (restoredTrack.isLocal && restoredTrack.filePath != null) {
-        await _player?.setFilePath(restoredTrack.filePath!);
-        if (positionMs > 0) {
-          await _player?.seek(Duration(milliseconds: positionMs));
+      if (restoredQueue.isNotEmpty) {
+        _originalQueue = List<Track>.from(restoredQueue);
+        _queue = List<Track>.from(restoredQueue);
+        _currentIndex = savedIndex.clamp(0, _queue.length - 1);
+      } else {
+        _originalQueue = [restoredTrack];
+        _queue = [restoredTrack];
+        _currentIndex = 0;
+      }
+
+      // Load local audio file into player without auto-playing
+      if (restoredTrack.isLocal &&
+          restoredTrack.filePath != null &&
+          File(restoredTrack.filePath!).existsSync()) {
+        try {
+          await _player?.setFilePath(restoredTrack.filePath!);
+          if (positionMs > 0) {
+            await _player?.seek(Duration(milliseconds: positionMs));
+          }
+        } catch (e) {
+          debugPrint(
+              'AudioPlayerService: Error setting restored file path: $e');
         }
       }
 
@@ -194,6 +231,8 @@ class AudioPlayerService extends ChangeNotifier {
   /// Plays a track and optionally updates the playback queue.
   Future<void> playTrack(Track track, {List<Track>? queue}) async {
     try {
+      // Record to persistent recently played history
+      RecentlyPlayedService.instance.addTrack(track);
       if (queue != null && queue.isNotEmpty) {
         _originalQueue = List<Track>.from(queue);
         if (_isShuffle) {
@@ -218,30 +257,30 @@ class AudioPlayerService extends ChangeNotifier {
       notifyListeners();
 
       try {
-      if (track.isLocal && track.filePath != null) {
-        final fileUri = Uri.file(track.filePath!);
-        Uri? artUri;
-        if (track.artworkPath != null && track.artworkPath!.isNotEmpty) {
-          artUri = track.artworkPath!.startsWith('http')
-              ? Uri.tryParse(track.artworkPath!)
-              : Uri.file(track.artworkPath!);
-        }
-        await _player?.setAudioSource(
-          AudioSource.uri(
-            fileUri,
-            tag: MediaItem(
-              id: track.id,
-              title: track.title,
-              artist: track.artist,
-              artUri: artUri,
+        if (track.isLocal && track.filePath != null) {
+          final fileUri = Uri.file(track.filePath!);
+          Uri? artUri;
+          if (track.artworkPath != null && track.artworkPath!.isNotEmpty) {
+            artUri = track.artworkPath!.startsWith('http')
+                ? Uri.tryParse(track.artworkPath!)
+                : Uri.file(track.artworkPath!);
+          }
+          await _player?.setAudioSource(
+            AudioSource.uri(
+              fileUri,
+              tag: MediaItem(
+                id: track.id,
+                title: track.title,
+                artist: track.artist,
+                artUri: artUri,
+              ),
             ),
-          ),
-        );
-      } else {
-        debugPrint(
-            'AudioPlayerService: Cannot play track "${track.title}" without a local file.');
-        return;
-      }
+          );
+        } else {
+          debugPrint(
+              'AudioPlayerService: Cannot play track "${track.title}" without a local file.');
+          return;
+        }
 
         final loadedDuration = _player?.duration;
         if (loadedDuration != null) {

@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../downloader/screens/downloader_screen.dart';
 import '../../downloader/services/downloader_service.dart';
-import '../../library/screens/library_shell_screen.dart';
+import '../../library/screens/library_screen.dart';
 import '../../library/screens/music_library_screen.dart';
 import '../../player/screens/desktop_player_screen.dart';
 import '../../player/services/audio_player_service.dart';
@@ -66,10 +67,24 @@ class _MainShellScreenState extends State<MainShellScreen> {
                         MusicLibraryScreen(
                           onNavigateToDownloader: () =>
                               setState(() => _currentIndex = 2),
+                          onNavigateToSearch: () =>
+                              setState(() => _currentIndex = 1),
                         ),
                         const SearchScreen(),
-                        LibraryShellScreen(
+                        DownloaderScreen(
                           downloaderService: widget.downloaderService,
+                          onOpenSettings: () =>
+                              setState(() => _currentIndex = 4),
+                          onOpenLibrary: () =>
+                              setState(() => _currentIndex = 3),
+                          onOpenSearch: () => setState(() => _currentIndex = 1),
+                        ),
+                        LibraryScreen(
+                          downloaderService: widget.downloaderService,
+                          onNavigateToDownloader: () =>
+                              setState(() => _currentIndex = 2),
+                          onNavigateToSearch: () =>
+                              setState(() => _currentIndex = 1),
                         ),
                         SettingsScreen(
                           downloaderService: widget.downloaderService,
@@ -168,12 +183,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
           ),
           _buildSidebarNavItem(
             index: 2,
+            icon: Icons.download_outlined,
+            selectedIcon: Icons.download_rounded,
+            label: 'Downloader',
+          ),
+          _buildSidebarNavItem(
+            index: 3,
             icon: Icons.folder_outlined,
             selectedIcon: Icons.folder_rounded,
             label: 'Library',
           ),
           _buildSidebarNavItem(
-            index: 3,
+            index: 4,
             icon: Icons.settings_outlined,
             selectedIcon: Icons.settings_rounded,
             label: 'Settings',
@@ -271,8 +292,7 @@ class _MainShellScreenState extends State<MainShellScreen> {
                   label,
                   style: TextStyle(
                     fontSize: 13,
-                    fontWeight:
-                        isSelected ? FontWeight.w700 : FontWeight.w500,
+                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected
                         ? AppColors.primary
                         : AppColors.textSecondary,
@@ -300,17 +320,29 @@ class _MainShellScreenState extends State<MainShellScreen> {
             child: IndexedStack(
               index: _currentIndex,
               children: [
-                // 0 — Music
+                // 0 — Music Library (with Featured Playlists)
                 MusicLibraryScreen(
-                  onNavigateToDownloader: () => setState(() => _currentIndex = 2),
+                  onNavigateToDownloader: () =>
+                      setState(() => _currentIndex = 2),
+                  onNavigateToSearch: () => setState(() => _currentIndex = 1),
                 ),
                 // 1 — Search
                 const SearchScreen(),
-                // 2 — Library
-                LibraryShellScreen(
+                // 2 — Downloader
+                DownloaderScreen(
                   downloaderService: widget.downloaderService,
+                  onOpenSettings: () => setState(() => _currentIndex = 4),
+                  onOpenLibrary: () => setState(() => _currentIndex = 3),
+                  onOpenSearch: () => setState(() => _currentIndex = 1),
                 ),
-                // 3 — Settings
+                // 3 — Library
+                LibraryScreen(
+                  downloaderService: widget.downloaderService,
+                  onNavigateToDownloader: () =>
+                      setState(() => _currentIndex = 2),
+                  onNavigateToSearch: () => setState(() => _currentIndex = 1),
+                ),
+                // 4 — Settings
                 SettingsScreen(
                   downloaderService: widget.downloaderService,
                 ),
@@ -348,12 +380,18 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ),
                 _buildMobileNavItem(
                   index: 2,
+                  icon: Icons.download_outlined,
+                  selectedIcon: Icons.download_rounded,
+                  label: 'Downloader',
+                ),
+                _buildMobileNavItem(
+                  index: 3,
                   icon: Icons.folder_outlined,
                   selectedIcon: Icons.folder_rounded,
                   label: 'Library',
                 ),
                 _buildMobileNavItem(
-                  index: 3,
+                  index: 4,
                   icon: Icons.settings_outlined,
                   selectedIcon: Icons.settings_rounded,
                   label: 'Settings',
@@ -385,7 +423,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
             children: [
               AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? AppColors.primary.withValues(alpha: 0.12)
@@ -395,7 +434,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 child: Icon(
                   isSelected ? selectedIcon : icon,
                   size: 22,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  color:
+                      isSelected ? AppColors.primary : AppColors.textSecondary,
                 ),
               ),
               const SizedBox(height: 2),
@@ -404,7 +444,8 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 style: TextStyle(
                   fontSize: 10.5,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : AppColors.textSecondary,
+                  color:
+                      isSelected ? AppColors.primary : AppColors.textSecondary,
                   letterSpacing: -0.1,
                 ),
               ),

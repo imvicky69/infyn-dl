@@ -49,9 +49,12 @@ class VideoMetadata {
     if (durationSeconds <= 0) {
       return audioSizeBytes != null ? _formatBytes(audioSizeBytes!) : '~8 MB';
     }
-    // Estimate based on bitrate and duration
-    // 320 kbps = 40 KB/s, 192 kbps = 24 KB/s, 128 kbps = 16 KB/s
-    final kbps = qualityValue == '0' ? 320 : (qualityValue == '2' ? 192 : 128);
+    // Estimate based on real YouTube stream bitrates:
+    //   high = bestaudio (opus ~160 kbps or m4a ~128 kbps, whichever is higher)
+    //   mid  = native m4a AAC ~128 kbps (always available, no re-encode)
+    //   low  = mobile m4a ~48 kbps (data saver)
+    final kbps =
+        qualityValue == 'high' ? 165 : (qualityValue == 'low' ? 48 : 128);
     final bytes = (kbps * 1000 / 8 * durationSeconds).round();
     return _formatBytes(bytes);
   }

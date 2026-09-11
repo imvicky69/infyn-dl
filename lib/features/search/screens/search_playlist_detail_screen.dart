@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/ui_feedback_helper.dart';
 import '../../../shared/widgets/shimmer_skeleton.dart';
@@ -11,6 +10,7 @@ import '../../downloader/services/music_download_manager.dart';
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
 import '../../player/services/audio_player_service.dart';
+import '../models/search_playlist_info.dart';
 import '../services/ytm_search_service.dart';
 
 /// Screen allowing users to view all tracks in an online playlist or album,
@@ -22,7 +22,7 @@ class SearchPlaylistDetailScreen extends StatefulWidget {
     required this.playlist,
   });
 
-  final yt.SearchPlaylist playlist;
+  final SearchPlaylistInfo playlist;
 
   @override
   State<SearchPlaylistDetailScreen> createState() =>
@@ -53,7 +53,13 @@ class _SearchPlaylistDetailScreenState
   @override
   void initState() {
     super.initState();
-    _fetchTracks();
+    final syncCached = YtmSearchService.instance
+        .getCachedPlaylistTracksSync(widget.playlist.id);
+    if (syncCached != null && syncCached.isNotEmpty) {
+      _tracks = syncCached;
+      _isLoading = false;
+    }
+    _fetchTracks(hasCached: syncCached != null && syncCached.isNotEmpty);
     DownloadHistoryService.instance.changeNotifier.addListener(_onDataChanged);
     MusicScannerService.instance.tracksNotifier.addListener(_onDataChanged);
     MusicDownloadManager.instance.addListener(_onDataChanged);
@@ -74,26 +80,46 @@ class _SearchPlaylistDetailScreenState
     super.dispose();
   }
 
-  Future<void> _fetchTracks() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  Future<void> _fetchTracks(
+      {bool hasCached = false, bool force = false}) async {
+    if (force) {
+      setState(() {
+        _isLoading = _tracks.isEmpty;
+        _errorMessage = null;
+      });
+    } else if (!hasCached) {
+      final asyncCached = await YtmSearchService.instance
+          .getCachedPlaylistTracks(widget.playlist.id);
+      if (asyncCached != null && asyncCached.isNotEmpty && mounted) {
+        setState(() {
+          _tracks = asyncCached;
+          _isLoading = false;
+        });
+        hasCached = true;
+      }
+    }
+
+    if (!hasCached && !force && _tracks.isEmpty) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    }
 
     try {
       final tracks = await YtmSearchService.instance
-          .getPlaylistTracks(widget.playlist.id.value);
+          .getPlaylistTracks(widget.playlist.id, forceRefresh: force);
       if (mounted) {
         setState(() {
           _tracks = tracks;
           _isLoading = false;
-          if (tracks.isEmpty) {
+          if (tracks.isEmpty && _tracks.isEmpty) {
             _errorMessage = 'No tracks found in this playlist or album.';
           }
         });
       }
     } catch (e) {
-      if (mounted) {
+      if (mounted && _tracks.isEmpty) {
         setState(() {
           _errorMessage = 'Failed to load tracks: $e';
           _isLoading = false;
@@ -111,7 +137,8 @@ class _SearchPlaylistDetailScreenState
         return local;
       }
       if (local.id == track.id ||
-          local.title.trim().toLowerCase() == track.title.trim().toLowerCase()) {
+          local.title.trim().toLowerCase() ==
+              track.title.trim().toLowerCase()) {
         if (File(local.filePath!).existsSync()) {
           return local;
         }
@@ -166,7 +193,8 @@ class _SearchPlaylistDetailScreenState
       return;
     }
 
-    if (MusicDownloadManager.instance.isDownloading(track.id) || _isBatchDownloading) {
+    if (MusicDownloadManager.instance.isDownloading(track.id) ||
+        _isBatchDownloading) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Download already in progress for "${track.title}"'),
@@ -189,24 +217,26 @@ class _SearchPlaylistDetailScreenState
       track,
       playlistName: widget.playlist.title,
       playlistUrl:
-          'https://www.youtube.com/playlist?list=${widget.playlist.id.value}',
+          'https://www.youtube.com/playlist?list=${widget.playlist.id}',
       autoPlay: true,
     );
   }
 
-  Future<void> _startBatchDownload({required List<Track> tracksToDownload}) async {
+  Future<void> _startBatchDownload(
+      {required List<Track> tracksToDownload}) async {
     if (tracksToDownload.isEmpty) return;
 
     if (_isBatchDownloading) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A batch download is already in progress.')),
+        const SnackBar(
+            content: Text('A batch download is already in progress.')),
       );
       return;
     }
 
     final playlistName = widget.playlist.title;
     final playlistUrl =
-        'https://www.youtube.com/playlist?list=${widget.playlist.id.value}';
+        'https://www.youtube.com/playlist?list=${widget.playlist.id}';
 
     UiFeedbackHelper.showSuccessToast(
       context,
@@ -256,6 +286,14 @@ class _SearchPlaylistDetailScreenState
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.refresh_rounded, color: AppColors.textSecondary),
+            tooltip: 'Refresh Tracks',
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              _fetchTracks(force: true);
+            },
+          ),
           if (_tracks.isNotEmpty)
             IconButton(
               icon: Icon(
@@ -400,6 +438,9 @@ class _SearchPlaylistDetailScreenState
   }
 
   String get _displayAuthor {
+    if (widget.playlist.author != null && widget.playlist.author!.isNotEmpty) {
+      return widget.playlist.author!;
+    }
     if (_tracks.isNotEmpty) {
       final firstArtist = _tracks.first.artist;
       if (firstArtist.isNotEmpty) return firstArtist;
@@ -424,9 +465,7 @@ class _SearchPlaylistDetailScreenState
   }
 
   Widget _buildPlaylistHeader() {
-    final thumbUrl = widget.playlist.thumbnails.isNotEmpty
-        ? widget.playlist.thumbnails.first.url.toString()
-        : null;
+    final thumbUrl = widget.playlist.thumbnailUrl;
     final durationStr = _formattedTotalDuration;
 
     return Container(
@@ -546,6 +585,62 @@ class _SearchPlaylistDetailScreenState
               ),
             ],
           ),
+          if (widget.playlist.genres.isNotEmpty ||
+              widget.playlist.languages.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                ...widget.playlist.genres.map((g) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        g,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.primary,
+                        ),
+                      ),
+                    )),
+                ...widget.playlist.languages.map((l) => Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceBorder,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        l,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    )),
+              ],
+            ),
+          ],
+          if (widget.playlist.description != null &&
+              widget.playlist.description!.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Text(
+              widget.playlist.description!,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                height: 1.4,
+              ),
+              maxLines: 3,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
           const SizedBox(height: 14),
 
           // Primary Actions
@@ -605,8 +700,8 @@ class _SearchPlaylistDetailScreenState
                 ),
                 label: Text(
                   _isSelectMode ? 'Cancel' : 'Select',
-                  style:
-                      const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                      fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -916,9 +1011,8 @@ class _SearchPlaylistDetailScreenState
                   ? null
                   : () {
                       HapticFeedback.lightImpact();
-                      final selectedTracks = _selectedIndices
-                          .map((i) => _tracks[i])
-                          .toList();
+                      final selectedTracks =
+                          _selectedIndices.map((i) => _tracks[i]).toList();
                       _startBatchDownload(tracksToDownload: selectedTracks);
                     },
               style: FilledButton.styleFrom(

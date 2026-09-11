@@ -1,11 +1,11 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:media_downloader/core/utils/file_resolver.dart';
-import 'package:media_downloader/features/downloader/models/download_format.dart';
-import 'package:media_downloader/features/downloader/models/download_item.dart';
-import 'package:media_downloader/features/library/models/library_folder.dart';
-import 'package:media_downloader/features/settings/services/settings_service.dart';
+import 'package:infyn_dl/core/utils/file_resolver.dart';
+import 'package:infyn_dl/features/downloader/models/download_format.dart';
+import 'package:infyn_dl/features/downloader/models/download_item.dart';
+import 'package:infyn_dl/features/library/models/library_folder.dart';
+import 'package:infyn_dl/features/settings/services/settings_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {

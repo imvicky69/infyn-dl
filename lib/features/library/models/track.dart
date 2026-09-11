@@ -60,6 +60,34 @@ class Track {
     );
   }
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'title': title,
+      'artist': artist,
+      if (filePath != null) 'filePath': filePath,
+      if (webUrl != null) 'webUrl': webUrl,
+      if (duration != null) 'durationMs': duration!.inMilliseconds,
+      if (album != null) 'album': album,
+      if (artworkPath != null) 'artworkPath': artworkPath,
+    };
+  }
+
+  factory Track.fromJson(Map<String, dynamic> json) {
+    return Track(
+      id: json['id']?.toString() ?? '',
+      title: json['title']?.toString() ?? '',
+      artist: json['artist']?.toString() ?? 'Unknown Artist',
+      filePath: json['filePath']?.toString(),
+      webUrl: json['webUrl']?.toString(),
+      duration: json['durationMs'] != null
+          ? Duration(milliseconds: (json['durationMs'] as num).toInt())
+          : null,
+      album: json['album']?.toString(),
+      artworkPath: json['artworkPath']?.toString(),
+    );
+  }
+
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -70,5 +98,6 @@ class Track {
           webUrl == other.webUrl;
 
   @override
-  int get hashCode => id.hashCode ^ (filePath?.hashCode ?? 0) ^ (webUrl?.hashCode ?? 0);
+  int get hashCode =>
+      id.hashCode ^ (filePath?.hashCode ?? 0) ^ (webUrl?.hashCode ?? 0);
 }
