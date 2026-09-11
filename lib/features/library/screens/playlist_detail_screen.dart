@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../player/services/audio_player_service.dart';
+import '../../player/widgets/mini_player.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
 
@@ -109,7 +110,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                       ),
                     )
                   : ListView.builder(
-                      padding: const EdgeInsets.only(bottom: 24),
+                      padding: const EdgeInsets.only(bottom: 90),
                       itemCount: filteredTracks.length,
                       itemBuilder: (context, index) {
                         final track = filteredTracks[index];
@@ -119,6 +120,10 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
             ),
           ],
         ),
+      ),
+      bottomNavigationBar: const SafeArea(
+        top: false,
+        child: MiniPlayer(),
       ),
     );
   }
@@ -226,7 +231,7 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                           label: const Text('Play All'),
                           style: FilledButton.styleFrom(
                             backgroundColor: AppColors.primary,
-                            foregroundColor: Colors.white,
+                            foregroundColor: AppColors.onPrimary,
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 16, vertical: 8),
                             shape: RoundedRectangleBorder(
@@ -251,7 +256,11 @@ class _PlaylistDetailScreenState extends State<PlaylistDetailScreen> {
                           label: const Text('Shuffle'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textPrimary,
-                            side: BorderSide(color: AppColors.surfaceBorder),
+                            side: BorderSide(
+                              color: isDark
+                                  ? const Color(0xFF3F3F46)
+                                  : AppColors.surfaceBorder,
+                            ),
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 14, vertical: 8),
                             shape: RoundedRectangleBorder(

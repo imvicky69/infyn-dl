@@ -1,15 +1,20 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:infyn_dl/features/downloader/models/download_format.dart';
 import 'package:infyn_dl/features/downloader/models/download_progress.dart';
 import 'package:infyn_dl/features/downloader/models/media_quality.dart';
 import 'package:infyn_dl/features/downloader/models/playlist_metadata.dart';
 import 'package:infyn_dl/features/downloader/models/video_metadata.dart';
 import 'package:infyn_dl/features/downloader/screens/downloader_screen.dart';
+import 'package:infyn_dl/features/downloader/services/download_history_service.dart';
 import 'package:infyn_dl/features/downloader/services/downloader_service.dart';
 import 'package:infyn_dl/features/downloader/widgets/batch_progress_card.dart';
+import 'package:infyn_dl/features/settings/services/settings_service.dart';
 
 class FakeDownloaderService implements DownloaderService {
   final StreamController<DownloadProgress> _controller =
@@ -126,6 +131,21 @@ class FakeDownloaderService implements DownloaderService {
 }
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() async {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('plugins.flutter.io/path_provider'),
+      (MethodCall methodCall) async {
+        return Directory.systemTemp.path;
+      },
+    );
+    SharedPreferences.setMockInitialValues({});
+    await SettingsService.instance.init();
+    await DownloadHistoryService.instance.init();
+  });
+
   testWidgets('DownloaderScreen renders clean initial minimalist layout',
       (WidgetTester tester) async {
     await tester.pumpWidget(
@@ -190,6 +210,7 @@ void main() {
     final inputFinder = find.byType(TextField);
     await tester.enterText(
         inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
 
@@ -198,14 +219,11 @@ void main() {
     await tester.ensureVisible(downloadBtn);
     await tester.tap(downloadBtn);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 60));
 
     // Verify progress card appears
     final progressCard = find.byKey(const Key('download_progress_card'));
-    await tester.ensureVisible(progressCard);
     expect(progressCard, findsOneWidget);
-
-    // Advance timers for fake progress events
-    await tester.pump(const Duration(milliseconds: 60));
     expect(find.textContaining('50.0%'), findsOneWidget);
 
     // Advance to completed
@@ -229,6 +247,7 @@ void main() {
     final inputFinder = find.byType(TextField);
     await tester.enterText(
         inputFinder, 'https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     await tester.pumpAndSettle();
 
@@ -237,15 +256,12 @@ void main() {
     await tester.ensureVisible(downloadBtn);
     await tester.tap(downloadBtn);
     await tester.pump();
-
-    // Advance to downloading state
     await tester.pump(const Duration(milliseconds: 60));
+
+    // Verify Cancel button appears
     final cancelFinder = find.text('Cancel Download');
     expect(cancelFinder, findsOneWidget);
     await tester.ensureVisible(cancelFinder);
-    await tester.pump();
-
-    // Tap Cancel
     await tester.tap(cancelFinder);
     await tester.pumpAndSettle();
 

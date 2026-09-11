@@ -173,6 +173,7 @@ class AndroidDownloaderService implements DownloaderService {
     }
   }
 
+
   Future<bool> isIgnoringBatteryOptimizations() async {
     try {
       final isIgnoring = await _methodChannel

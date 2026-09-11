@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -23,8 +24,16 @@ class DownloadHistoryService {
   bool _isInitialized = false;
   final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
 
-  Future<void> init() async {
-    if (_isInitialized) return;
+  @visibleForTesting
+  void resetForTesting() {
+    _cachedItems.clear();
+    _playlistUrls.clear();
+    _isInitialized = false;
+  }
+
+  Future<void> init({bool force = false}) async {
+    if (_isInitialized && !force) return;
+    _isInitialized = false;
     try {
       final file = await _getCacheFile();
       if (await file.exists()) {

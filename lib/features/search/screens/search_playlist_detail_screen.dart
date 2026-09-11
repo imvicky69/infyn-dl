@@ -10,6 +10,7 @@ import '../../downloader/services/music_download_manager.dart';
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
 import '../../player/services/audio_player_service.dart';
+import '../../player/widgets/mini_player.dart';
 import '../models/search_playlist_info.dart';
 import '../services/ytm_search_service.dart';
 
@@ -431,9 +432,17 @@ class _SearchPlaylistDetailScreenState
                     ),
                   ],
                 ),
-      bottomSheet: _isSelectMode && _selectedIndices.isNotEmpty
-          ? _buildSelectedDownloadBar()
-          : null,
+      bottomNavigationBar: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (_isSelectMode && _selectedIndices.isNotEmpty)
+              _buildSelectedDownloadBar(),
+            const MiniPlayer(),
+          ],
+        ),
+      ),
     );
   }
 

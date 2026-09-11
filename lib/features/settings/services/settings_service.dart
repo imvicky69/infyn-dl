@@ -94,8 +94,8 @@ class SettingsService {
     if (custom != null && custom.isNotEmpty) {
       try {
         final dir = Directory(custom);
-        if (!await dir.exists()) {
-          await dir.create(recursive: true);
+        if (!dir.existsSync()) {
+          dir.createSync(recursive: true);
         }
         return custom;
       } catch (e) {
@@ -103,17 +103,47 @@ class SettingsService {
       }
     }
 
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-      // Android public Downloads folder
-      const androidPath = '/storage/emulated/0/Download/infyn-dl';
-      return androidPath;
-    }
+    try {
+      Directory? baseDir;
+      if (!kIsWeb && Platform.isAndroid) {
+        try {
+          baseDir = await getExternalStorageDirectory();
+        } catch (_) {}
+      } else if (!kIsWeb && Platform.isWindows) {
+        final userProfile = Platform.environment['USERPROFILE'];
+        if (userProfile != null && userProfile.isNotEmpty) {
+          final winDir = p.join(userProfile, 'Downloads', 'infyn-dl', 'Music');
+          final dir = Directory(winDir);
+          if (!dir.existsSync()) {
+            dir.createSync(recursive: true);
+          }
+          return winDir;
+        }
+      }
 
-    // Default fallback
-    final appDocs = await getApplicationDocumentsDirectory();
-    final fallback = p.join(appDocs.path, 'infyn-dl');
-    await Directory(fallback).create(recursive: true);
-    return fallback;
+      try {
+        baseDir ??= await getApplicationDocumentsDirectory();
+      } catch (_) {}
+
+      final defaultPath = baseDir != null
+          ? p.join(baseDir.path, 'Music')
+          : p.join(Directory.systemTemp.path, 'infyn-dl', 'Music');
+      final dir = Directory(defaultPath);
+      if (!dir.existsSync()) {
+        dir.createSync(recursive: true);
+      }
+      return defaultPath;
+    } catch (e) {
+      debugPrint('Error resolving download directory: $e');
+      final fallback = p.join(Directory.systemTemp.path, 'infyn-dl', 'Music');
+      try {
+        final dir = Directory(fallback);
+        if (!dir.existsSync()) {
+          dir.createSync(recursive: true);
+        }
+      } catch (_) {}
+      return fallback;
+    }
   }
 
   /// Resolves the effective download directory for a specific format and optional playlist.

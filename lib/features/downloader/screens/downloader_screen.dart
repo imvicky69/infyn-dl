@@ -339,15 +339,15 @@ class _DownloaderScreenState extends State<DownloaderScreen> {
   }
 
   Future<void> _startSingleDownload(String url) async {
-    final destDir =
-        await SettingsService.instance.resolveDownloadDirectoryForFormat(
-      format: _selectedFormat,
-    );
-
     setState(() {
       _errorMessage = null;
       _downloadProgress = DownloadProgress.preparing();
     });
+
+    final destDir =
+        await SettingsService.instance.resolveDownloadDirectoryForFormat(
+      format: _selectedFormat,
+    );
 
     _downloadSubscription?.cancel();
 

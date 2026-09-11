@@ -1,6 +1,7 @@
 package com.example.media_downloader.downloader
 
 import android.content.Context
+import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -379,35 +380,28 @@ object AndroidDownloadManager {
                 }
 
                 if (finalStagingFile != null && finalStagingFile.exists()) {
-                    val mimeType = MediaStorageHelper.getMimeType(finalStagingFile, isAudio)
-                    val isMusicDir = destinationDirectory?.contains("Music", ignoreCase = true) == true
-                    val customSubfolder = destinationDirectory?.let { dest ->
-                        when {
-                            dest.contains("Download/") -> dest.substringAfter("Download/").trim()
-                            dest.contains("Music/") -> dest.substringAfter("Music/").trim()
-                            dest.endsWith("Download", ignoreCase = true) || dest.endsWith("Music", ignoreCase = true) -> ""
-                            else -> File(dest).name
-                        }
-                    }?.takeIf { it.isNotBlank() } ?: "infyn-dl"
-
-                    val publicPath = MediaStorageHelper.publishMedia(
-                        context = context,
-                        sourceFile = finalStagingFile,
-                        mimeType = mimeType,
-                        isAudio = isAudio,
-                        customSubfolder = customSubfolder,
-                        preferMusicDirectory = isMusicDir
-                    )
+                    val targetDir = if (!destinationDirectory.isNullOrBlank()) {
+                        File(destinationDirectory)
+                    } else {
+                        File(context.getExternalFilesDir(if (isAudio) Environment.DIRECTORY_MUSIC else Environment.DIRECTORY_DOWNLOADS) ?: context.filesDir, "Music")
+                    }
+                    if (!targetDir.exists()) {
+                        targetDir.mkdirs()
+                    }
+                    val targetFile = File(targetDir, finalStagingFile.name)
+                    finalStagingFile.copyTo(targetFile, overwrite = true)
+                    val savedPath = targetFile.absolutePath
 
                     // Immediate cleanup of staging directory
                     try {
+                        finalStagingFile.delete()
                         stagingDir.deleteRecursively()
                     } catch (_: Exception) {}
 
                     val finalTitle = detectedTitle.get() ?: finalStagingFile.nameWithoutExtension
                     val remainingJobs = (activeJobs.size - 1).coerceAtLeast(0)
                     if (remainingJobs <= 0) {
-                        DownloadForegroundService.showCompleted(context, finalTitle, "Download complete • Saved to Downloads/infyn-dl")
+                        DownloadForegroundService.showCompleted(context, finalTitle, "Download complete")
                     } else {
                         DownloadForegroundService.showItemFinished(context, finalTitle, "$remainingJobs remaining download(s)...")
                     }
@@ -418,7 +412,7 @@ object AndroidDownloadManager {
                             "progress" to 1.0,
                             "percentage" to "100%",
                             "title" to finalTitle,
-                            "path" to publicPath,
+                            "path" to savedPath,
                             "filename" to finalStagingFile.name
                         )
                     )

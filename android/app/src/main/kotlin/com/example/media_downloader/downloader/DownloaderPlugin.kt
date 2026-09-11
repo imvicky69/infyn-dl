@@ -138,6 +138,7 @@ class DownloaderPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                     result.success(NotificationManagerCompat.from(ctx).areNotificationsEnabled())
                 }
             }
+
             "isIgnoringBatteryOptimizations" -> {
                 val powerManager = ctx.getSystemService(Context.POWER_SERVICE) as PowerManager
                 val isIgnoring = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {

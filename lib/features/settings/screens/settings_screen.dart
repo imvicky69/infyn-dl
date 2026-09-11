@@ -263,7 +263,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onPressed: _resetDefaultDirectory,
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.textSecondary,
-                            side: BorderSide(color: AppColors.surfaceBorder),
+                            side: BorderSide(
+                              color: isDark
+                                  ? const Color(0xFF3F3F46)
+                                  : AppColors.surfaceBorder,
+                            ),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(10)),
                             padding: const EdgeInsets.symmetric(
@@ -595,6 +599,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 trailing: FilledButton.tonal(
                   onPressed: _isUpdatingEngine ? null : _handleUpdateEngine,
                   style: FilledButton.styleFrom(
+                    backgroundColor: isDark
+                        ? const Color(0xFF27272A)
+                        : AppColors.primary.withValues(alpha: 0.1),
+                    foregroundColor: AppColors.primary,
                     padding:
                         const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     shape: RoundedRectangleBorder(
@@ -663,6 +671,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       return FilledButton.tonal(
                         onPressed: isChecking ? null : _handleCheckForUpdates,
                         style: FilledButton.styleFrom(
+                          backgroundColor: isDark
+                              ? const Color(0xFF27272A)
+                              : AppColors.primary.withValues(alpha: 0.1),
+                          foregroundColor: AppColors.primary,
                           padding: const EdgeInsets.symmetric(
                               horizontal: 14, vertical: 8),
                           shape: RoundedRectangleBorder(

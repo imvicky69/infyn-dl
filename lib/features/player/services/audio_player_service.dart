@@ -48,6 +48,12 @@ class AudioPlayerService extends ChangeNotifier {
 
   // Getters
   Track? get currentTrack => _currentTrack;
+
+  @visibleForTesting
+  set currentTrack(Track? track) {
+    _currentTrack = track;
+    notifyListeners();
+  }
   List<Track> get queue => List.unmodifiable(_queue);
   int get currentIndex => _currentIndex;
   Duration get position => _position;

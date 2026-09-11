@@ -701,7 +701,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                     label: const Text('Play All'),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: AppColors.onPrimary,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 8),
                       shape: RoundedRectangleBorder(
@@ -726,7 +726,11 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                     label: const Text('Shuffle'),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textPrimary,
-                      side: BorderSide(color: AppColors.surfaceBorder),
+                      side: BorderSide(
+                        color: isDark
+                            ? const Color(0xFF3F3F46)
+                            : AppColors.surfaceBorder,
+                      ),
                       padding: const EdgeInsets.symmetric(
                           horizontal: 12, vertical: 8),
                       shape: RoundedRectangleBorder(
@@ -1039,7 +1043,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                       label: const Text('Search Music'),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
+                        foregroundColor: AppColors.onPrimary,
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 10),
                       ),
@@ -1051,7 +1055,11 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                       label: const Text('Paste Link'),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.textPrimary,
-                        side: BorderSide(color: AppColors.surfaceBorder),
+                        side: BorderSide(
+                          color: isDark
+                              ? const Color(0xFF3F3F46)
+                              : AppColors.surfaceBorder,
+                        ),
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 10),
                       ),

@@ -20,6 +20,10 @@ class MusicScannerService {
     '.m4a',
     '.wav',
     '.flac',
+    '.opus',
+    '.ogg',
+    '.aac',
+    '.webm',
   };
 
   final ValueNotifier<List<Track>> tracksNotifier =
@@ -30,8 +34,9 @@ class MusicScannerService {
 
   List<Track> get tracks => tracksNotifier.value;
   List<MusicPlaylist> get playlists => playlistsNotifier.value;
+  bool get isScanning => isScanningNotifier.value;
 
-  /// Scans the download directory recursively for audio files.
+  /// Scans the download directory recursively for music files.
   Future<List<Track>> scanMusicDirectory({bool forceRefresh = false}) async {
     if (isScanningNotifier.value) {
       return tracksNotifier.value;
@@ -63,6 +68,7 @@ class MusicScannerService {
       }
 
       final List<Track> discovered = [];
+      final Set<String> seenNormalizedPaths = {};
 
       try {
         final entities =
@@ -76,6 +82,9 @@ class MusicScannerService {
 
           final filePath = entity.path;
           final normalizedPath = p.normalize(filePath).toLowerCase();
+          if (seenNormalizedPaths.contains(normalizedPath)) continue;
+          seenNormalizedPaths.add(normalizedPath);
+
           final fileBasename = p.basename(filePath).toLowerCase();
           final rawName = p.basenameWithoutExtension(filePath);
 
