@@ -12,6 +12,7 @@ import 'playlist_detail_screen.dart';
 import '../../home/models/catalog_playlist.dart';
 import '../../home/services/catalog_service.dart';
 import '../../search/screens/search_playlist_detail_screen.dart';
+import '../../search/screens/search_screen.dart';
 import '../../player/services/recently_played_service.dart';
 
 enum MusicLibraryViewMode { playlists, tracks }
@@ -223,9 +224,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                       });
                     },
                     decoration: InputDecoration(
-                      hintText: _viewMode == MusicLibraryViewMode.playlists
-                          ? 'Search playlists...'
-                          : 'Search songs or artists...',
+                      hintText: 'Search playlists, songs, artists...',
                       prefixIcon: Icon(
                         Icons.search_rounded,
                         color: AppColors.textSecondary,
@@ -267,15 +266,17 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
               ),
             ),
 
-            // Main Body: Playlists View OR Tracks View
+            // Main Body: Playlists View OR Tracks View OR Unified Search
             Expanded(
               child: RefreshIndicator(
                 color: AppColors.primary,
                 onRefresh: () => MusicScannerService.instance
                     .scanMusicDirectory(forceRefresh: true),
-                child: _viewMode == MusicLibraryViewMode.playlists
-                    ? _buildPlaylistsView(isDark)
-                    : _buildTracksView(isDark),
+                child: _searchQuery.isNotEmpty
+                    ? _buildUnifiedSearchView(isDark)
+                    : (_viewMode == MusicLibraryViewMode.playlists
+                        ? _buildPlaylistsView(isDark)
+                        : _buildTracksView(isDark)),
               ),
             ),
           ],
@@ -324,6 +325,211 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // ==========================================
+  // UNIFIED LIBRARY SEARCH VIEW
+  // ==========================================
+  Widget _buildUnifiedSearchView(bool isDark) {
+    return ValueListenableBuilder<List<MusicPlaylist>>(
+      valueListenable: MusicScannerService.instance.playlistsNotifier,
+      builder: (context, allPlaylists, _) {
+        return ValueListenableBuilder<List<Track>>(
+          valueListenable: MusicScannerService.instance.tracksNotifier,
+          builder: (context, allTracks, _) {
+            final q = _searchQuery.toLowerCase();
+            final matchingPlaylists = allPlaylists
+                .where((p) => p.name.toLowerCase().contains(q))
+                .toList();
+            final matchingTracks = allTracks
+                .where((t) =>
+                    t.title.toLowerCase().contains(q) ||
+                    t.artist.toLowerCase().contains(q) ||
+                    (t.album != null && t.album!.toLowerCase().contains(q)))
+                .toList();
+
+            final hasLocalResults =
+                matchingPlaylists.isNotEmpty || matchingTracks.isNotEmpty;
+
+            return ListView(
+              padding: const EdgeInsets.only(bottom: 24),
+              children: [
+                // YouTube Music Search Banner Shortcut
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      SearchScreen.externalSearchQuery.value = _searchQuery;
+                      widget.onNavigateToSearch?.call();
+                    },
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF18181B)
+                            : const Color(0xFFF4F4F8),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: AppColors.primary.withValues(alpha: 0.35),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              Icons.travel_explore_rounded,
+                              color: AppColors.primary,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Search YouTube Music',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Find "$_searchQuery" online to play or download',
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                if (!hasLocalResults)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 36, horizontal: 24),
+                    child: Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 44,
+                            color: AppColors.textMuted,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No local songs or playlists matching "$_searchQuery"',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Tap the banner above to find it on YouTube Music',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                // Matching Playlists Section
+                if (matchingPlaylists.isNotEmpty) ...[
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Text(
+                      'PLAYLISTS (${matchingPlaylists.length})',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  SizedBox(
+                    height: 155,
+                    child: ListView.separated(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      scrollDirection: Axis.horizontal,
+                      itemCount: matchingPlaylists.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 12),
+                      itemBuilder: (context, i) {
+                        final pl = matchingPlaylists[i];
+                        return SizedBox(
+                          width: 115,
+                          child: _buildPlaylistCard(pl, isDark),
+                        );
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+
+                // Matching Tracks Section
+                if (matchingTracks.isNotEmpty) ...[
+                  Padding(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: Text(
+                      'SONGS (${matchingTracks.length})',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  ...matchingTracks.asMap().entries.map(
+                        (entry) => _buildTrackTile(
+                          entry.value,
+                          entry.key,
+                          matchingTracks,
+                          isDark,
+                        ),
+                      ),
+                ],
+              ],
+            );
+          },
+        );
+      },
     );
   }
 
@@ -936,15 +1142,19 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                track.formattedDuration,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
+              if (track.duration != null && track.duration != Duration.zero)
+                Text(
+                  track.formattedDuration,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 2),
+              const SizedBox(width: 4),
               IconButton(
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                visualDensity: VisualDensity.compact,
                 icon: Icon(
                   isLiked
                       ? Icons.favorite_rounded

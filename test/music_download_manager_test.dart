@@ -26,6 +26,9 @@ class _FakeMusicDownloaderService implements DownloaderService {
     VideoQuality videoQuality = VideoQuality.best,
     AudioQuality audioQuality = AudioQuality.k192,
     String? destinationDirectory,
+    bool isBatch = false,
+    bool isLastBatchItem = true,
+    String? batchPlaylistName,
   }) {
     final ctrl = StreamController<DownloadProgress>.broadcast();
     controllers[url] = ctrl;

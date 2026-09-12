@@ -97,8 +97,13 @@ class AudioPlayerService extends ChangeNotifier {
       _durationSubscription = player.durationStream.listen((dur) {
         if (dur != null && dur != Duration.zero) {
           _duration = dur;
-          if (_currentTrack != null && _currentTrack!.duration == null) {
-            _currentTrack = _currentTrack!.copyWith(duration: dur);
+          if (_currentTrack != null) {
+            if (_currentTrack!.duration == null ||
+                _currentTrack!.duration == Duration.zero) {
+              _currentTrack = _currentTrack!.copyWith(duration: dur);
+            }
+            MusicScannerService.instance
+                .updateTrackDuration(_currentTrack!.id, dur);
           }
           notifyListeners();
         }

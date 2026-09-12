@@ -54,5 +54,46 @@ void main() {
         findsOneWidget,
       );
     });
+
+    testWidgets(
+        'Renders without overflow on narrow width (360px screen)',
+        (tester) async {
+      tester.view.physicalSize = const Size(360, 740);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: SearchScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Ensure no exceptions or RenderFlex overflow occurred
+      expect(tester.takeException(), isNull);
+      expect(find.text('Songs'), findsOneWidget);
+      expect(find.text('Playlists & Albums'), findsOneWidget);
+    });
+
+    testWidgets(
+        'Does not show "No results found" when search input contains a URL',
+        (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: SearchScreen(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Enter a playlist URL
+      const url =
+          'https://music.youtube.com/playlist?list=OLAK5uy_mp4ySeRG4C35llBbohNz5LEfopRN5HUnQ';
+      await tester.enterText(find.byType(TextField), url);
+      await tester.pump();
+
+      // The empty state view should NOT display "No results found for"
+      expect(find.textContaining('No results found for'), findsNothing);
+    });
   });
 }

@@ -275,6 +275,9 @@ class AndroidDownloaderService implements DownloaderService {
     VideoQuality videoQuality = VideoQuality.best,
     AudioQuality audioQuality = AudioQuality.k192,
     String? destinationDirectory,
+    bool isBatch = false,
+    bool isLastBatchItem = true,
+    String? batchPlaylistName,
   }) {
     final downloadId =
         '${DateTime.now().microsecondsSinceEpoch}_${_idCounter++}';
@@ -309,6 +312,9 @@ class AndroidDownloaderService implements DownloaderService {
       'videoQuality': videoQuality.shortLabel,
       'audioQuality': audioQuality.qualityValue,
       'destinationDirectory': destinationDirectory,
+      'isBatch': isBatch,
+      'isLastBatchItem': isLastBatchItem,
+      'batchPlaylistName': batchPlaylistName,
     }).catchError((err) {
       if (!controller.isClosed) {
         _controllers.remove(downloadId);
@@ -373,6 +379,28 @@ class AndroidDownloaderService implements DownloaderService {
       return res?['version'] as String?;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Batch retrieves audio durations in milliseconds for a list of file paths.
+  Future<Map<String, int>> getAudioDurations(List<String> filePaths) async {
+    if (filePaths.isEmpty) return {};
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return {};
+    try {
+      final res = await _methodChannel.invokeMapMethod<String, dynamic>(
+        'getAudioDurations',
+        {'filePaths': filePaths},
+      );
+      if (res == null) return {};
+      final map = <String, int>{};
+      res.forEach((key, val) {
+        if (val is num) {
+          map[key] = val.toInt();
+        }
+      });
+      return map;
+    } catch (_) {
+      return {};
     }
   }
 }

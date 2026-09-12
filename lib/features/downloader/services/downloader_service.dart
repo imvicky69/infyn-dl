@@ -22,6 +22,9 @@ abstract class DownloaderService {
     VideoQuality videoQuality = VideoQuality.best,
     AudioQuality audioQuality = AudioQuality.k192,
     String? destinationDirectory,
+    bool isBatch = false,
+    bool isLastBatchItem = true,
+    String? batchPlaylistName,
   });
 
   /// Cancels an ongoing download process immediately.

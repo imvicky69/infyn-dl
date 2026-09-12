@@ -94,6 +94,15 @@ class MusicDownloadManager extends ChangeNotifier {
     if (playlistName != null && playlistName.trim().isNotEmpty) {
       final cleanFolder = sanitizeFolderName(playlistName);
       if (cleanFolder.isNotEmpty) {
+        // If baseDir already points directly to the playlist folder, use it as-is
+        if (p.basename(p.normalize(baseDir)).toLowerCase() ==
+            cleanFolder.toLowerCase()) {
+          final dir = Directory(baseDir);
+          if (!await dir.exists()) {
+            await dir.create(recursive: true);
+          }
+          return baseDir;
+        }
         final targetDir = p.join(baseDir, cleanFolder);
         final dir = Directory(targetDir);
         if (!await dir.exists()) {
@@ -302,16 +311,10 @@ class MusicDownloadManager extends ChangeNotifier {
       playlistName: playlistName,
     );
 
-    for (var i = 0; i < tracks.length; i++) {
-      if (_cancelBatchRequested) break;
-
-      final track = tracks[i];
-      _batchCurrentTitle = track.title;
-      _batchCurrentProgress = 0.0;
-      notifyListeners();
-
-      // Check if already in library
-      final localTracks = MusicScannerService.instance.tracks;
+    // Filter tracks that are not already in local library
+    final localTracks = MusicScannerService.instance.tracks;
+    final tracksToDownload = <Track>[];
+    for (final track in tracks) {
       final existing = localTracks.where((t) {
         if (t.id == track.id) return true;
         if (t.title.toLowerCase() == track.title.toLowerCase() &&
@@ -323,7 +326,6 @@ class MusicDownloadManager extends ChangeNotifier {
 
       if (existing != null && existing.isLocal) {
         _batchCompleted++;
-        notifyListeners();
         if (autoPlayFirst && !hasStartedPlayingFirst) {
           hasStartedPlayingFirst = true;
           AudioPlayerService.instance.playTrack(
@@ -331,8 +333,29 @@ class MusicDownloadManager extends ChangeNotifier {
             queue: MusicScannerService.instance.tracks,
           );
         }
-        continue;
+      } else {
+        tracksToDownload.add(track);
       }
+    }
+    notifyListeners();
+
+    if (tracksToDownload.isEmpty) {
+      _isBatchActive = false;
+      _batchCurrentProgress = 0.0;
+      _batchCurrentTitle = '';
+      notifyListeners();
+      MusicScannerService.instance.scanMusicDirectory(forceRefresh: true);
+      return;
+    }
+
+    for (var i = 0; i < tracksToDownload.length; i++) {
+      if (_cancelBatchRequested) break;
+
+      final track = tracksToDownload[i];
+      final isLastBatchItem = (i == tracksToDownload.length - 1);
+      _batchCurrentTitle = track.title;
+      _batchCurrentProgress = 0.0;
+      notifyListeners();
 
       final url = track.webUrl ??
           (track.id.startsWith('http')
@@ -348,6 +371,9 @@ class MusicDownloadManager extends ChangeNotifier {
         // Same native M4A quality as individual track downloads
         audioQuality: AudioQuality.k192,
         destinationDirectory: destDir,
+        isBatch: true,
+        isLastBatchItem: isLastBatchItem,
+        batchPlaylistName: playlistName,
       )
           .listen(
         (event) async {
@@ -430,5 +456,6 @@ class MusicDownloadManager extends ChangeNotifier {
     _batchCurrentProgress = 0.0;
     _batchCurrentTitle = '';
     notifyListeners();
+    downloaderService.cancel();
   }
 }

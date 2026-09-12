@@ -22,6 +22,11 @@ import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.PluginRegistry
 import java.io.File
+import android.media.MediaMetadataRetriever
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class DownloaderPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallHandler, EventChannel.StreamHandler, PluginRegistry.RequestPermissionsResultListener {
 
@@ -220,6 +225,33 @@ class DownloaderPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                     )
                 }
             }
+            "getAudioDurations" -> {
+                val paths = call.argument<List<String>>("filePaths") ?: emptyList()
+                val scope = CoroutineScope(Dispatchers.IO)
+                scope.launch {
+                    val results = mutableMapOf<String, Long>()
+                    val retriever = MediaMetadataRetriever()
+                    for (path in paths) {
+                        try {
+                            val f = File(path)
+                            if (f.exists() && f.isFile) {
+                                retriever.setDataSource(path)
+                                val durationStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                                if (durationStr != null) {
+                                    val durMs = durationStr.toLongOrNull()
+                                    if (durMs != null && durMs > 0) {
+                                        results[path] = durMs
+                                    }
+                                }
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    try { retriever.release() } catch (_: Exception) {}
+                    withContext(Dispatchers.Main) {
+                        result.success(results)
+                    }
+                }
+            }
             "startDownload" -> {
                 val id = call.argument<String>("id") ?: System.currentTimeMillis().toString()
                 val url = call.argument<String>("url")
@@ -227,6 +259,9 @@ class DownloaderPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                 val videoQuality = call.argument<String>("videoQuality")
                 val audioQuality = call.argument<String>("audioQuality")
                 val destinationDirectory = call.argument<String>("destinationDirectory")
+                val isBatch = call.argument<Boolean>("isBatch") ?: false
+                val isLastBatchItem = call.argument<Boolean>("isLastBatchItem") ?: true
+                val batchPlaylistName = call.argument<String>("batchPlaylistName")
 
                 if (url.isNullOrBlank()) {
                     result.error("INVALID_ARGUMENT", "URL must not be empty", null)
@@ -240,7 +275,10 @@ class DownloaderPlugin : FlutterPlugin, ActivityAware, MethodChannel.MethodCallH
                     format = format,
                     videoQuality = videoQuality,
                     audioQuality = audioQuality,
-                    destinationDirectory = destinationDirectory
+                    destinationDirectory = destinationDirectory,
+                    isBatch = isBatch,
+                    isLastBatchItem = isLastBatchItem,
+                    batchPlaylistName = batchPlaylistName
                 )
                 result.success(id)
             }

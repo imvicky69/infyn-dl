@@ -29,4 +29,28 @@ class SearchPlaylistInfo {
     if (genres.isNotEmpty) parts.add(genres.first);
     return parts.isNotEmpty ? parts.join(' • ') : 'Tap to view & download';
   }
+
+  SearchPlaylistInfo copyWith({
+    String? id,
+    String? title,
+    String? author,
+    String? thumbnailUrl,
+    int? trackCount,
+    String? description,
+    List<String>? genres,
+    List<String>? languages,
+    List<String>? moods,
+  }) {
+    return SearchPlaylistInfo(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      author: author ?? this.author,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      trackCount: trackCount ?? this.trackCount,
+      description: description ?? this.description,
+      genres: genres ?? this.genres,
+      languages: languages ?? this.languages,
+      moods: moods ?? this.moods,
+    );
+  }
 }

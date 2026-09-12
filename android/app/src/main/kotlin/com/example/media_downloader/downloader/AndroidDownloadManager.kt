@@ -201,7 +201,10 @@ object AndroidDownloadManager {
         format: String, // "mp4" or "mp3"
         videoQuality: String?, // e.g. "best", "1080p", "720p", "480p", "360p"
         audioQuality: String?, // e.g. "0", "2", "5"
-        destinationDirectory: String? = null
+        destinationDirectory: String? = null,
+        isBatch: Boolean = false,
+        isLastBatchItem: Boolean = true,
+        batchPlaylistName: String? = null
     ) {
         val job = scope.launch {
             if (!ensureInitialized(context)) {
@@ -229,7 +232,11 @@ object AndroidDownloadManager {
                 )
             )
 
-            val initialTitle = "Downloading Media..."
+            val initialTitle = if (isBatch && !batchPlaylistName.isNullOrBlank()) {
+                "Downloading $batchPlaylistName..."
+            } else {
+                "Downloading Media..."
+            }
             DownloadForegroundService.start(context, downloadId, initialTitle)
 
             val outputTemplate = "${stagingDir.absolutePath}/%(title)s.%(ext)s"
@@ -400,10 +407,28 @@ object AndroidDownloadManager {
 
                     val finalTitle = detectedTitle.get() ?: finalStagingFile.nameWithoutExtension
                     val remainingJobs = (activeJobs.size - 1).coerceAtLeast(0)
-                    if (remainingJobs <= 0) {
-                        DownloadForegroundService.showCompleted(context, finalTitle, "Download complete")
+                    if (isBatch) {
+                        if (isLastBatchItem) {
+                            val completeTitle = if (!batchPlaylistName.isNullOrBlank()) {
+                                "Batch Complete: $batchPlaylistName"
+                            } else {
+                                "Download Complete"
+                            }
+                            DownloadForegroundService.showCompleted(context, completeTitle, "All songs saved")
+                        } else {
+                            // Intermediate batch item: keep it completely silent!
+                            DownloadForegroundService.showItemFinished(
+                                context,
+                                finalTitle,
+                                "Saved • Downloading next song..."
+                            )
+                        }
                     } else {
-                        DownloadForegroundService.showItemFinished(context, finalTitle, "$remainingJobs remaining download(s)...")
+                        if (remainingJobs <= 0) {
+                            DownloadForegroundService.showCompleted(context, finalTitle, "Download complete")
+                        } else {
+                            DownloadForegroundService.showItemFinished(context, finalTitle, "$remainingJobs remaining download(s)...")
+                        }
                     }
                     dispatchProgress(
                         mapOf(
@@ -423,7 +448,9 @@ object AndroidDownloadManager {
                     // so the Dart layer does NOT store a broken directory path as outputFilePath.
                     val finalTitle = detectedTitle.get() ?: "Media Download"
                     Log.w(TAG, "Download '$downloadId' completed but no output file found in staging dir: ${stagingDir.absolutePath}")
-                    DownloadForegroundService.showError(context, finalTitle, "Output file not found after download")
+                    if (!isBatch || isLastBatchItem) {
+                        DownloadForegroundService.showError(context, finalTitle, "Output file not found after download")
+                    }
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
@@ -447,7 +474,9 @@ object AndroidDownloadManager {
                     Log.e(TAG, "Download execution failed", e)
                     val rawMsg = e.message ?: "Download failed on device"
                     val errorMsg = cleanErrorMessage(rawMsg)
-                    DownloadForegroundService.showError(context, detectedTitle.get() ?: "Media Download", errorMsg)
+                    if (!isBatch || isLastBatchItem) {
+                        DownloadForegroundService.showError(context, detectedTitle.get() ?: "Media Download", errorMsg)
+                    }
                     dispatchProgress(
                         mapOf(
                             "id" to downloadId,
@@ -466,7 +495,9 @@ object AndroidDownloadManager {
                     stagingDir.deleteRecursively()
                 } catch (_: Exception) {}
                 if (activeJobs.isEmpty()) {
-                    DownloadForegroundService.stop(context)
+                    if (!isBatch || isLastBatchItem) {
+                        DownloadForegroundService.stop(context)
+                    }
                 }
             }
         }

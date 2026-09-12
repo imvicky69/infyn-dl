@@ -75,7 +75,7 @@ void main() {
 
   group('MainShellScreen Navigation Tests', () {
     testWidgets(
-        'Renders 5 destinations: Music, Search, Downloader, Library, Settings',
+        'Renders 4 clean destinations: Music, Search, Library, Settings and no Downloader tab',
         (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
@@ -86,7 +86,7 @@ void main() {
 
       expect(find.text('Music'), findsAtLeastNWidgets(1));
       expect(find.text('Search'), findsAtLeastNWidgets(1));
-      expect(find.text('Downloader'), findsAtLeastNWidgets(1));
+      expect(find.text('Downloader'), findsNothing);
       expect(find.text('Library'), findsAtLeastNWidgets(1));
       expect(find.text('Settings'), findsAtLeastNWidgets(1));
       expect(find.text('Tools'), findsNothing);
@@ -251,6 +251,9 @@ class _MockDownloaderService extends DownloaderService {
     VideoQuality videoQuality = VideoQuality.best,
     AudioQuality audioQuality = AudioQuality.k320,
     String? destinationDirectory,
+    bool isBatch = false,
+    bool isLastBatchItem = true,
+    String? batchPlaylistName,
   }) =>
       const Stream.empty();
 

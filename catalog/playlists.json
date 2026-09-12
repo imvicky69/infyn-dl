@@ -1,19 +1,37 @@
 {
   "$schema": "./catalog.schema.json",
-  "version": 3,
-  "updatedAt": "2026-09-11T12:45:00Z",
+  "version": 4,
+  "updatedAt": "2026-09-12T05:18:26.985027Z",
   "playlists": [
     {
       "id": "mellow_pop_classics",
       "title": "Mellow Pop Classics",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_nDL8KeBrUagwyISwNmyEiSfYgz1gVCesg&playnext=1&si=U07RWMhcZpiyY7FY",
-      "description": "Relaxing hits from the 80s, 90s and 00s.",
-      "genres": ["Pop", "Classics", "Acoustic"],
-      "languages": ["English"],
-      "moods": ["Chill", "Relax", "Mellow"],
-      "tags": ["pop", "classics", "acoustic", "relaxing", "80s", "90s", "00s"],
+      "description": "Slow-burning, mellow pop hits from the '80s until today.",
+      "genres": [
+        "Pop",
+        "Classics",
+        "Acoustic"
+      ],
+      "languages": [
+        "English"
+      ],
+      "moods": [
+        "Chill",
+        "Relax",
+        "Mellow"
+      ],
+      "tags": [
+        "pop",
+        "classics",
+        "acoustic",
+        "relaxing",
+        "80s",
+        "90s",
+        "00s"
+      ],
       "featured": true,
-      "thumbnailUrl": "https://i9.ytimg.com/s_p/RDCLAK5uy_nDL8KeBrUagwyISwNmyEiSfYgz1gVCesg/sddefault.jpg?sqp=CMSAjtUGir7X7AMICLCIjdUGEAE=&rs=AOn4CLDK3ZYLUj61k3OkB1kuedCO9o5UrA&v=1789084720",
+      "thumbnailUrl": "https://yt3.googleusercontent.com/WIpNILSEB_Fs-esO3Z_jRiQgkRvHK41un394zFPHwG49pO1Kn9qVI_ud_J2BuGaoJiRVAUjOKOE9kRmN=w544-h544-l90-rj",
       "trackCount": 49,
       "author": "YouTube Music"
     },
@@ -22,12 +40,27 @@
       "title": "00s Bollywood Romance",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_kWKAcJROkxDk9mOVmfDSv9cycK_-Ci2yA&playnext=1&si=kWjIRG-X8oYZkXbN",
       "description": "Romantic songs that ruled your heart the Y2K decade!",
-      "genres": ["Bollywood", "Romantic"],
-      "languages": ["Hindi"],
-      "moods": ["Romantic", "Nostalgic"],
-      "tags": ["bollywood", "romance", "2000s", "y2k", "hindi", "love"],
+      "genres": [
+        "Bollywood",
+        "Romantic"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Romantic",
+        "Nostalgic"
+      ],
+      "tags": [
+        "bollywood",
+        "romance",
+        "2000s",
+        "y2k",
+        "hindi",
+        "love"
+      ],
       "featured": true,
-      "thumbnailUrl": "https://i9.ytimg.com/s_p/RDCLAK5uy_kWKAcJROkxDk9mOVmfDSv9cycK_-Ci2yA/sddefault.jpg?sqp=CMSAjtUGir7X7AMICOu7lNIGEAE=&rs=AOn4CLBSF97wKgrJMrNuQhsAC0sBYHt6Iw&v=1782914539",
+      "thumbnailUrl": "https://yt3.googleusercontent.com/nMAW4OkV_cPtnnfXNjs0ORDsODpA3UFgecGs0VhLqj7oiPHyNf7jZxKX4yFwsGajm9vS8UWmy0yZSys6=w544-h544-l90-rj",
       "trackCount": 95,
       "author": "YouTube Music"
     },
@@ -36,12 +69,29 @@
       "title": "An Unspoken Chronicle",
       "url": "https://music.youtube.com/playlist?list=PLd0osN-KsNquYxQfApCB1rWVEZH7orCtq&si=3t_ekQbTPVFAE_bU",
       "description": "Best of KK, Papon, Pritam, Amit Trivedi, Arijit Singh & More 🎶 Soulful Hindi melodies.",
-      "genres": ["Bollywood", "Soulful", "Indie Hindi"],
-      "languages": ["Hindi"],
-      "moods": ["Soulful", "Melancholy"],
-      "tags": ["kk", "papon", "pritam", "arijit singh", "amit trivedi", "hindi", "soulful"],
+      "genres": [
+        "Bollywood",
+        "Soulful",
+        "Indie Hindi"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Soulful",
+        "Melancholy"
+      ],
+      "tags": [
+        "kk",
+        "papon",
+        "pritam",
+        "arijit singh",
+        "amit trivedi",
+        "hindi",
+        "soulful"
+      ],
       "featured": true,
-      "thumbnailUrl": "https://i.ytimg.com/pl_c/PLd0osN-KsNquYxQfApCB1rWVEZH7orCtq/studio_square_thumbnail.jpg?sqp=CK_3jdUG-oaymwEICNAFENAFSFqi85f_AwYIlZzexAY=&rs=AOn4CLA7Stq2HWRE24ycelHRIBHiNy-wtA",
+      "thumbnailUrl": "https://img.youtube.com/vi/I8IGukb5qao/hqdefault.jpg",
       "trackCount": 81,
       "author": "Xweet"
     },
@@ -50,12 +100,28 @@
       "title": "90s Bollywood Romance",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_lnm4v4arFrmL63NUzIdoXJe-E7G4_sriU&playnext=1&si=wJe2kFigZ7PF9x4N",
       "description": "Re-live the '90s with this beautiful collection of romantic Bollywood songs.",
-      "genres": ["Bollywood", "Romantic", "Retro"],
-      "languages": ["Hindi"],
-      "moods": ["Romantic", "Nostalgic"],
-      "tags": ["bollywood", "90s", "romance", "classic", "hindi", "retro"],
+      "genres": [
+        "Bollywood",
+        "Romantic",
+        "Retro"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Romantic",
+        "Nostalgic"
+      ],
+      "tags": [
+        "bollywood",
+        "90s",
+        "romance",
+        "classic",
+        "hindi",
+        "retro"
+      ],
       "featured": true,
-      "thumbnailUrl": "https://i9.ytimg.com/s_p/RDCLAK5uy_lnm4v4arFrmL63NUzIdoXJe-E7G4_sriU/sddefault.jpg?sqp=CMSAjtUGir7X7AMICM3eoNQGEAE=&rs=AOn4CLAx2s7Wo4895Gf2V3E7kk0c_tGxIA&v=1787309901",
+      "thumbnailUrl": "https://yt3.googleusercontent.com/-c8oNNa6UCD1DZuwiIqqIaYVwrHZbw98y02sxSaAaJwE-ICbvInn5tRpuK6Ri0mEhoHM8LbYDIvWGzpG=w544-h544-l90-rj",
       "trackCount": 80,
       "author": "YouTube Music"
     },
@@ -64,10 +130,30 @@
       "title": "Presenting Jagjit Singh",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_n57eAmiGI9wUqfWf1y4W1ezwZS52--hMQ",
       "description": "The most played hits and essential ghazals from the King of Ghazals, Jagjit Singh.",
-      "genres": ["Ghazal", "Classical", "Sufi", "Retro"],
-      "languages": ["Hindi", "Urdu"],
-      "moods": ["Soulful", "Relax", "Nostalgic"],
-      "tags": ["jagjit singh", "ghazal", "urdu", "hindi", "soulful", "classics", "retro"],
+      "genres": [
+        "Ghazal",
+        "Classical",
+        "Sufi",
+        "Retro"
+      ],
+      "languages": [
+        "Hindi",
+        "Urdu"
+      ],
+      "moods": [
+        "Soulful",
+        "Relax",
+        "Nostalgic"
+      ],
+      "tags": [
+        "jagjit singh",
+        "ghazal",
+        "urdu",
+        "hindi",
+        "soulful",
+        "classics",
+        "retro"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/0H-yh8oykNEgigO7y1IluprnqLtLPkLTG8koDnivB9xdjmmtTMR3SrPrf12bsrwkrSkk_umWmzdpm8Q=w544-h544-l90-rj",
       "trackCount": 50,
@@ -78,10 +164,28 @@
       "title": "Classic Ghazals Collection",
       "url": "https://music.youtube.com/playlist?list=PL-A3sWXJfNgC0Tp2pWOg5OjD2SvjTr-hu",
       "description": "Timeless ghazals and poetic melodies by legendary artists.",
-      "genres": ["Ghazal", "Classical", "Poetic"],
-      "languages": ["Hindi", "Urdu"],
-      "moods": ["Soulful", "Calm", "Melancholy"],
-      "tags": ["ghazals", "classic", "urdu", "poetry", "shayari", "soulful"],
+      "genres": [
+        "Ghazal",
+        "Classical",
+        "Poetic"
+      ],
+      "languages": [
+        "Hindi",
+        "Urdu"
+      ],
+      "moods": [
+        "Soulful",
+        "Calm",
+        "Melancholy"
+      ],
+      "tags": [
+        "ghazals",
+        "classic",
+        "urdu",
+        "poetry",
+        "shayari",
+        "soulful"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/MC2E6DbN_olGgutrcOUjJy3qxZ9TmCHA3IufYm90vXVyP-pLmFU6-tkI4znud8sU07_j10QDYHEb=s1200",
       "trackCount": 38,
@@ -92,10 +196,27 @@
       "title": "Bollywood Sad Songs",
       "url": "https://music.youtube.com/playlist?list=PL9khxBZiiQwoKEqdTrb4ip-S_Tov6FkBQ",
       "description": "Heart-touching Bollywood ballads and emotional heartbreak melodies.",
-      "genres": ["Bollywood", "Sad", "Ballads"],
-      "languages": ["Hindi"],
-      "moods": ["Sad", "Heartbreak", "Emotional"],
-      "tags": ["bollywood", "sad songs", "heartbreak", "emotional", "dard", "hindi"],
+      "genres": [
+        "Bollywood",
+        "Sad",
+        "Ballads"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Sad",
+        "Heartbreak",
+        "Emotional"
+      ],
+      "tags": [
+        "bollywood",
+        "sad songs",
+        "heartbreak",
+        "emotional",
+        "dard",
+        "hindi"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.ggpht.com/-_P-YiU8E-o_vMzBbtQP0mp4PQ9YVnoBJRh_X_F6tUQB1skgoMT85KsywjsN5OzUjIoFbBtmAKc=s1200",
       "trackCount": 28,
@@ -106,10 +227,27 @@
       "title": "Presenting Pankaj Udhas",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_nU4Xa3L9oZhW0gtgiU79PsGfHFX43grXk",
       "description": "The golden voice of ghazals and unforgettable melodies by Pankaj Udhas.",
-      "genres": ["Ghazal", "Bollywood", "Retro"],
-      "languages": ["Hindi", "Urdu"],
-      "moods": ["Soulful", "Nostalgic", "Relax"],
-      "tags": ["pankaj udhas", "ghazals", "chithi aayi hai", "retro", "hindi"],
+      "genres": [
+        "Ghazal",
+        "Bollywood",
+        "Retro"
+      ],
+      "languages": [
+        "Hindi",
+        "Urdu"
+      ],
+      "moods": [
+        "Soulful",
+        "Nostalgic",
+        "Relax"
+      ],
+      "tags": [
+        "pankaj udhas",
+        "ghazals",
+        "chithi aayi hai",
+        "retro",
+        "hindi"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/MvgEUeoMU_DoQqyLvMZ3-K_szuV0mNXaVCqRv1NmhiZDht5u42HZkMlA7rUGyBQDMZssGem_YqBuBfM=w544-h544-l90-rj",
       "trackCount": 45,
@@ -120,10 +258,28 @@
       "title": "Hindi Golden Era Classics",
       "url": "https://music.youtube.com/playlist?list=PLDpMkQrF0Miaozbmp-qk3Uqti-SvIc5cu",
       "description": "Vintage evergreen Bollywood classics and golden era melodies.",
-      "genres": ["Bollywood", "Oldies", "Retro", "Evergreen"],
-      "languages": ["Hindi"],
-      "moods": ["Nostalgic", "Peaceful", "Classic"],
-      "tags": ["old songs", "hindi oldies", "golden era", "retro", "kishore", "rafi"],
+      "genres": [
+        "Bollywood",
+        "Oldies",
+        "Retro",
+        "Evergreen"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Nostalgic",
+        "Peaceful",
+        "Classic"
+      ],
+      "tags": [
+        "old songs",
+        "hindi oldies",
+        "golden era",
+        "retro",
+        "kishore",
+        "rafi"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.ggpht.com/yEx00C4NNdYemDR1SuhlruJSUF65oPmAIzVzyjiCW-zlxKrY5hy5ksgmEAM2Xg_9BBWahqd5Yg=s1200",
       "trackCount": 20,
@@ -134,10 +290,27 @@
       "title": "Presenting Juhi Chawla Hits",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_ml75qrUsFlPOne0-wL6_OdJBzXSrjfG-A",
       "description": "Iconic 90s & 2000s Bollywood hit tracks featuring Juhi Chawla.",
-      "genres": ["Bollywood", "90s", "Romantic", "Dance"],
-      "languages": ["Hindi"],
-      "moods": ["Happy", "Nostalgic", "Romantic"],
-      "tags": ["juhi chawla", "90s bollywood", "darr", "qayamat se qayamat tak", "hindi hits"],
+      "genres": [
+        "Bollywood",
+        "90s",
+        "Romantic",
+        "Dance"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Happy",
+        "Nostalgic",
+        "Romantic"
+      ],
+      "tags": [
+        "juhi chawla",
+        "90s bollywood",
+        "darr",
+        "qayamat se qayamat tak",
+        "hindi hits"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/Q1JXfrRgZAjF2J4eJU5_PLdhlcXpX70gGRFe-azcDSjSAGDH1rsoVV-l0pliL-x7NO6bctjDgR6PWItz=w544-h544-l90-rj",
       "trackCount": 35,
@@ -148,10 +321,28 @@
       "title": "Presenting Alka Yagnik",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_nM4hznn5ZAxuNVNCl3VBNGzy-arRiArAY",
       "description": "The Queen of 90s and 2000s playback singing with her most beloved melodies.",
-      "genres": ["Bollywood", "Romantic", "90s", "Melody"],
-      "languages": ["Hindi"],
-      "moods": ["Romantic", "Soulful", "Nostalgic"],
-      "tags": ["alka yagnik", "bollywood", "90s", "romantic", "udit narayan", "kumar sanu"],
+      "genres": [
+        "Bollywood",
+        "Romantic",
+        "90s",
+        "Melody"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Romantic",
+        "Soulful",
+        "Nostalgic"
+      ],
+      "tags": [
+        "alka yagnik",
+        "bollywood",
+        "90s",
+        "romantic",
+        "udit narayan",
+        "kumar sanu"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/fbcnm-aF7EJl35jPpfv3dC7q5gDaAG6WS2G2YAqSFTI9zD3GxnfuiLgBV9BVkM0-kke2JmTaC5oLE-I=w544-h544-l90-rj",
       "trackCount": 50,
@@ -162,10 +353,29 @@
       "title": "Desi Pop Party",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_m_cn307EUnwiDOgAsOMM27CHhuJCX2ygk",
       "description": "Shimmy, spin and shake with these sparkling desi pop dance hits.",
-      "genres": ["Desi Pop", "Dance", "Party", "Bollywood"],
-      "languages": ["Hindi", "Punjabi"],
-      "moods": ["Party", "Energize", "High Energy"],
-      "tags": ["desi pop", "party", "dance", "club", "bollywood dance", "bhangra"],
+      "genres": [
+        "Desi Pop",
+        "Dance",
+        "Party",
+        "Bollywood"
+      ],
+      "languages": [
+        "Hindi",
+        "Punjabi"
+      ],
+      "moods": [
+        "Party",
+        "Energize",
+        "High Energy"
+      ],
+      "tags": [
+        "desi pop",
+        "party",
+        "dance",
+        "club",
+        "bollywood dance",
+        "bhangra"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/Kw1qqSlhAPnCyycKBhJIWnzdogNolgUsQOhrtCGom-jNmuqfazitaSSennMCSFPDaZC-X8W9zBe6u2Uf=w544-h544-l90-rj",
       "trackCount": 185,
@@ -176,10 +386,27 @@
       "title": "Guru Randhawa Ultimate Hits",
       "url": "https://music.youtube.com/playlist?list=PLAGs92Bx9ap4uXyPz5cFnG3YXs_5eluOq",
       "description": "High Rated Gabru, Lahore, Suit Suit, and all blockbuster hits by Guru Randhawa.",
-      "genres": ["Punjabi Pop", "Desi Pop", "Party"],
-      "languages": ["Punjabi", "Hindi"],
-      "moods": ["Party", "Energize", "Groovy"],
-      "tags": ["guru randhawa", "punjabi pop", "lahore", "high rated gabru", "dance"],
+      "genres": [
+        "Punjabi Pop",
+        "Desi Pop",
+        "Party"
+      ],
+      "languages": [
+        "Punjabi",
+        "Hindi"
+      ],
+      "moods": [
+        "Party",
+        "Energize",
+        "Groovy"
+      ],
+      "tags": [
+        "guru randhawa",
+        "punjabi pop",
+        "lahore",
+        "high rated gabru",
+        "dance"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/-vxiky8h5JBNdmX7q4jp4O8rMSAGGQLpVVKLZiK3mj18x1HqaDeZy6Rv0WDVJcYHKtY1yFmYqqUC=s1200",
       "trackCount": 138,
@@ -190,10 +417,29 @@
       "title": "Yo Yo Honey Singh Classics",
       "url": "https://music.youtube.com/playlist?list=PLK2DP7i3WzFYNhxhHexcJV7WlimGnbCEq",
       "description": "The era-defining rap and desi hip-hop bangers by Yo Yo Honey Singh.",
-      "genres": ["Desi Hip Hop", "Punjabi", "Rap", "Party"],
-      "languages": ["Hindi", "Punjabi"],
-      "moods": ["Party", "Hype", "High Energy"],
-      "tags": ["honey singh", "yo yo honey singh", "desi hip hop", "punjabi rap", "brown rang", "blue eyes"],
+      "genres": [
+        "Desi Hip Hop",
+        "Punjabi",
+        "Rap",
+        "Party"
+      ],
+      "languages": [
+        "Hindi",
+        "Punjabi"
+      ],
+      "moods": [
+        "Party",
+        "Hype",
+        "High Energy"
+      ],
+      "tags": [
+        "honey singh",
+        "yo yo honey singh",
+        "desi hip hop",
+        "punjabi rap",
+        "brown rang",
+        "blue eyes"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.ggpht.com/-p6m4ikf4nstk5p2ktBODCXRAJj_AZ8q3gyheaE-3O3KMqJCSfu_ky33dD8OvOqH-f3AiHAcYg=s1200",
       "trackCount": 81,
@@ -204,10 +450,26 @@
       "title": "Punjabi Romance Essentials",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_n9S8w04iJGdSirkDSX6svxZ8YtcpbLwFM",
       "description": "Biggest hits to crowd favorites, enjoy the best of heartfelt Punjabi Romance.",
-      "genres": ["Punjabi", "Romantic", "Acoustic"],
-      "languages": ["Punjabi"],
-      "moods": ["Romantic", "Soulful", "Chill"],
-      "tags": ["punjabi romance", "love songs", "punjabi love", "acoustic", "diljit dosanjh"],
+      "genres": [
+        "Punjabi",
+        "Romantic",
+        "Acoustic"
+      ],
+      "languages": [
+        "Punjabi"
+      ],
+      "moods": [
+        "Romantic",
+        "Soulful",
+        "Chill"
+      ],
+      "tags": [
+        "punjabi romance",
+        "love songs",
+        "punjabi love",
+        "acoustic",
+        "diljit dosanjh"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/Ms9wxog0cnM67HSqTWrP1nZo4UlJVwtgM7puqjVgwWEuMaEch0OCHI4w3rpmJ_hIuHKOazHggpma9U4e=w544-h544-l90-rj",
       "trackCount": 100,
@@ -218,10 +480,28 @@
       "title": "Punjabi Party Bangers",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_nlOMew8qv8HGXb9HbshuU1OgH3aL_JMKA",
       "description": "Rock the dance floor with these energetic hit Punjabi songs. Press play and party hard.",
-      "genres": ["Punjabi", "Bhangra", "Party", "Dance"],
-      "languages": ["Punjabi"],
-      "moods": ["Party", "Energize", "Celebration"],
-      "tags": ["punjabi party", "bhangra", "dance", "celebration", "dhol", "punjabi hits"],
+      "genres": [
+        "Punjabi",
+        "Bhangra",
+        "Party",
+        "Dance"
+      ],
+      "languages": [
+        "Punjabi"
+      ],
+      "moods": [
+        "Party",
+        "Energize",
+        "Celebration"
+      ],
+      "tags": [
+        "punjabi party",
+        "bhangra",
+        "dance",
+        "celebration",
+        "dhol",
+        "punjabi hits"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/bYqS6PJYXjOy2fW-AQ7zgZ5fp-WSxc_fQ5BnmV-dagOV1cidFcc_LEn3VxK3L3go26ds_snzrFWjlNfk=w544-h544-l90-rj",
       "trackCount": 100,
@@ -232,10 +512,27 @@
       "title": "Bhojpuri Party Hits",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_n7VIYx-oWOJQanlpBG6GRyLZxpWYMltB8",
       "description": "Rock the dance floor with high-voltage, chart-busting Bhojpuri party anthems.",
-      "genres": ["Bhojpuri", "Folk Pop", "Party", "Dance"],
-      "languages": ["Bhojpuri"],
-      "moods": ["Party", "Festive", "High Energy"],
-      "tags": ["bhojpuri party", "bhojpuri hits", "dance", "festive", "desi dance"],
+      "genres": [
+        "Bhojpuri",
+        "Folk Pop",
+        "Party",
+        "Dance"
+      ],
+      "languages": [
+        "Bhojpuri"
+      ],
+      "moods": [
+        "Party",
+        "Festive",
+        "High Energy"
+      ],
+      "tags": [
+        "bhojpuri party",
+        "bhojpuri hits",
+        "dance",
+        "festive",
+        "desi dance"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/Z4x99sefONJWKPWpfZTsIYb7El0Gj_Mks6wBmrjYDc0V-gGdINmUudrX_8oivsk6VQH3o9jrHtUNdEA=w544-h544-l90-rj",
       "trackCount": 120,
@@ -246,12 +543,543 @@
       "title": "Presenting Khesari Lal Yadav",
       "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_lucbc5cXo9eWbjfgUm9Y_2BYI0y35Zgjw",
       "description": "The biggest hits and most essential tracks from superstar Khesari Lal Yadav.",
-      "genres": ["Bhojpuri", "Folk", "Dance"],
-      "languages": ["Bhojpuri"],
-      "moods": ["Festive", "Energize", "Fun"],
-      "tags": ["khesari lal yadav", "bhojpuri superstar", "bhojpuri hits", "dance", "folk"],
+      "genres": [
+        "Bhojpuri",
+        "Folk",
+        "Dance"
+      ],
+      "languages": [
+        "Bhojpuri"
+      ],
+      "moods": [
+        "Festive",
+        "Energize",
+        "Fun"
+      ],
+      "tags": [
+        "khesari lal yadav",
+        "bhojpuri superstar",
+        "bhojpuri hits",
+        "dance",
+        "folk"
+      ],
       "featured": true,
       "thumbnailUrl": "https://yt3.googleusercontent.com/NTvs8pmGtM8O9TZFY32F3I--Nmm7kSbIBQSg57MwSgG7ZYnkRgYIH6OcqlGniCGX3znp80L1bq2kbfI=w544-h544-l90-rj",
+      "trackCount": 50,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "punjabi_song_playlist_2026",
+      "title": "Punjabi Song Playlist 2026",
+      "url": "https://music.youtube.com/playlist?list=PLO7-VO1D0_6NYoMAN0XncJu4tvibirSmN",
+      "description": "Discover the freshest beats and catchy rhythms with this playlist of the latest Punjabi songs.",
+      "genres": [
+        "Punjabi",
+        "Desi Pop",
+        "Bhangra"
+      ],
+      "languages": [
+        "Punjabi"
+      ],
+      "moods": [
+        "Party",
+        "Energize",
+        "Trending"
+      ],
+      "tags": [
+        "punjabi songs",
+        "punjabi hits",
+        "latest punjabi",
+        "bhangra",
+        "trending"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/CrvLTjCNpIP8tYFYLzLB975_j5OYZ1U_RwsXXftDQQy6oHsBGxY9CytbewbwRQaKfAeX7RGw9NS4=s1200",
+      "trackCount": 100,
+      "author": "Lit Trending Music"
+    },
+    {
+      "id": "punjabi_hits_collection",
+      "title": "Punjabi Hits Collection",
+      "url": "https://music.youtube.com/playlist?list=PL7sYmiMW-mLO45YJ2tzS3JAETkf40uXcs",
+      "description": "Massive collection of Punjabi blockbusters, party anthems and folk melodies.",
+      "genres": [
+        "Punjabi",
+        "Bhangra",
+        "Folk"
+      ],
+      "languages": [
+        "Punjabi"
+      ],
+      "moods": [
+        "Party",
+        "Energize",
+        "Celebration"
+      ],
+      "tags": [
+        "punjabi",
+        "bhangra",
+        "sidhu moose wala",
+        "ap dhillon",
+        "karan aujla"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://i.ytimg.com/vi/HtM_QDwghx8/hqdefault.jpg",
+      "trackCount": 311,
+      "author": "Boom Bulets"
+    },
+    {
+      "id": "bhojpuri_essentials",
+      "title": "Bhojpuri Essentials",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_nrrIA99kuMbVQZ42zKr1l0nTBKRAHI6To",
+      "description": "The biggest, most popular, and most lit songs from the last 5 years.",
+      "genres": [
+        "Bhojpuri",
+        "Folk Pop",
+        "Dance"
+      ],
+      "languages": [
+        "Bhojpuri"
+      ],
+      "moods": [
+        "Festive",
+        "Energize",
+        "Party"
+      ],
+      "tags": [
+        "bhojpuri",
+        "bhojpuri essentials",
+        "pawan singh",
+        "khesari lal",
+        "dance"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/B02U3S4hMETlNTY7zNq4C4W32lSwVCtjHBW2P00295Bo-vGTEWW3VkshztM1oXBWqgG7hCML52sWTQA=w544-h544-l90-rj",
+      "trackCount": 54,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "bhojpuri_hits_2023",
+      "title": "Bhojpuri Hits 2023",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_lgR5GgxlqbDqKuZtLEn4HSpbGjDU7B4Dw",
+      "description": "Experience the sound of 2023 with this collection of some of the biggest Bhojpuri hits of the year.",
+      "genres": [
+        "Bhojpuri",
+        "Party",
+        "Hits"
+      ],
+      "languages": [
+        "Bhojpuri"
+      ],
+      "moods": [
+        "Festive",
+        "High Energy",
+        "Dance"
+      ],
+      "tags": [
+        "bhojpuri 2023",
+        "bhojpuri hits",
+        "bhojpuri dance",
+        "party"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/ski26DwWS32JcPwZKHI9DblchtqJKA-x1t31vJlWxaIT94qdl1IYGJqUvdyPM-3bafvEho5j51q0LJre=w544-h544-l90-rj",
+      "trackCount": 47,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "bhojpuri_hits_2022",
+      "title": "Bhojpuri Hits 2022",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_lS80wUuQAyktrrtj9F0z3et-jrWdC0dIk",
+      "description": "Experience the sound of 2022 with this collection of some of the biggest Bhojpuri hits of the year.",
+      "genres": [
+        "Bhojpuri",
+        "Party",
+        "Hits"
+      ],
+      "languages": [
+        "Bhojpuri"
+      ],
+      "moods": [
+        "Festive",
+        "Dance",
+        "High Energy"
+      ],
+      "tags": [
+        "bhojpuri 2022",
+        "bhojpuri hits",
+        "dance",
+        "desi hits"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/vtYDibD4GP1vO_DGCLX4E0cJPKYBVrivzYJno-RLAAPH7Uz7hRpw7Z3WgcpHrRFYAstePjaSKak7www=w544-h544-l90-rj",
+      "trackCount": 40,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "slow_songs_hindi",
+      "title": "Slow Songs",
+      "url": "https://music.youtube.com/playlist?list=PLWAYqRYz0hCtXSoTZHsTZaYt36-Xbvawx",
+      "description": "Calm, slow, and soothing Bollywood & Indie Hindi melodies to unwind.",
+      "genres": [
+        "Indie Hindi",
+        "Acoustic",
+        "Soulful",
+        "Bollywood"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Chill",
+        "Relax",
+        "Calm",
+        "Slow"
+      ],
+      "tags": [
+        "slow songs",
+        "chill hindi",
+        "lofi",
+        "acoustic",
+        "soothing",
+        "peaceful"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/VwU5-PlIKo9JxBM1YdpPt_bXShIN-HXDZO5mfn4v7hmQA8AEC4-xWBggjOZr370GLGGNOCsglQ=s1200",
+      "trackCount": 69,
+      "author": "Amola Mehta"
+    },
+    {
+      "id": "bollywood_dance_hitlist",
+      "title": "Bollywood Dance Hitlist",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_kjNBBWqyQ_Cy14B0P4xrcKgd39CRjXXKk",
+      "description": "The choicest of recent Bollywood dance tracks to set the tone of every party. DJ, the console is all yours.",
+      "genres": [
+        "Bollywood",
+        "Dance",
+        "Party",
+        "Club"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Party",
+        "High Energy",
+        "Energize"
+      ],
+      "tags": [
+        "bollywood dance",
+        "party",
+        "club hits",
+        "hindi dance",
+        "dj hits"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/RoFn6a71tnPOB_pfdXXfYREoWnAmIUqJl7771UQ0ms691765Pu2GNIbkUtc0gO_GL99pAeOCXsr_rg=w544-h544-l90-rj",
+      "trackCount": 50,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "i_pop_hits",
+      "title": "I-Pop Hits!",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_lj-zBExVYl7YN_NxXboDIh4A-wKGfgzNY",
+      "description": "Your one-stop shop for the biggest Desi Pop hits.",
+      "genres": [
+        "Desi Pop",
+        "Indie Pop",
+        "Bollywood"
+      ],
+      "languages": [
+        "Hindi",
+        "Punjabi"
+      ],
+      "moods": [
+        "Upbeat",
+        "Happy",
+        "Groovy"
+      ],
+      "tags": [
+        "ipop",
+        "desi pop",
+        "indian pop",
+        "pop hits",
+        "trending"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/Ot13_1hmP-K2e1YG_WQrr6BRZlWMgbQj4M4VNOJCe6T8fc88ppTw7IuwhzNe97vriZExRS5jO3_HTA=w544-h544-l90-rj",
+      "trackCount": 64,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "xweet_archives",
+      "title": "Xweet Archives",
+      "url": "https://music.youtube.com/playlist?list=PLLiLtJ2_tkdc",
+      "description": "Curated collection of all-time favorite songs, emotional gems and evergreen classics.",
+      "genres": [
+        "Bollywood",
+        "Soulful",
+        "Classics"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Nostalgic",
+        "Soulful",
+        "Relax"
+      ],
+      "tags": [
+        "xweet",
+        "archives",
+        "curated",
+        "all time hits",
+        "classics"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/P5lF8KVWYzYR6JHCGVkd3mfQNdvhmBKrFj0LZ28glV2jVQVFegebc8kHNEzdnBc2nwLzXE5U50o=s1200",
+      "trackCount": 103,
+      "author": "Xweet"
+    },
+    {
+      "id": "10s_bollywood_romance_hits",
+      "title": "10s Bollywood Romance Hits",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_ly0ZHQ7uutQ76YAUjYks4rEG9dOhL9Rfw",
+      "description": "Relive 2010's best romantic hits from Bollywood.",
+      "genres": [
+        "Bollywood",
+        "Romantic",
+        "Melody"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Romantic",
+        "Soulful",
+        "Love"
+      ],
+      "tags": [
+        "2010s bollywood",
+        "romance",
+        "arijit singh",
+        "atif aslam",
+        "hindi love"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/30rGvia2vNHgBGn7HOw5mGSEtrhVfdgTaDDGOYsUU54qy8pw2l02_4-sVknxivAlYr9ngHF0b-ZhFe0=w544-h544-l90-rj",
+      "trackCount": 98,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "chhath_puja_songs",
+      "title": "Chhath Puja Songs",
+      "url": "https://music.youtube.com/playlist?list=PLIEcLNZjVORGtA0ouxkdpvFlRdLwr6bEq",
+      "description": "Devotional and traditional Chhath Mahaparv geet and bhajans.",
+      "genres": [
+        "Devotional",
+        "Bhojpuri",
+        "Traditional"
+      ],
+      "languages": [
+        "Bhojpuri",
+        "Hindi"
+      ],
+      "moods": [
+        "Devotional",
+        "Spiritual",
+        "Peaceful"
+      ],
+      "tags": [
+        "chhath puja",
+        "chhath geet",
+        "sharda sinha",
+        "devotional",
+        "bhojpuri bhakti"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/KD0mewI4cEJS9NVgHUvHKuNxuA05ZFHrRWu6ugtcmerM9N1NQX6GFxuFfVGMcvF73BuNYG_OsQ=s1200",
+      "trackCount": 12,
+      "author": "golu kumar"
+    },
+    {
+      "id": "presenting_pawan_singh",
+      "title": "Presenting Pawan Singh",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_n6EonYFgFVkmtyADyBRO9_qsbXUUE34jg",
+      "description": "The most played hits and essential tracks from Bhojpuri powerhouse Pawan Singh.",
+      "genres": [
+        "Bhojpuri",
+        "Dance",
+        "Folk Pop"
+      ],
+      "languages": [
+        "Bhojpuri"
+      ],
+      "moods": [
+        "High Energy",
+        "Party",
+        "Festive"
+      ],
+      "tags": [
+        "pawan singh",
+        "bhojpuri hits",
+        "lollipop lagelu",
+        "bhojpuri superstar"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/hawSP1kEJJ4IXfJ92kktVqZNsKW5I7ZiOcet6xJWbLi9INdU5wPuqlccxkc39ceRbD3q1alRCJrucQ=w544-h544-l90-rj",
+      "trackCount": 48,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "bhojpuri_energy_boosters",
+      "title": "Bhojpuri Energy Boosters",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_ltBUnE76-ol1ufdgUWN4T7WtFljvu8gYM",
+      "description": "Popular, upbeat, high-voltage Bhojpuri hits to get you grooving.",
+      "genres": [
+        "Bhojpuri",
+        "Dance",
+        "Party"
+      ],
+      "languages": [
+        "Bhojpuri"
+      ],
+      "moods": [
+        "High Energy",
+        "Party",
+        "Energize"
+      ],
+      "tags": [
+        "bhojpuri energy",
+        "high voltage",
+        "dance hits",
+        "party songs"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/2xrqKhyFZfME5gcp6f_TYB3nMEgjUQLoT1CdHadD6nrvkgsXF-AU9fN4vv2e1G6q4O14XNxE-mk-B1Ee=w544-h544-l90-rj",
+      "trackCount": 65,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "10s_bhojpuri",
+      "title": "10s Bhojpuri",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_nbSNGivuIVOki77610Ju74DcwzXWRfsd0",
+      "description": "Enjoy all your favourites and the biggest Bhojpuri hits from the 10s.",
+      "genres": [
+        "Bhojpuri",
+        "Retro",
+        "Dance"
+      ],
+      "languages": [
+        "Bhojpuri"
+      ],
+      "moods": [
+        "Nostalgic",
+        "Party",
+        "Festive"
+      ],
+      "tags": [
+        "10s bhojpuri",
+        "2010s bhojpuri",
+        "bhojpuri hits",
+        "classic bhojpuri"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/AKoucO5GnuN5hKRGTOh4DBAqf7gMQ8sLbY4WVl9hNRTjUZsORMp-VtZmV9GCBBRqNZqyvOvdnxiSUhE=w544-h544-l90-rj",
+      "trackCount": 67,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "weakness_playlist",
+      "title": "Weakness",
+      "url": "https://music.youtube.com/playlist?list=PLuw_kbcyFHN6N70e2eUfFl1av-AWUOVof",
+      "description": "Heart-touching sad and emotional songs collection.",
+      "genres": [
+        "Bollywood",
+        "Sad",
+        "Acoustic"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Sad",
+        "Heartbreak",
+        "Melancholy"
+      ],
+      "tags": [
+        "weakness",
+        "sad songs",
+        "heartbreak",
+        "emotional",
+        "hindi sad"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/grTRoD1zLdtmEmWbFX5E-pXxxbz48P796KMcylBPl0nLRLTQQx3zW_RIOg2OAal7VdbL3rwGGCw=s1200",
+      "trackCount": 42,
+      "author": "THE FARZI"
+    },
+    {
+      "id": "presenting_kk",
+      "title": "Presenting KK",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_l9aBYEzcz8Tfa8rsUHpqObGsVAnESQZYg",
+      "description": "The most played hits and essential tracks of legendary singer KK.",
+      "genres": [
+        "Bollywood",
+        "Soulful",
+        "Rock",
+        "Pop"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Nostalgic",
+        "Soulful",
+        "Romantic"
+      ],
+      "tags": [
+        "kk",
+        "krishnakumar kunnath",
+        "yaaron",
+        "pal",
+        "alvida",
+        "bollywood"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/-RyT79Yx96ZD-R-vRDeYkPJSwK_Knakw9D9Xb4QKe5gpnGzhbu0a8_Oa6Sz_sqkmbf8HwmOiXsUdgyY=w544-h544-l90-rj",
+      "trackCount": 45,
+      "author": "YouTube Music"
+    },
+    {
+      "id": "presenting_pritam",
+      "title": "Presenting Pritam",
+      "url": "https://music.youtube.com/playlist?list=RDCLAK5uy_lCk83L9z97PmOObjle2NCsFK7ZrtbeEp4",
+      "description": "Listen to the most played hits and essential tracks composed by maestro Pritam.",
+      "genres": [
+        "Bollywood",
+        "Pop",
+        "Romantic",
+        "Dance"
+      ],
+      "languages": [
+        "Hindi"
+      ],
+      "moods": [
+        "Romantic",
+        "Upbeat",
+        "Happy",
+        "Soulful"
+      ],
+      "tags": [
+        "pritam",
+        "pritam da",
+        "bollywood hits",
+        "composer",
+        "hindi songs"
+      ],
+      "featured": true,
+      "thumbnailUrl": "https://yt3.googleusercontent.com/cX0lYmakL5yYWcADWACkm1YrLJs9koUYge-sBZWlbldo6ABmsHE8SynrL-U9l9fmOVDh2mlhiiWh9g=w544-h544-l90-rj",
       "trackCount": 50,
       "author": "YouTube Music"
     }

@@ -31,6 +31,9 @@ class FakeDownloaderService implements DownloaderService {
     VideoQuality videoQuality = VideoQuality.best,
     AudioQuality audioQuality = AudioQuality.k320,
     String? destinationDirectory,
+    bool isBatch = false,
+    bool isLastBatchItem = true,
+    String? batchPlaylistName,
   }) {
     cancelled = false;
     lastVideoQuality = videoQuality;

@@ -19,7 +19,7 @@ class DownloadForegroundService : Service() {
 
     companion object {
         private const val TAG = "DownloadForegroundService"
-        const val CHANNEL_ID = "infyn_yt_downloads_channel"
+        const val CHANNEL_ID = "infyn_yt_downloads_silent_v2"
         const val CHANNEL_COMPLETE_ID = "infyn_yt_completed_channel"
         const val NOTIFICATION_ID = 1001
 
@@ -171,9 +171,8 @@ class DownloadForegroundService : Service() {
                 stopSelf()
             }
             ACTION_ITEM_FINISHED -> {
-                val title = intent.getStringExtra(EXTRA_TITLE) ?: "Item Downloaded"
                 val statusText = intent.getStringExtra(EXTRA_STATUS_TEXT) ?: "Downloads in progress..."
-                showTerminalNotification(title, "Saved to Downloads/infyn-dl", false)
+                lastNotificationStatus = statusText
                 val notification = buildOngoingNotification(currentTitle, 0, statusText, true)
                 val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
                 manager.notify(NOTIFICATION_ID, notification)
@@ -259,6 +258,11 @@ class DownloadForegroundService : Service() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
+            // Delete legacy noisy channel if it exists
+            try {
+                manager.deleteNotificationChannel("infyn_yt_downloads_channel")
+            } catch (_: Throwable) {}
+
             val progressChannel = NotificationChannel(
                 CHANNEL_ID,
                 "Live Downloads",
@@ -266,6 +270,8 @@ class DownloadForegroundService : Service() {
             ).apply {
                 description = "Shows live download speed, ETA, and progress"
                 setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
             }
 
             val completeChannel = NotificationChannel(
@@ -275,6 +281,7 @@ class DownloadForegroundService : Service() {
             ).apply {
                 description = "Notifies when a media download finishes"
                 setShowBadge(true)
+                enableVibration(true)
             }
 
             manager.createNotificationChannel(progressChannel)
@@ -313,6 +320,7 @@ class DownloadForegroundService : Service() {
             .setContentText(statusText)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setOngoing(true)
+            .setSilent(true)
             .setOnlyAlertOnce(true)
             .setContentIntent(openPendingIntent)
             .addAction(android.R.drawable.ic_menu_close_clear_cancel, "Cancel", cancelPendingIntent)

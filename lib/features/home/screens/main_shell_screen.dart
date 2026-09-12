@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../downloader/screens/downloader_screen.dart';
 import '../../downloader/services/downloader_service.dart';
 import '../../library/screens/library_screen.dart';
 import '../../library/screens/music_library_screen.dart';
@@ -66,23 +65,15 @@ class _MainShellScreenState extends State<MainShellScreen> {
                       children: [
                         MusicLibraryScreen(
                           onNavigateToDownloader: () =>
-                              setState(() => _currentIndex = 2),
+                              setState(() => _currentIndex = 1),
                           onNavigateToSearch: () =>
                               setState(() => _currentIndex = 1),
                         ),
                         const SearchScreen(),
-                        DownloaderScreen(
-                          downloaderService: widget.downloaderService,
-                          onOpenSettings: () =>
-                              setState(() => _currentIndex = 4),
-                          onOpenLibrary: () =>
-                              setState(() => _currentIndex = 3),
-                          onOpenSearch: () => setState(() => _currentIndex = 1),
-                        ),
                         LibraryScreen(
                           downloaderService: widget.downloaderService,
                           onNavigateToDownloader: () =>
-                              setState(() => _currentIndex = 2),
+                              setState(() => _currentIndex = 1),
                           onNavigateToSearch: () =>
                               setState(() => _currentIndex = 1),
                         ),
@@ -183,18 +174,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
           ),
           _buildSidebarNavItem(
             index: 2,
-            icon: Icons.download_outlined,
-            selectedIcon: Icons.download_rounded,
-            label: 'Downloader',
-          ),
-          _buildSidebarNavItem(
-            index: 3,
             icon: Icons.folder_outlined,
             selectedIcon: Icons.folder_rounded,
             label: 'Library',
           ),
           _buildSidebarNavItem(
-            index: 4,
+            index: 3,
             icon: Icons.settings_outlined,
             selectedIcon: Icons.settings_rounded,
             label: 'Settings',
@@ -323,26 +308,19 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 // 0 — Music Library (with Featured Playlists)
                 MusicLibraryScreen(
                   onNavigateToDownloader: () =>
-                      setState(() => _currentIndex = 2),
+                      setState(() => _currentIndex = 1),
                   onNavigateToSearch: () => setState(() => _currentIndex = 1),
                 ),
-                // 1 — Search
+                // 1 — Search (unified with Downloader)
                 const SearchScreen(),
-                // 2 — Downloader
-                DownloaderScreen(
-                  downloaderService: widget.downloaderService,
-                  onOpenSettings: () => setState(() => _currentIndex = 4),
-                  onOpenLibrary: () => setState(() => _currentIndex = 3),
-                  onOpenSearch: () => setState(() => _currentIndex = 1),
-                ),
-                // 3 — Library
+                // 2 — Library
                 LibraryScreen(
                   downloaderService: widget.downloaderService,
                   onNavigateToDownloader: () =>
-                      setState(() => _currentIndex = 2),
+                      setState(() => _currentIndex = 1),
                   onNavigateToSearch: () => setState(() => _currentIndex = 1),
                 ),
-                // 4 — Settings
+                // 3 — Settings
                 SettingsScreen(
                   downloaderService: widget.downloaderService,
                 ),
@@ -380,18 +358,12 @@ class _MainShellScreenState extends State<MainShellScreen> {
                 ),
                 _buildMobileNavItem(
                   index: 2,
-                  icon: Icons.download_outlined,
-                  selectedIcon: Icons.download_rounded,
-                  label: 'Downloader',
-                ),
-                _buildMobileNavItem(
-                  index: 3,
                   icon: Icons.folder_outlined,
                   selectedIcon: Icons.folder_rounded,
                   label: 'Library',
                 ),
                 _buildMobileNavItem(
-                  index: 4,
+                  index: 3,
                   icon: Icons.settings_outlined,
                   selectedIcon: Icons.settings_rounded,
                   label: 'Settings',

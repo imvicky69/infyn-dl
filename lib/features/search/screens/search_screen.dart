@@ -6,17 +6,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/ui_feedback_helper.dart';
 import '../../../shared/widgets/shimmer_skeleton.dart';
+import '../../downloader/models/download_format.dart';
+import '../../downloader/models/media_quality.dart';
+import '../../downloader/models/playlist_metadata.dart';
+import '../../downloader/models/video_metadata.dart';
+import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/download_history_service.dart';
 import '../../downloader/services/music_download_manager.dart';
 import '../../library/models/track.dart';
 import '../../library/services/music_scanner_service.dart';
 import '../../player/services/audio_player_service.dart';
+import '../../settings/services/settings_service.dart';
 import '../models/search_playlist_info.dart';
 import '../services/ytm_search_service.dart';
 import 'search_playlist_detail_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
+
+  static final ValueNotifier<String?> externalSearchQuery =
+      ValueNotifier<String?>(null);
 
   @override
   State<SearchScreen> createState() => _SearchScreenState();
@@ -32,6 +41,12 @@ class _SearchScreenState extends State<SearchScreen> {
   bool _isLoading = false;
   SearchFilter _currentFilter = SearchFilter.songs;
 
+  VideoMetadata? _pastedVideoMetadata;
+  String? _pastedUrl;
+  bool _isFetchingLink = false;
+  DownloadFormat _selectedFormat = DownloadFormat.mp3;
+  final VideoQuality _selectedVideoQuality = VideoQuality.best;
+
   @override
   void initState() {
     super.initState();
@@ -40,6 +55,26 @@ class _SearchScreenState extends State<SearchScreen> {
         .addListener(_onHistoryChanged);
     MusicScannerService.instance.tracksNotifier.addListener(_onHistoryChanged);
     MusicDownloadManager.instance.addListener(_onHistoryChanged);
+
+    SearchScreen.externalSearchQuery.addListener(_onExternalQueryChanged);
+    if (SearchScreen.externalSearchQuery.value != null &&
+        SearchScreen.externalSearchQuery.value!.isNotEmpty) {
+      final query = SearchScreen.externalSearchQuery.value!;
+      SearchScreen.externalSearchQuery.value = null;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _searchController.text = query;
+        _performSearch(query);
+      });
+    }
+  }
+
+  void _onExternalQueryChanged() {
+    final q = SearchScreen.externalSearchQuery.value;
+    if (q != null && q.isNotEmpty && mounted) {
+      SearchScreen.externalSearchQuery.value = null;
+      _searchController.text = q;
+      _performSearch(q);
+    }
   }
 
   Future<void> _loadRecentSearches() async {
@@ -84,7 +119,230 @@ class _SearchScreenState extends State<SearchScreen> {
     MusicScannerService.instance.tracksNotifier
         .removeListener(_onHistoryChanged);
     MusicDownloadManager.instance.removeListener(_onHistoryChanged);
+    SearchScreen.externalSearchQuery.removeListener(_onExternalQueryChanged);
     super.dispose();
+  }
+
+  bool _isValidUrl(String input) {
+    var trimmed = input.trim();
+    if (trimmed.isEmpty) return false;
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      trimmed = 'https://$trimmed';
+    }
+    final uri = Uri.tryParse(trimmed);
+    if (uri == null) return false;
+    final host = uri.host.toLowerCase();
+    return host.contains('youtube.com') ||
+        host.contains('youtu.be') ||
+        host.contains('music.youtube.com');
+  }
+
+  bool _isPlaylistUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('list=') || lower.contains('/playlist');
+  }
+
+  Future<void> _handleUrlInput(String rawUrl) async {
+    setState(() {
+      _isLoading = true;
+      _isFetchingLink = true;
+      _pastedVideoMetadata = null;
+    });
+
+    try {
+      var queryUrl = rawUrl.trim();
+      if (!queryUrl.startsWith('http://') && !queryUrl.startsWith('https://')) {
+        queryUrl = 'https://$queryUrl';
+      }
+
+      if (_isPlaylistUrl(queryUrl)) {
+        final uri = Uri.tryParse(queryUrl);
+        final listId = uri?.queryParameters['list'];
+
+        var fetchUrl = queryUrl;
+        if (fetchUrl.contains('music.youtube.com/playlist')) {
+          fetchUrl = fetchUrl.replaceAll(
+              'music.youtube.com/playlist', 'www.youtube.com/playlist');
+        }
+
+        PlaylistMetadata? playlist;
+        try {
+          playlist = await AndroidDownloaderService.instance
+              .fetchPlaylistMetadata(fetchUrl);
+        } catch (e) {
+          debugPrint('fetchPlaylistMetadata error: $e');
+        }
+
+        SearchPlaylistInfo playlistInfo;
+        final effectiveId = listId ??
+            (playlist != null && playlist.id.isNotEmpty
+                ? playlist.id
+                : queryUrl);
+
+        if (playlist != null &&
+            playlist.title.isNotEmpty &&
+            playlist.title != 'YouTube Playlist') {
+          // Pre-cache tracks into YtmSearchService so detail screen has instant access
+          if (playlist.entries.isNotEmpty) {
+            final tracks = playlist.entries.map((entry) {
+              final dur = entry.duration > 0
+                  ? Duration(seconds: entry.duration)
+                  : null;
+              return Track(
+                id: entry.id,
+                title: entry.title,
+                artist: entry.uploader ?? playlist!.uploader ?? 'Unknown Artist',
+                album: playlist!.title,
+                webUrl: entry.url,
+                duration: dur,
+                artworkPath: entry.bestThumbnailUrl,
+              );
+            }).toList();
+            await YtmSearchService.instance
+                .cachePlaylistTracks(effectiveId, tracks);
+          }
+
+          playlistInfo = SearchPlaylistInfo(
+            id: effectiveId,
+            title: playlist.title,
+            author: playlist.uploader,
+            thumbnailUrl: playlist.entries.isNotEmpty
+                ? playlist.entries.first.bestThumbnailUrl
+                : null,
+            trackCount: playlist.entries.length,
+          );
+          YtmSearchService.instance
+              .cachePlaylistInfo(effectiveId, playlistInfo);
+        } else {
+          playlistInfo = SearchPlaylistInfo(
+            id: effectiveId,
+            title: 'YouTube Playlist',
+            trackCount: 0,
+          );
+        }
+
+        if (mounted) {
+          _searchController.clear();
+          setState(() {
+            _isLoading = false;
+            _isFetchingLink = false;
+            _pastedVideoMetadata = null;
+            _pastedUrl = null;
+          });
+
+          await Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => SearchPlaylistDetailScreen(
+                playlist: playlistInfo,
+              ),
+            ),
+          );
+
+          if (mounted) {
+            _searchController.clear();
+            setState(() {
+              _isLoading = false;
+              _isFetchingLink = false;
+              _pastedVideoMetadata = null;
+              _pastedUrl = null;
+              _songResults = [];
+              _playlistResults = [];
+            });
+          }
+        }
+        return;
+      }
+
+      final meta =
+          await AndroidDownloaderService.instance.fetchMetadata(queryUrl);
+      if (mounted) {
+        setState(() {
+          _pastedVideoMetadata = meta;
+          _pastedUrl = queryUrl;
+          _isLoading = false;
+          _isFetchingLink = false;
+        });
+        if (meta == null) {
+          UiFeedbackHelper.showErrorToast(
+            context,
+            'Could not load media details for link.',
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _isFetchingLink = false;
+        });
+        UiFeedbackHelper.showErrorToast(context, 'Error processing link: $e');
+      }
+    }
+  }
+
+  Future<void> _handlePasteFromClipboard() async {
+    try {
+      final data = await Clipboard.getData(Clipboard.kTextPlain);
+      final text = data?.text?.trim() ?? '';
+      if (text.isNotEmpty) {
+        _searchController.text = text;
+        _performSearch(text);
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Clipboard is empty. Copy a YouTube link first.'),
+              duration: Duration(seconds: 2),
+            ),
+          );
+        }
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _downloadPastedVideo() async {
+    final meta = _pastedVideoMetadata;
+    if (meta == null) return;
+
+    HapticFeedback.lightImpact();
+    UiFeedbackHelper.showSuccessToast(
+      context,
+      'Downloading "${meta.title}" in background...',
+    );
+
+    final videoUrl =
+        _pastedUrl ?? 'https://www.youtube.com/watch?v=${meta.id}';
+
+    if (_selectedFormat == DownloadFormat.mp3) {
+      final track = Track(
+        id: meta.id.isNotEmpty ? meta.id : videoUrl,
+        title: meta.title,
+        artist: meta.uploader ?? 'YouTube',
+        webUrl: videoUrl,
+        duration: meta.durationSeconds > 0
+            ? Duration(seconds: meta.durationSeconds)
+            : null,
+        artworkPath: meta.thumbnailUrl,
+      );
+      await MusicDownloadManager.instance.downloadTrack(track, autoPlay: true);
+    } else {
+      final destDir = await SettingsService.instance
+          .resolveDownloadDirectoryForFormat(format: DownloadFormat.mp4);
+      AndroidDownloaderService.instance.download(
+        url: videoUrl,
+        format: DownloadFormat.mp4,
+        videoQuality: _selectedVideoQuality,
+        destinationDirectory: destDir,
+      ).listen(null);
+    }
+
+    if (mounted) {
+      _searchController.clear();
+      setState(() {
+        _pastedVideoMetadata = null;
+        _pastedUrl = null;
+      });
+    }
   }
 
   Future<void> _performSearch(String query) async {
@@ -93,8 +351,15 @@ class _SearchScreenState extends State<SearchScreen> {
       setState(() {
         _songResults = [];
         _playlistResults = [];
+        _pastedVideoMetadata = null;
         _isLoading = false;
+        _isFetchingLink = false;
       });
+      return;
+    }
+
+    if (_isValidUrl(cleanQuery)) {
+      await _handleUrlInput(cleanQuery);
       return;
     }
 
@@ -102,6 +367,7 @@ class _SearchScreenState extends State<SearchScreen> {
 
     setState(() {
       _isLoading = true;
+      _pastedVideoMetadata = null;
     });
 
     if (_currentFilter == SearchFilter.songs) {
@@ -222,16 +488,31 @@ class _SearchScreenState extends State<SearchScreen> {
         return;
       }
 
+      var effectiveTitle = playlist.title;
+      if ((effectiveTitle.isEmpty || effectiveTitle == 'YouTube Playlist') &&
+          tracks.isNotEmpty) {
+        final albumTrack = tracks.firstWhere(
+          (t) =>
+              t.album != null &&
+              t.album!.trim().isNotEmpty &&
+              t.album != 'YouTube',
+          orElse: () => Track(id: '', title: '', artist: ''),
+        );
+        if (albumTrack.album != null && albumTrack.album!.trim().isNotEmpty) {
+          effectiveTitle = albumTrack.album!.trim();
+        }
+      }
+
       if (!mounted) return;
       UiFeedbackHelper.showSuccessToast(
         context,
-        'Downloading ${tracks.length} tracks from "${playlist.title}" in background...',
+        'Downloading ${tracks.length} tracks from "$effectiveTitle" in background...',
       );
 
       // Delegate batch download to background manager so navigating away never cancels it!
       MusicDownloadManager.instance.startBatchDownload(
         tracks: tracks,
-        playlistName: playlist.title,
+        playlistName: effectiveTitle,
         playlistUrl: 'https://www.youtube.com/playlist?list=$playlistId',
         autoPlayFirst: true,
       );
@@ -268,18 +549,32 @@ class _SearchScreenState extends State<SearchScreen> {
             border: InputBorder.none,
             prefixIcon:
                 Icon(Icons.search_rounded, color: AppColors.textSecondary),
-            suffixIcon: _searchController.text.isNotEmpty
-                ? IconButton(
+            suffixIcon: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_searchController.text.isNotEmpty)
+                  IconButton(
                     icon: Icon(Icons.clear_rounded,
                         color: AppColors.textSecondary, size: 20),
                     onPressed: () {
                       _searchController.clear();
+                      setState(() {
+                        _pastedVideoMetadata = null;
+                      });
                       _performSearch('');
                     },
                   )
-                : null,
+                else
+                  IconButton(
+                    icon: Icon(Icons.content_paste_rounded,
+                        color: AppColors.primary, size: 20),
+                    tooltip: 'Paste Link',
+                    onPressed: _handlePasteFromClipboard,
+                  ),
+              ],
+            ),
           ),
-          style: TextStyle(color: AppColors.textPrimary, fontSize: 17),
+          style: TextStyle(color: AppColors.textPrimary, fontSize: 16),
           onSubmitted: _performSearch,
         ),
       ),
@@ -287,14 +582,35 @@ class _SearchScreenState extends State<SearchScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                _buildFilterChip('Songs', SearchFilter.songs),
-                const SizedBox(width: 8),
-                _buildFilterChip('Playlists & Albums', SearchFilter.playlists),
-              ],
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(minWidth: constraints.maxWidth),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildFilterChip('Songs', SearchFilter.songs),
+                            const SizedBox(width: 8),
+                            _buildFilterChip(
+                                'Playlists & Albums', SearchFilter.playlists),
+                          ],
+                        ),
+                        const SizedBox(width: 8),
+                        _buildEngineStatusIndicator(),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ),
+          if (_pastedVideoMetadata != null) _buildPastedVideoCard(isDark),
           _buildActiveDownloadBanner(isDark),
           if (_searchController.text.isEmpty && _recentSearches.isNotEmpty)
             _buildRecentSearchesSection(),
@@ -495,7 +811,12 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildEmptyStateView() {
-    if (_searchController.text.trim().isNotEmpty) {
+    final query = _searchController.text.trim();
+    if (_isFetchingLink || _pastedVideoMetadata != null || _isValidUrl(query)) {
+      return const SizedBox.shrink();
+    }
+
+    if (query.isNotEmpty) {
       return Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -509,7 +830,7 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'No results found for "${_searchController.text.trim()}"',
+                'No results found for "$query"',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
@@ -571,6 +892,158 @@ class _SearchScreenState extends State<SearchScreen> {
                 color: AppColors.textSecondary,
               ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              'Or paste any YouTube video or playlist link',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textMuted,
+              ),
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _handlePasteFromClipboard,
+              icon: const Icon(Icons.content_paste_rounded, size: 16),
+              label: const Text('Paste Link from Clipboard'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.primary,
+                side: BorderSide(color: AppColors.primary.withValues(alpha: 0.5)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPastedVideoCard(bool isDark) {
+    final meta = _pastedVideoMetadata;
+    if (meta == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF18181B) : const Color(0xFFF4F4F8),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: AppColors.primary.withValues(alpha: 0.4),
+            width: 1.2,
+          ),
+        ),
+        padding: const EdgeInsets.all(14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    width: 80,
+                    height: 54,
+                    color: isDark
+                        ? const Color(0xFF27272A)
+                        : const Color(0xFFE4E4E7),
+                    child: meta.thumbnailUrl != null
+                        ? Image.network(
+                            meta.thumbnailUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => Center(
+                              child: Icon(Icons.music_note_rounded,
+                                  color: AppColors.primary, size: 24),
+                            ),
+                          )
+                        : Center(
+                            child: Icon(Icons.music_note_rounded,
+                                color: AppColors.primary, size: 24),
+                          ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        meta.title,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${meta.uploader ?? "YouTube"} • ${meta.formattedDuration}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close_rounded, size: 18),
+                  color: AppColors.textMuted,
+                  tooltip: 'Dismiss',
+                  onPressed: () => setState(() => _pastedVideoMetadata = null),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                SegmentedButton<DownloadFormat>(
+                  segments: const [
+                    ButtonSegment(
+                      value: DownloadFormat.mp3,
+                      label: Text('Audio (MP3)'),
+                      icon: Icon(Icons.audiotrack_rounded, size: 16),
+                    ),
+                    ButtonSegment(
+                      value: DownloadFormat.mp4,
+                      label: Text('Video (MP4)'),
+                      icon: Icon(Icons.videocam_rounded, size: 16),
+                    ),
+                  ],
+                  selected: {_selectedFormat},
+                  onSelectionChanged: (val) {
+                    setState(() => _selectedFormat = val.first);
+                  },
+                  style: const ButtonStyle(
+                    visualDensity: VisualDensity.compact,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+                const Spacer(),
+                FilledButton.icon(
+                  onPressed: _downloadPastedVideo,
+                  icon: const Icon(Icons.download_rounded, size: 18),
+                  label: const Text('Download'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    foregroundColor: AppColors.onPrimary,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
         ),
       ),
@@ -589,6 +1062,10 @@ class _SearchScreenState extends State<SearchScreen> {
       label: Text(label),
       selected: isSelected,
       showCheckmark: false,
+      visualDensity: VisualDensity.compact,
+      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      labelPadding: const EdgeInsets.symmetric(horizontal: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       onSelected: (selected) {
         if (selected && _currentFilter != filter) {
           setState(() => _currentFilter = filter);
@@ -608,7 +1085,57 @@ class _SearchScreenState extends State<SearchScreen> {
       labelStyle: TextStyle(
         color: isSelected ? AppColors.onPrimary : AppColors.textPrimary,
         fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+        fontSize: 13,
       ),
+    );
+  }
+
+  Widget _buildEngineStatusIndicator() {
+    return FutureBuilder<Map<String, String?>>(
+      future: AndroidDownloaderService.instance.getBackendInfo(),
+      builder: (context, snapshot) {
+        final isReady = snapshot.data?['isAvailable'] == 'true';
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: isReady
+                ? const Color(0xFF10B981).withValues(alpha: 0.12)
+                : AppColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isReady
+                  ? const Color(0xFF10B981).withValues(alpha: 0.3)
+                  : AppColors.surfaceBorder,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isReady
+                      ? const Color(0xFF10B981)
+                      : AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                isReady ? 'Engine Ready' : 'yt-dlp',
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: isReady
+                      ? const Color(0xFF10B981)
+                      : AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

@@ -1,7 +1,11 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../downloader/services/android_downloader_service.dart';
 import '../../downloader/services/download_history_service.dart';
+import '../../home/services/catalog_service.dart';
 import '../../settings/services/settings_service.dart';
 import '../models/music_playlist.dart';
 import '../models/track.dart';
@@ -32,9 +36,59 @@ class MusicScannerService {
       ValueNotifier<List<MusicPlaylist>>([]);
   final ValueNotifier<bool> isScanningNotifier = ValueNotifier<bool>(false);
 
+  final Map<String, Duration> _durationCache = {};
+  bool _durationCacheLoaded = false;
+
   List<Track> get tracks => tracksNotifier.value;
   List<MusicPlaylist> get playlists => playlistsNotifier.value;
   bool get isScanning => isScanningNotifier.value;
+
+  Future<void> _ensureDurationCacheLoaded() async {
+    if (_durationCacheLoaded) return;
+    _durationCacheLoaded = true;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonStr = prefs.getString('cached_audio_durations');
+      if (jsonStr != null && jsonStr.isNotEmpty) {
+        final decoded = json.decode(jsonStr) as Map<String, dynamic>;
+        decoded.forEach((key, val) {
+          if (val is num && val > 0) {
+            _durationCache[key] = Duration(milliseconds: val.toInt());
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  void _saveDurationCache() {
+    SharedPreferences.getInstance().then((prefs) {
+      final map = <String, int>{};
+      _durationCache.forEach((key, val) {
+        map[key] = val.inMilliseconds;
+      });
+      prefs.setString('cached_audio_durations', json.encode(map));
+    }).catchError((_) {});
+  }
+
+  /// Updates duration for a specific track and saves it in the duration cache.
+  void updateTrackDuration(String trackId, Duration duration) {
+    if (duration <= Duration.zero) return;
+    final currentTracks = tracksNotifier.value;
+    final index = currentTracks.indexWhere(
+        (t) => t.id == trackId || (t.filePath != null && t.filePath == trackId));
+    if (index != -1) {
+      final old = currentTracks[index];
+      if (old.duration != duration) {
+        if (old.filePath != null) {
+          _durationCache[old.filePath!] = duration;
+          _saveDurationCache();
+        }
+        final updated = List<Track>.from(currentTracks);
+        updated[index] = old.copyWith(duration: duration);
+        tracksNotifier.value = updated;
+      }
+    }
+  }
 
   /// Scans the download directory recursively for music files.
   Future<List<Track>> scanMusicDirectory({bool forceRefresh = false}) async {
@@ -62,8 +116,13 @@ class MusicScannerService {
         if (item.filePath.isNotEmpty) {
           final normalized = p.normalize(item.filePath).toLowerCase();
           final basename = p.basename(item.filePath).toLowerCase();
+          final raw = p.basenameWithoutExtension(item.filePath).toLowerCase();
           historyLookup[normalized] = item;
           historyLookup[basename] = item;
+          historyLookup[raw] = item;
+        }
+        if (item.title.isNotEmpty) {
+          historyLookup[item.title.toLowerCase()] = item;
         }
       }
 
@@ -89,8 +148,9 @@ class MusicScannerService {
           final rawName = p.basenameWithoutExtension(filePath);
 
           // Check for matching history item
-          final matchedHistory =
-              historyLookup[normalizedPath] ?? historyLookup[fileBasename];
+          final matchedHistory = historyLookup[normalizedPath] ??
+              historyLookup[fileBasename] ??
+              historyLookup[rawName.toLowerCase()];
 
           String title;
           String artist;
@@ -162,6 +222,49 @@ class MusicScannerService {
         debugPrint('Error listing files in directory: $e');
       }
 
+      // Load cached audio durations
+      await _ensureDurationCacheLoaded();
+
+      // Populate missing durations from cache and native Android MediaMetadataRetriever
+      final missingDurationPaths = <String>[];
+      for (var i = 0; i < discovered.length; i++) {
+        final t = discovered[i];
+        if (t.duration == null && t.filePath != null) {
+          final cached = _durationCache[t.filePath!];
+          if (cached != null) {
+            discovered[i] = t.copyWith(duration: cached);
+          } else {
+            missingDurationPaths.add(t.filePath!);
+          }
+        }
+      }
+
+      if (missingDurationPaths.isNotEmpty) {
+        try {
+          final nativeDurations = await AndroidDownloaderService.instance
+              .getAudioDurations(missingDurationPaths);
+          if (nativeDurations.isNotEmpty) {
+            for (final entry in nativeDurations.entries) {
+              if (entry.value > 0) {
+                _durationCache[entry.key] = Duration(milliseconds: entry.value);
+              }
+            }
+            _saveDurationCache();
+            for (var i = 0; i < discovered.length; i++) {
+              final t = discovered[i];
+              if (t.duration == null &&
+                  t.filePath != null &&
+                  _durationCache.containsKey(t.filePath!)) {
+                discovered[i] =
+                    t.copyWith(duration: _durationCache[t.filePath!]);
+              }
+            }
+          }
+        } catch (e) {
+          debugPrint('Error retrieving native audio durations: $e');
+        }
+      }
+
       // Sort tracks alphabetically by title
       discovered.sort(
           (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
@@ -185,6 +288,32 @@ class MusicScannerService {
           if (track.artworkPath != null && track.artworkPath!.isNotEmpty) {
             playlistCover = track.artworkPath;
             break;
+          }
+        }
+
+        // Fallback 1: Extract YouTube thumbnail from track webUrl if available
+        if (playlistCover == null || playlistCover.isEmpty) {
+          for (final track in entry.value) {
+            if (track.webUrl != null && track.webUrl!.isNotEmpty) {
+              final regExp = RegExp(
+                  r'(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})');
+              final match = regExp.firstMatch(track.webUrl!);
+              if (match != null) {
+                playlistCover =
+                    'https://img.youtube.com/vi/${match.group(1)}/hqdefault.jpg';
+                break;
+              }
+            }
+          }
+        }
+
+        // Fallback 2: Check if playlist matches any catalog playlist by name
+        if (playlistCover == null || playlistCover.isEmpty) {
+          for (final c in CatalogService.instance.playlists) {
+            if (c.title.toLowerCase() == entry.key.toLowerCase()) {
+              playlistCover = c.thumbnailUrl;
+              break;
+            }
           }
         }
 

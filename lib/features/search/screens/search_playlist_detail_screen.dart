@@ -32,6 +32,7 @@ class SearchPlaylistDetailScreen extends StatefulWidget {
 
 class _SearchPlaylistDetailScreenState
     extends State<SearchPlaylistDetailScreen> {
+  late SearchPlaylistInfo _playlistInfo;
   List<Track> _tracks = [];
   bool _isLoading = true;
   String? _errorMessage;
@@ -40,10 +41,34 @@ class _SearchPlaylistDetailScreenState
   bool _isSelectMode = false;
   final Set<int> _selectedIndices = {};
 
+  String get _effectivePlaylistTitle {
+    if (_playlistInfo.title.isNotEmpty &&
+        _playlistInfo.title != 'YouTube Playlist') {
+      return _playlistInfo.title;
+    }
+    if (_tracks.isNotEmpty) {
+      final albumTrack = _tracks.firstWhere(
+        (t) =>
+            t.album != null &&
+            t.album!.trim().isNotEmpty &&
+            t.album != 'YouTube',
+        orElse: () => Track(id: '', title: '', artist: ''),
+      );
+      if (albumTrack.album != null && albumTrack.album!.trim().isNotEmpty) {
+        return albumTrack.album!.trim();
+      }
+    }
+    return _playlistInfo.title.isNotEmpty
+        ? _playlistInfo.title
+        : 'YouTube Playlist';
+  }
+
   // Batch download state read directly from persistent background manager
   bool get _isBatchDownloading =>
       MusicDownloadManager.instance.isBatchActive &&
-      MusicDownloadManager.instance.batchPlaylistName == widget.playlist.title;
+      (MusicDownloadManager.instance.batchPlaylistName == _playlistInfo.title ||
+          MusicDownloadManager.instance.batchPlaylistName ==
+              _effectivePlaylistTitle);
   int get _batchCompletedCount => MusicDownloadManager.instance.batchCompleted;
   int get _batchTotalCount => MusicDownloadManager.instance.batchTotal;
   String get _batchCurrentTitle =>
@@ -54,16 +79,78 @@ class _SearchPlaylistDetailScreenState
   @override
   void initState() {
     super.initState();
+    _playlistInfo = widget.playlist;
+    final cachedInfo =
+        YtmSearchService.instance.getCachedPlaylistInfo(_playlistInfo.id);
+    if (cachedInfo != null &&
+        cachedInfo.title.isNotEmpty &&
+        cachedInfo.title != 'YouTube Playlist') {
+      _playlistInfo = cachedInfo;
+    }
+
     final syncCached = YtmSearchService.instance
-        .getCachedPlaylistTracksSync(widget.playlist.id);
+        .getCachedPlaylistTracksSync(_playlistInfo.id);
     if (syncCached != null && syncCached.isNotEmpty) {
       _tracks = syncCached;
       _isLoading = false;
+      _resolveAndUpdateMetadata(syncCached);
     }
     _fetchTracks(hasCached: syncCached != null && syncCached.isNotEmpty);
     DownloadHistoryService.instance.changeNotifier.addListener(_onDataChanged);
     MusicScannerService.instance.tracksNotifier.addListener(_onDataChanged);
     MusicDownloadManager.instance.addListener(_onDataChanged);
+  }
+
+  void _resolveAndUpdateMetadata(List<Track> tracks) {
+    var updatedTitle = _playlistInfo.title;
+    var updatedThumb = _playlistInfo.thumbnailUrl;
+    var updatedAuthor = _playlistInfo.author;
+
+    final cachedInfo =
+        YtmSearchService.instance.getCachedPlaylistInfo(_playlistInfo.id);
+    if (cachedInfo != null &&
+        cachedInfo.title.isNotEmpty &&
+        cachedInfo.title != 'YouTube Playlist') {
+      updatedTitle = cachedInfo.title;
+      updatedThumb ??= cachedInfo.thumbnailUrl;
+      updatedAuthor ??= cachedInfo.author;
+    }
+
+    if (updatedTitle.isEmpty || updatedTitle == 'YouTube Playlist') {
+      final albumTrack = tracks.firstWhere(
+        (t) =>
+            t.album != null &&
+            t.album!.trim().isNotEmpty &&
+            t.album != 'YouTube',
+        orElse: () => Track(id: '', title: '', artist: ''),
+      );
+      if (albumTrack.album != null && albumTrack.album!.trim().isNotEmpty) {
+        updatedTitle = albumTrack.album!.trim();
+      }
+    }
+
+    if ((updatedThumb == null || updatedThumb.isEmpty) && tracks.isNotEmpty) {
+      for (final t in tracks) {
+        if (t.artworkPath != null && t.artworkPath!.isNotEmpty) {
+          updatedThumb = t.artworkPath;
+          break;
+        }
+      }
+    }
+
+    if ((updatedAuthor == null || updatedAuthor.isEmpty) && tracks.isNotEmpty) {
+      if (tracks.first.artist.isNotEmpty &&
+          tracks.first.artist != 'Unknown Artist') {
+        updatedAuthor = tracks.first.artist;
+      }
+    }
+
+    _playlistInfo = _playlistInfo.copyWith(
+      title: updatedTitle,
+      thumbnailUrl: updatedThumb,
+      author: updatedAuthor,
+      trackCount: tracks.length,
+    );
   }
 
   void _onDataChanged() {
@@ -90,11 +177,12 @@ class _SearchPlaylistDetailScreenState
       });
     } else if (!hasCached) {
       final asyncCached = await YtmSearchService.instance
-          .getCachedPlaylistTracks(widget.playlist.id);
+          .getCachedPlaylistTracks(_playlistInfo.id);
       if (asyncCached != null && asyncCached.isNotEmpty && mounted) {
         setState(() {
           _tracks = asyncCached;
           _isLoading = false;
+          _resolveAndUpdateMetadata(asyncCached);
         });
         hasCached = true;
       }
@@ -109,11 +197,12 @@ class _SearchPlaylistDetailScreenState
 
     try {
       final tracks = await YtmSearchService.instance
-          .getPlaylistTracks(widget.playlist.id, forceRefresh: force);
+          .getPlaylistTracks(_playlistInfo.id, forceRefresh: force);
       if (mounted) {
         setState(() {
           _tracks = tracks;
           _isLoading = false;
+          _resolveAndUpdateMetadata(tracks);
           if (tracks.isEmpty && _tracks.isEmpty) {
             _errorMessage = 'No tracks found in this playlist or album.';
           }
@@ -216,9 +305,9 @@ class _SearchPlaylistDetailScreenState
     );
     await MusicDownloadManager.instance.downloadTrack(
       track,
-      playlistName: widget.playlist.title,
+      playlistName: _effectivePlaylistTitle,
       playlistUrl:
-          'https://www.youtube.com/playlist?list=${widget.playlist.id}',
+          'https://www.youtube.com/playlist?list=${_playlistInfo.id}',
       autoPlay: true,
     );
   }
@@ -235,9 +324,9 @@ class _SearchPlaylistDetailScreenState
       return;
     }
 
-    final playlistName = widget.playlist.title;
+    final playlistName = _effectivePlaylistTitle;
     final playlistUrl =
-        'https://www.youtube.com/playlist?list=${widget.playlist.id}';
+        'https://www.youtube.com/playlist?list=${_playlistInfo.id}';
 
     UiFeedbackHelper.showSuccessToast(
       context,
@@ -447,12 +536,14 @@ class _SearchPlaylistDetailScreenState
   }
 
   String get _displayAuthor {
-    if (widget.playlist.author != null && widget.playlist.author!.isNotEmpty) {
-      return widget.playlist.author!;
+    if (_playlistInfo.author != null && _playlistInfo.author!.isNotEmpty) {
+      return _playlistInfo.author!;
     }
     if (_tracks.isNotEmpty) {
       final firstArtist = _tracks.first.artist;
-      if (firstArtist.isNotEmpty) return firstArtist;
+      if (firstArtist.isNotEmpty && firstArtist != 'Unknown Artist') {
+        return firstArtist;
+      }
     }
     return 'YouTube Playlist / Album';
   }
@@ -474,7 +565,7 @@ class _SearchPlaylistDetailScreenState
   }
 
   Widget _buildPlaylistHeader() {
-    final thumbUrl = widget.playlist.thumbnailUrl;
+    final thumbUrl = _playlistInfo.thumbnailUrl;
     final durationStr = _formattedTotalDuration;
 
     return Container(
@@ -520,7 +611,7 @@ class _SearchPlaylistDetailScreenState
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.playlist.title,
+                      _playlistInfo.title,
                       style: TextStyle(
                         color: AppColors.textPrimary,
                         fontSize: 17,
@@ -594,14 +685,14 @@ class _SearchPlaylistDetailScreenState
               ),
             ],
           ),
-          if (widget.playlist.genres.isNotEmpty ||
-              widget.playlist.languages.isNotEmpty) ...[
+          if (_playlistInfo.genres.isNotEmpty ||
+              _playlistInfo.languages.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(
               spacing: 6,
               runSpacing: 6,
               children: [
-                ...widget.playlist.genres.map((g) => Container(
+                ..._playlistInfo.genres.map((g) => Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -617,7 +708,7 @@ class _SearchPlaylistDetailScreenState
                         ),
                       ),
                     )),
-                ...widget.playlist.languages.map((l) => Container(
+                ..._playlistInfo.languages.map((l) => Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(
@@ -636,11 +727,11 @@ class _SearchPlaylistDetailScreenState
               ],
             ),
           ],
-          if (widget.playlist.description != null &&
-              widget.playlist.description!.isNotEmpty) ...[
+          if (_playlistInfo.description != null &&
+              _playlistInfo.description!.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              widget.playlist.description!,
+              _playlistInfo.description!,
               style: TextStyle(
                 fontSize: 12,
                 color: AppColors.textSecondary,

@@ -491,7 +491,17 @@ class YtmSearchService {
     return null;
   }
 
-  Future<void> _cachePlaylistTracks(
+  final Map<String, SearchPlaylistInfo> _cachedPlaylistInfo = {};
+
+  SearchPlaylistInfo? getCachedPlaylistInfo(String playlistId) {
+    return _cachedPlaylistInfo[playlistId];
+  }
+
+  void cachePlaylistInfo(String playlistId, SearchPlaylistInfo info) {
+    _cachedPlaylistInfo[playlistId] = info;
+  }
+
+  Future<void> cachePlaylistTracks(
       String playlistId, List<Track> tracks) async {
     if (tracks.isEmpty) return;
     _playlistTracksMemoryCache[playlistId] = tracks;
@@ -504,7 +514,7 @@ class YtmSearchService {
       await prefs.setString(key, jsonEncode(jsonList));
       await prefs.setInt('${key}_time', DateTime.now().millisecondsSinceEpoch);
     } catch (e) {
-      debugPrint('YtmSearchService _cachePlaylistTracks error: $e');
+      debugPrint('YtmSearchService cachePlaylistTracks error: $e');
     }
   }
 
@@ -571,7 +581,7 @@ class YtmSearchService {
     }
 
     if (fetchedTracks.isNotEmpty) {
-      await _cachePlaylistTracks(playlistId, fetchedTracks);
+      await cachePlaylistTracks(playlistId, fetchedTracks);
       return fetchedTracks;
     }
 
@@ -836,13 +846,32 @@ class YtmSearchService {
       final playlist = await downloader.fetchPlaylistMetadata(url);
 
       if (playlist != null && playlist.entries.isNotEmpty) {
+        final albumName =
+            playlist.title.isNotEmpty && playlist.title != 'YouTube Playlist'
+                ? playlist.title
+                : null;
+
+        if (albumName != null) {
+          cachePlaylistInfo(
+            playlistId,
+            SearchPlaylistInfo(
+              id: playlist.id.isNotEmpty ? playlist.id : playlistId,
+              title: playlist.title,
+              author: playlist.uploader,
+              thumbnailUrl: playlist.entries.first.bestThumbnailUrl,
+              trackCount: playlist.entries.length,
+            ),
+          );
+        }
+
         return playlist.entries.map((entry) {
           final dur =
               entry.duration > 0 ? Duration(seconds: entry.duration) : null;
           return Track(
             id: entry.id,
             title: entry.title,
-            artist: entry.uploader ?? 'Unknown Artist',
+            artist: entry.uploader ?? playlist.uploader ?? 'Unknown Artist',
+            album: albumName,
             webUrl: entry.url,
             duration: dur,
             artworkPath: entry.bestThumbnailUrl,
